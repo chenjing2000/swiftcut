@@ -178,7 +178,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
       await showErrorNotification({
         title: t('Unable to start audio extraction'),
         message: err instanceof Error ? err.message : String(err),
-        ...(err instanceof Error && err.stack ? { details: err.stack } : {}),
+        ...(err instanceof Error && err.stack && { details: err.stack }),
         source: 'audio-extraction-start',
       });
     } finally {
