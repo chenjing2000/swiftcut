@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaQuestionCircle, FaTimesCircle } from 'react-icons/fa';
 
@@ -48,6 +48,7 @@ export default function NotificationHost() {
   const remainingRef = useRef(5000);
   const hoveredRef = useRef(false);
   const primaryButtonRef = useRef<HTMLButtonElement | null>(null);
+  const isResolvingRef = useRef(false);
 
   const beginExit = useCallback(() => {
     setPhase('exiting');
@@ -59,7 +60,8 @@ export default function NotificationHost() {
     timerRef.current = setTimeout(beginExit, remainingRef.current);
   }, [beginExit]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    isResolvingRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
     setDetailsExpanded(false);
     remainingRef.current = 5000;
@@ -94,7 +96,13 @@ export default function NotificationHost() {
     if (!blocking && phase === 'visible') startHoldTimer();
   };
 
-  const handleAction = (action: NotificationAction) => completeActiveNotification(action);
+  const handleAction = (action: NotificationAction) => {
+    if (isResolvingRef.current) return;
+    isResolvingRef.current = true;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setPhase('exiting');
+    timerRef.current = setTimeout(() => completeActiveNotification(action), 600);
+  };
 
   const handleCopyDetails = () => {
     if (active?.details) void mainApi.writeClipboardText(active.details);
@@ -115,11 +123,12 @@ export default function NotificationHost() {
     const secondaryLabel = active.secondaryActionLabel ?? (isConfirmation ? t('Cancel') : undefined);
 
     return (
-      <AlertDialog.Root open onOpenChange={() => undefined}>
+      <AlertDialog.Root key={active.id} open onOpenChange={() => undefined}>
         <AlertDialog.Portal>
-          <AlertDialog.Overlay />
+          <AlertDialog.Overlay className={styles.modalOverlay} data-phase={phase} />
           <AlertDialog.Content
             className={styles.modalContent}
+            data-phase={phase}
             style={{ width: active.type === 'error' ? 480 : 440, maxWidth: '90vw' }}
             onOpenAutoFocus={handleOpenAutoFocus}
           >
