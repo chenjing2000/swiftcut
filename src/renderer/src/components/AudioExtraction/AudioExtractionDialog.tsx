@@ -109,7 +109,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         pollingErrorShownRef.current = false;
 
         if (status.state === 'paused') {
-          const failedTask = [...status.tasks].reverse().find((task) => task.state === 'failed' && task.error);
+          const failedTask = status.tasks.findLast((task) => task.state === 'failed' && task.error);
           if (!failedTask) return;
 
           const taskKey = `${pollingJobId}:${failedTask.segmentNumber}:${failedTask.trackNumber}:${failedTask.streamIndex}`;
@@ -138,7 +138,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         showErrorNotification({
           title: t('Unable to read extraction status'),
           message: err instanceof Error ? err.message : String(err),
-          ...(err instanceof Error && err.stack && { details: err.stack }),
+          ...(err instanceof Error && err.stack ? { details: err.stack } : {}),
           source: `audio-extraction-status:${pollingJobId}`,
         }).catch((notificationError: unknown) => console.error('Failed to show audio extraction status error', notificationError));
       }
