@@ -122,7 +122,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               segment: failedTask.segmentNumber,
               track: failedTask.trackNumber,
             }),
-            details: failedTask.error,
+            ...(failedTask.error ? { details: failedTask.error } : {}),
             primaryActionLabel: t('Continue'),
             secondaryActionLabel: t('Cancel remaining tasks'),
             source: `audio-extraction:${taskKey}`,
@@ -139,7 +139,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         void showErrorNotification({
           title: t('Unable to read extraction status'),
           message: err instanceof Error ? err.message : String(err),
-          details: err instanceof Error ? err.stack : undefined,
+          ...(err instanceof Error && err.stack ? { details: err.stack } : {}),
           source: `audio-extraction-status:${pollingJobId}`,
         });
       }
@@ -179,7 +179,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
       await showErrorNotification({
         title: t('Unable to start audio extraction'),
         message: err instanceof Error ? err.message : String(err),
-        details: err instanceof Error ? err.stack : undefined,
+        ...(err instanceof Error && err.stack ? { details: err.stack } : {}),
         source: 'audio-extraction-start',
       });
     } finally {
