@@ -210,12 +210,12 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           <section style={{ marginBottom: '1.2em' }}>
             <strong>{t('Output mode')}</strong>
             <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                <input type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} disabled={isBusy} onChange={() => setMode('original')} />
+              <label htmlFor="audio-extraction-mode-original" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                <input id="audio-extraction-mode-original" type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} disabled={isBusy} onChange={() => setMode('original')} />
                 {t('Original (no re-encoding)')}
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                <input type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} disabled={isBusy} onChange={() => setMode('mp3')} />
+              <label htmlFor="audio-extraction-mode-mp3" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                <input id="audio-extraction-mode-mp3" type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} disabled={isBusy} onChange={() => setMode('mp3')} />
                 {t('MP3 (re-encode)')}
               </label>
             </div>
