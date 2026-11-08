@@ -2503,7 +2503,7 @@ function App() {
 
   useEffect(() => {
     (async () => {
-      setFfmpegInfo(await runStartupCheck({ customFfPath, onError: ({ title, message }) => { void showErrorNotification({ title, message, source: 'startup-check' }); } }));
+      setFfmpegInfo(await runStartupCheck({ customFfPath, onError: async ({ title, message }) => { await showErrorNotification({ title, message, source: 'startup-check' }); } }));
     })();
   }, [customFfPath]);
 
