@@ -954,5 +954,14 @@
   "{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).": "{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).",
   "{{count}} output file(s) saved.": "{{count}} output file(s) saved.",
   "Extraction cancelled. {{count}} output file(s) saved.": "Extraction cancelled. {{count}} output file(s) saved.",
-  "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.": "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved."
+  "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.": "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.",
+  "Audio extraction failed": "Audio extraction failed",
+  "Segment {{segment}} · Track {{track}} could not be extracted. The remaining tasks are paused.": "Segment {{segment}} · Track {{track}} could not be extracted. The remaining tasks are paused.",
+  "Cancel remaining tasks": "Cancel remaining tasks",
+  "Continue": "Continue",
+  "Unable to read extraction status": "Unable to read extraction status",
+  "Unable to start audio extraction": "Unable to start audio extraction",
+  "Extraction paused after an error. Confirm the message to continue or cancel the remaining tasks.": "Extraction paused after an error. Confirm the message to continue or cancel the remaining tasks.",
+  "Show technical details": "Show technical details",
+  "Copy details": "Copy details"
 }
