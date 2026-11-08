@@ -10,7 +10,7 @@ import styles from './SimpleModeButton.module.css';
 function SimpleModeButton({ style }: { style?: CSSProperties } = {}) {
   const { t } = useTranslation();
   const { simpleMode, toggleSimpleMode } = useUserSettings();
-  const label = t('Toggle advanced view');
+  const label = t(simpleMode ? 'to show advanced view' : 'to show simple view');
 
   return (
     <button
