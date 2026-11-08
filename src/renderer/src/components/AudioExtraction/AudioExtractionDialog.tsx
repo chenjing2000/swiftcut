@@ -126,6 +126,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             primaryActionLabel: t('Continue'),
             secondaryActionLabel: t('Cancel remaining tasks'),
             source: `audio-extraction:${taskKey}`,
+            focusPrimary: true,
           });
 
           if (disposed) return;
