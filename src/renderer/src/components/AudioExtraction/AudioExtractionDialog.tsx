@@ -174,8 +174,30 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay />
-        <Dialog.Content style={{ width: '44em' }} aria-describedby={undefined}>
-          <Dialog.Title>{t('Extract Audio')}</Dialog.Title>
+        <Dialog.Content
+          style={{
+            width: '44em',
+            height: 'min(42rem, 85vh)',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+          aria-describedby={undefined}
+        >
+          <div style={{ flex: '0 0 auto' }}>
+            <Dialog.Title>{t('Extract Audio')}</Dialog.Title>
+          </div>
+          <div
+            style={{
+              flex: '1 1 auto',
+              minHeight: 0,
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+              paddingRight: '.35em',
+              marginRight: '-.35em',
+            }}
+          >
           <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
 
           <section style={{ marginBottom: '1.2em' }}>
@@ -307,11 +329,14 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             </section>
           )}
           {error && <p role="alert" style={{ color: 'red' }}>{error}</p>}
+          </div>
+          <div style={{ flex: '0 0 auto' }}>
           <Dialog.ButtonRow>
             {job?.state === 'running' && <DialogButton onClick={cancelExtraction}>{t('Cancel extraction')}</DialogButton>}
             <DialogButton disabled={isBusy} onClick={() => handleOpenChange(false)}>{t('Close')}</DialogButton>
             <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract Audio')} ({outputCount})</DialogButton>
           </Dialog.ButtonRow>
+          </div>
           <Dialog.CloseButton />
         </Dialog.Content>
       </Dialog.Portal>
