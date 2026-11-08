@@ -93,7 +93,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const [isStarting, setIsStarting] = useState(false);
 
   const pollingJobId = job && (job.state === 'running' || job.state === 'paused') ? job.id : undefined;
-  const handledPauseTaskRef = useRef<string>();
+  const handledPauseTaskRef = useRef<string | undefined>(undefined);
   const pollingErrorShownRef = useRef(false);
 
   useEffect(() => {
