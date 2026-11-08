@@ -266,8 +266,11 @@ function ExportConfirm({
   })[effectiveExportMode], [effectiveExportMode, t]);
 
   const showHelpText = useCallback(({ icon = 'info', text }: { icon?: 'info' | 'success' | 'warning', text: string }) => {
+    let type: 'information' | 'success' | 'warning' = 'information';
+    if (icon === 'warning') type = 'warning';
+    else if (icon === 'success') type = 'success';
     enqueueNotification({
-      type: icon === 'warning' ? 'warning' : icon === 'success' ? 'success' : 'information',
+      type,
       message: text,
       source: 'export-confirm-help',
     });
