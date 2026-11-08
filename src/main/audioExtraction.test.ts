@@ -35,7 +35,7 @@ describe('Original audio extraction arguments and container selection', () => {
     ['eac3', { extension: 'eac3', muxer: 'eac3' }],
     ['opus', { extension: 'opus', muxer: 'opus' }],
     ['vorbis', { extension: 'mka', muxer: 'matroska' }],
-  ])('selects the expected output container for %s', (codecName, expected) => {
+  ] as const)('selects the expected output container for %s', (codecName, expected) => {
     expect(getOriginalAudioOutputFormat(codecName)).toStrictEqual(expected);
   });
 
@@ -71,7 +71,7 @@ describe('Original audio extraction arguments and container selection', () => {
     expect(args).toContain('-ss');
     expect(args).toContain('8.323');
     expect(args).toContain('-t');
-    expect(args).toContain('7.177');
+    expect(Number(args[args.indexOf('-t') + 1])).toBeCloseTo(7.177, 6);
     expect(args).toContain('copy');
     expect(args).toContain('matroska');
   });
