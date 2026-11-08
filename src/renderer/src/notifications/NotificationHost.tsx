@@ -43,11 +43,11 @@ export default function NotificationHost() {
   const blocking = isBlocking(active);
   const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting'>('entering');
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const startedAtRef = useRef(0);
   const remainingRef = useRef(5000);
   const hoveredRef = useRef(false);
-  const primaryButtonRef = useRef<HTMLButtonElement>(null);
+  const primaryButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const beginExit = useCallback(() => {
     setPhase('exiting');
