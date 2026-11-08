@@ -86,7 +86,7 @@ function enqueue(message: NotificationInput, resolve?: (action: NotificationActi
 
 export function subscribeNotificationStore(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => { listeners.delete(listener); };
 }
 
 export function getNotificationSnapshot() {
