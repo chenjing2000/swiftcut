@@ -450,10 +450,7 @@ function App() {
     return newVal;
   }), [showNotification, setKeyframeCut]);
 
-  const toggleSimpleMode = useCallback(() => setSimpleMode((v) => {
-    showNotification({ text: i18n.t(v ? 'Advanced view has been enabled. You will now also see non-essential buttons and functions' : 'Advanced view disabled. You will now see only the most essential buttons and functions') });
-    return !v;
-  }), [setSimpleMode, showNotification]);
+  const toggleSimpleMode = useCallback(() => setSimpleMode((v) => !v), [setSimpleMode]);
 
   const effectiveExportMode = useMemo(() => {
     if (segmentsToChaptersOnly) return 'segments_to_chapters';

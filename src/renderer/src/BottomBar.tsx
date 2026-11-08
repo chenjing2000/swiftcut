@@ -392,7 +392,7 @@ function BottomBar({
     color: currentFrame?.keyframe ? primaryTextColor : undefined,
   }), [currentFrame]);
 
-  const { invertCutSegments, setInvertCutSegments, simpleMode, toggleSimpleMode, exportConfirmEnabled } = useUserSettings();
+  const { invertCutSegments, setInvertCutSegments, simpleMode, exportConfirmEnabled } = useUserSettings();
   const actionTitle = useActionTitle();
 
   const rotationStr = `${rotation}°`;
@@ -569,10 +569,6 @@ function BottomBar({
 
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <SimpleModeButton />
-
-          {simpleMode && (
-            <div role="button" onClick={toggleSimpleMode} style={{ fontSize: '.8em', marginLeft: '.2em' }}>{t('Toggle advanced view')}</div>
-          )}
         </div>
 
         {isFileOpened && !simpleMode && (
