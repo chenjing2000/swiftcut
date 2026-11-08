@@ -109,7 +109,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         pollingErrorShownRef.current = false;
 
         if (status.state === 'paused') {
-          const failedTask = status.tasks.filter((task) => task.state === 'failed' && task.error).at(-1);
+          const failedTask = [...status.tasks].reverse().find((task) => task.state === 'failed' && task.error);
           if (!failedTask) return;
 
           const taskKey = `${pollingJobId}:${failedTask.segmentNumber}:${failedTask.trackNumber}:${failedTask.streamIndex}`;
@@ -122,7 +122,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               segment: failedTask.segmentNumber,
               track: failedTask.trackNumber,
             }),
-            ...(failedTask.error ? { details: failedTask.error } : {}),
+            ...(failedTask.error && { details: failedTask.error }),
             primaryActionLabel: t('Continue'),
             secondaryActionLabel: t('Cancel remaining tasks'),
             source: `audio-extraction:${taskKey}`,
@@ -130,23 +130,22 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           });
 
           if (disposed) return;
-          if (action === 'cancel') await mainApi.cancelAudioExtraction(pollingJobId);
-          else await mainApi.resumeAudioExtraction(pollingJobId);
+          await (action === 'cancel' ? mainApi.cancelAudioExtraction(pollingJobId) : mainApi.resumeAudioExtraction(pollingJobId));
         }
       } catch (err) {
         if (disposed || pollingErrorShownRef.current) return;
         pollingErrorShownRef.current = true;
-        void showErrorNotification({
+        showErrorNotification({
           title: t('Unable to read extraction status'),
           message: err instanceof Error ? err.message : String(err),
-          ...(err instanceof Error && err.stack ? { details: err.stack } : {}),
+          ...(err instanceof Error && err.stack && { details: err.stack }),
           source: `audio-extraction-status:${pollingJobId}`,
-        });
+        }).catch((notificationError: unknown) => console.error('Failed to show audio extraction status error', notificationError));
       }
     };
 
-    const timer = setInterval(() => { void pollStatus(); }, 400);
-    void pollStatus();
+    const timer = setInterval(() => { pollStatus().catch(console.error); }, 400);
+    pollStatus().catch(console.error);
 
     return () => {
       disposed = true;
