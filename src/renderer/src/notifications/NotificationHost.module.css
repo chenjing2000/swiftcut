@@ -1,0 +1,146 @@
+.toastLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: none;
+}
+
+.toastCard {
+  box-sizing: border-box;
+  width: 440px;
+  min-width: min(320px, 90vw);
+  max-width: 90vw;
+  padding: 20px 24px;
+  border: 1px solid var(--black-a3);
+  border-radius: 12px;
+  background: var(--white-a11);
+  color: var(--gray-12);
+  box-shadow: 0 0.5rem 2rem var(--black-a3);
+  backdrop-filter: blur(1.25rem);
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+:global(.dark-theme) .toastCard {
+  border-color: var(--white-a3);
+  background: var(--black-a8);
+  box-shadow: 0 0.5rem 2rem var(--black-a5);
+}
+
+.toastCard[data-phase='visible'] {
+  opacity: 1;
+}
+
+.toastCard[data-phase='exiting'] {
+  opacity: 0;
+}
+
+.toastHeading,
+.modalHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modalHeading {
+  margin-bottom: 0.75rem;
+}
+
+.icon {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.icon[data-type='information'] {
+  color: var(--cyan-10);
+}
+
+.icon[data-type='success'] {
+  color: var(--green-10);
+}
+
+.icon[data-type='warning'] {
+  color: var(--amber-10);
+}
+
+.icon[data-type='error'] {
+  color: var(--red-10);
+}
+
+.icon[data-type='confirmation'] {
+  color: var(--cyan-10);
+}
+
+.title {
+  min-width: 0;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.message {
+  margin-top: 0.45rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.toastHeading .message {
+  margin-top: 0;
+}
+
+.modalContent {
+  box-sizing: border-box;
+  padding: 20px 24px !important;
+  border-radius: 12px !important;
+}
+
+.details {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.details summary {
+  cursor: pointer;
+  color: var(--gray-11);
+}
+
+.detailsText {
+  box-sizing: border-box;
+  max-height: 12rem;
+  overflow: auto;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: var(--gray-3);
+  color: var(--gray-12);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+:global(.dark-theme) .detailsText {
+  background: var(--gray-2);
+}
+
+.copyButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--cyan-10);
+  cursor: pointer;
+  font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toastCard {
+    transition-duration: 0ms;
+  }
+}
