@@ -602,7 +602,7 @@ export async function deleteFiles({ paths, deleteIfTrashFails, signal }: { paths
 export function toastError(err: unknown) {
   console.error('toastError', err);
   const text = err instanceof Error ? err.message : String(err);
-  return showErrorNotification({
+  void showErrorNotification({
     title: i18n.t('Error'),
     message: text.slice(0, 300),
     details: text.length > 300 ? text : undefined,
