@@ -16,10 +16,11 @@ function getErrorDetails(error: unknown) {
 export default function useErrorHandling() {
   const handleError = useCallback(async ({ title, err }: { title?: string | undefined, err?: unknown | undefined }) => {
     console.error('handleError', title, err);
+    const details = getErrorDetails(err);
     await showErrorNotification({
       title: title ?? i18n.t('Error'),
       message: getErrorMessage(err),
-      ...(getErrorDetails(err) ? { details: getErrorDetails(err)! } : {}),
+      ...(details ? { details } : {}),
       source: 'application-error',
     });
   }, []);
