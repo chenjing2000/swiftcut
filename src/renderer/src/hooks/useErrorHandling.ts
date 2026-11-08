@@ -19,7 +19,7 @@ export default function useErrorHandling() {
     await showErrorNotification({
       title: title ?? i18n.t('Error'),
       message: getErrorMessage(err),
-      details: getErrorDetails(err),
+      ...(getErrorDetails(err) ? { details: getErrorDetails(err)! } : {}),
       source: 'application-error',
     });
   }, []);
