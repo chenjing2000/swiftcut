@@ -350,18 +350,18 @@ export async function startAudioExtraction(args: {
         }
         job.cancel = undefined;
         status.completedTasks = status.tasks.filter((item) => item.state !== 'pending' && item.state !== 'running').length;
-        if (job.cancelled) continue;
         status.progress = status.completedTasks / tasks.length;
       }
 
-      if (taskStatus.state === 'failed' && !job.cancelled) {
-        status.state = 'paused';
-        await new Promise<void>((resolve) => {
-          job.resume = resolve;
-        });
-        job.resume = undefined;
-        if (!job.cancelled) status.state = 'running';
-      }
+      if (job.cancelled) continue;
+      if (taskStatus.state !== 'failed') continue;
+
+      status.state = 'paused';
+      await new Promise<void>((resolve) => {
+        job.resume = resolve;
+      });
+      job.resume = undefined;
+      if (!job.cancelled) status.state = 'running';
     }
 
     if (job.cancelled) {
