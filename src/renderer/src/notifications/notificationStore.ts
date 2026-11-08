@@ -48,7 +48,8 @@ function getDedupeKey(message: NotificationInput) {
 function enqueue(message: NotificationInput, resolve?: (action: NotificationAction) => void) {
   const dedupeKey = getDedupeKey(message);
   const existing = [snapshot.active, ...snapshot.queue].find((item) => (
-    dedupeKey != null
+    item != null
+    && dedupeKey != null
     && getDedupeKey(item) === dedupeKey
     && !isBlocking(item.type)
     && !isBlocking(message.type)
