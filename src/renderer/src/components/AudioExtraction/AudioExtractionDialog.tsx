@@ -9,7 +9,7 @@ import Checkbox from '../Checkbox';
 import type { FFprobeStream } from '../../../../common/ffprobe';
 import type { SegmentToExport } from '../../types';
 
-import type { Mp3Quality, AudioJobStatus, AudioExtractionTaskStatus } from '../../../../main/audioExtraction';
+import type { AudioExtractionMode, Mp3Quality, AudioJobStatus, AudioExtractionTaskStatus } from '../../../../main/audioExtraction';
 
 interface AudioExtractionDialogProps {
   open: boolean;
@@ -86,6 +86,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const [selectedStreamIndexes, setSelectedStreamIndexes] = useState<number[]>(() => (
     streams.length > 0 ? [streams[0]!.index] : []
   ));
+  const [mode, setMode] = useState<AudioExtractionMode>('mp3');
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
   const [job, setJob] = useState<AudioJobStatus>();
   const [isStarting, setIsStarting] = useState(false);
@@ -114,8 +115,9 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
     setError(undefined);
     setJob(undefined);
     try {
-      const id = await mainApi.startMp3Extraction({
+      const id = await mainApi.startAudioExtraction({
         inputPath: filePath,
+        mode,
         streamIndexes: selectedStreamIndexes,
         quality,
         segments: segments.map(({ start, end }) => ({ start, end })),
@@ -174,7 +176,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         <Dialog.Overlay />
         <Dialog.Content style={{ width: '44em' }} aria-describedby={undefined}>
           <Dialog.Title>{t('Extract Audio')}</Dialog.Title>
-          <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate MP3 file.')}</Dialog.Description>
+          <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
 
           <section style={{ marginBottom: '1.2em' }}>
             <strong>{t('Input file')}</strong>
@@ -206,6 +208,25 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           </section>
 
           <section style={{ marginBottom: '1.2em' }}>
+            <strong>{t('Output mode')}</strong>
+            <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                <input type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} onChange={() => setMode('original')} />
+                {t('Original (no re-encoding)')}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                <input type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} onChange={() => setMode('mp3')} />
+                {t('MP3 (re-encode)')}
+              </label>
+            </div>
+            {mode === 'original' && (
+              <p style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: 0 }}>
+                {t('Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.')}
+              </p>
+            )}
+          </section>
+
+          <section style={{ marginBottom: '1.2em', opacity: mode === 'original' ? 0.5 : 1 }}>
             <strong>{t('MP3 quality')}</strong>
             <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
               {([
@@ -216,7 +237,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 const inputId = `audio-extraction-quality-${value}`;
                 return (
                   <label key={value} htmlFor={inputId} style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                    <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} onChange={() => setQuality(value)} />
+                    <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} disabled={mode === 'original'} onChange={() => setQuality(value)} />
                     {label}
                   </label>
                 );
@@ -227,7 +248,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           <section style={{ marginBottom: '1em' }}>
             <strong>{t('Extraction segments')}</strong>
             <p style={{ margin: '.35em 0' }}>
-              {t('{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} MP3 file(s).', {
+              {t('{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).', {
                 segments: segmentCount,
                 tracks: selectedCount,
                 outputs: outputCount,
@@ -255,9 +276,9 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                   current: currentTaskNumber,
                   total: job.totalTasks,
                 })}
-                {job.state === 'success' && t('{{count}} MP3 file(s) saved.', { count: job.outputPaths.length })}
-                {job.state === 'cancelled' && t('Extraction cancelled. {{count}} MP3 file(s) saved.', { count: job.outputPaths.length })}
-                {job.state === 'failed' && t('Extraction finished with {{failed}} failed task(s). {{success}} MP3 file(s) saved.', {
+                {job.state === 'success' && t('{{count}} output file(s) saved.', { count: job.outputPaths.length })}
+                {job.state === 'cancelled' && t('Extraction cancelled. {{count}} output file(s) saved.', { count: job.outputPaths.length })}
+                {job.state === 'failed' && t('Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.', {
                   failed: failedTaskCount,
                   success: job.outputPaths.length,
                 })}
