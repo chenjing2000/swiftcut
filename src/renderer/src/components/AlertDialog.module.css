@@ -109,3 +109,11 @@
 		opacity: 0;
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.AlertDialogOverlay,
+	.AlertDialogContent {
+		animation-duration: 0ms;
+		transition-duration: 0ms;
+	}
+}
