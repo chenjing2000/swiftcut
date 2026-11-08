@@ -605,7 +605,7 @@ export function toastError(err: unknown) {
   void showErrorNotification({
     title: i18n.t('Error'),
     message: text.slice(0, 300),
-    details: text.length > 300 ? text : undefined,
+    ...(text.length > 300 ? { details: text } : {}),
     source: 'renderer-error',
   });
 }
