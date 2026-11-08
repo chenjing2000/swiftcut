@@ -1,20 +1,30 @@
 import i18n from 'i18next';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 
 import { DirectoryAccessDeclinedError, UnsupportedFileError } from '../../errors';
 import { isAbortedError } from '../util';
-import type { GenericError } from '../components/ErrorDialog';
+import { showErrorNotification } from '../notifications/notificationStore';
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getErrorDetails(error: unknown) {
+  return error instanceof Error ? error.stack : undefined;
+}
 
 export default function useErrorHandling() {
-  const [genericError, setGenericError] = useState<GenericError | undefined>();
-
-  const handleError = useCallback(({ title, err }: { title?: string | undefined, err?: unknown | undefined }) => {
+  const handleError = useCallback(async ({ title, err }: { title?: string | undefined, err?: unknown | undefined }) => {
     console.error('handleError', title, err);
-    setGenericError({ title, err });
+    await showErrorNotification({
+      title: title ?? i18n.t('Error'),
+      message: getErrorMessage(err),
+      details: getErrorDetails(err),
+      source: 'application-error',
+    });
   }, []);
 
-  /** Run an operation with error handling */
+  /** Run an operation with error handling. The operation remains pending until the user acknowledges its error. */
   async function withErrorHandling(operation: () => Promise<void>, errorMsg?: string) {
     try {
       await operation();
@@ -23,19 +33,17 @@ export default function useErrorHandling() {
 
       if (err instanceof UnsupportedFileError) {
         console.error(err);
-        handleError({ title: errorMsg, err: i18n.t('Unsupported file') });
+        await handleError({ title: errorMsg, err: i18n.t('Unsupported file') });
         return;
       }
 
-      handleError({ title: errorMsg, err });
+      await handleError({ title: errorMsg, err });
     }
   }
 
   return {
     withErrorHandling,
     handleError,
-    genericError,
-    setGenericError,
   };
 }
 
