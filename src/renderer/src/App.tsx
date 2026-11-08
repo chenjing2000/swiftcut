@@ -272,8 +272,11 @@ function App() {
     text?: string;
   }) => {
     if (hideAllNotifications) return;
+    let type: 'information' | 'success' | 'warning' = 'information';
+    if (opts.icon === 'warning') type = 'warning';
+    else if (opts.icon === 'success') type = 'success';
     enqueueNotification({
-      type: opts.icon === 'warning' ? 'warning' : opts.icon === 'success' ? 'success' : 'information',
+      type,
       title: opts.title,
       message: opts.text ?? '',
       source: 'app',
