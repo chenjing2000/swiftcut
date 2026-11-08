@@ -156,15 +156,19 @@ export default function NotificationHost() {
 
             <Dialog.ButtonRow>
               {secondaryLabel && (
-                <DialogButton onClick={() => handleAction('cancel')}>{secondaryLabel}</DialogButton>
+                <AlertDialog.Cancel asChild>
+                  <DialogButton onClick={() => handleAction('cancel')}>{secondaryLabel}</DialogButton>
+                </AlertDialog.Cancel>
               )}
-              <DialogButton
-                primary
-                ref={primaryButtonRef}
-                onClick={() => handleAction(isConfirmation ? 'confirm' : 'acknowledge')}
-              >
-                {primaryLabel}
-              </DialogButton>
+              <AlertDialog.Action asChild>
+                <DialogButton
+                  primary
+                  ref={primaryButtonRef}
+                  onClick={() => handleAction(isConfirmation ? 'confirm' : 'acknowledge')}
+                >
+                  {primaryLabel}
+                </DialogButton>
+              </AlertDialog.Action>
             </Dialog.ButtonRow>
           </AlertDialog.Content>
         </AlertDialog.Portal>
