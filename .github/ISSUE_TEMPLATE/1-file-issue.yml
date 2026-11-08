@@ -1,0 +1,36 @@
+name: File-specific problem
+description: Report a problem that occurs with a particular media file or format.
+body:
+  - type: textarea
+    id: file-details
+    attributes:
+      label: File and format details
+      description: Include the container, video/audio codecs, stream layout, and any relevant metadata.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Describe the steps from opening SwiftCut until the problem occurs.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Minimal sample or diagnostic information
+      description: Attach a small reproducible sample only if you have permission to share it. Remove private or sensitive media.
+    validations:
+      required: false

@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp.*
+
+# Yarn 4: keep the project-managed release, plugins, patches and SDKs.
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/sdks/
+!.yarn/versions/
+
+# Application build and packaging output
+/dist/
+/out/
+/icon-build/
+/build-resources/
+/ffmpeg/
+/common-ts-dist/
+/main-ts-dist/
+/preload-ts-dist/
+*.tsbuildinfo
+/licenses.txt
+
+# Website build output and local tooling
+/website/dist/
+/website/.astro/
+/website/.wrangler/
+/website/.yarn/
+
+# Test output and locally generated media.
+# Keep documentation and reusable fixture-generation scripts trackable.
+/coverage/
+/test-results/
+/test-fixtures/*
+!/test-fixtures/README.md
+!/test-fixtures/scripts/
+!/test-fixtures/scripts/**
+
+# Runtime logs, temporary output and screenshots
+*.log
+*.tmp
+*.tmp.*
+*.tmp.mp3
+/screenshot.*
+/app*.log
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.claude/
+*.provisionprofile
+/SwiftCut_Mac_App_Store_provisioning_profile.provisionprofile
+
+# Operating-system and IDE files
+.DS_Store
+Thumbs.db
+.idea/
+
