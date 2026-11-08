@@ -353,8 +353,7 @@ export async function startAudioExtraction(args: {
         status.progress = status.completedTasks / tasks.length;
       }
 
-      if (job.cancelled) continue;
-      if (taskStatus.state !== 'failed') continue;
+      if (job.cancelled || taskStatus.state !== 'failed') continue;
 
       status.state = 'paused';
       await new Promise<void>((resolve) => {
