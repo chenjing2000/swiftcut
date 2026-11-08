@@ -20,7 +20,7 @@ export default function useErrorHandling() {
     await showErrorNotification({
       title: title ?? i18n.t('Error'),
       message: getErrorMessage(err),
-      ...(details ? { details } : {}),
+      ...(details && { details }),
       source: 'application-error',
     });
   }, []);
