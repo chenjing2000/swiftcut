@@ -1,6 +1,6 @@
 // eslint-disable-next-line import-js/no-extraneous-dependencies
 import { describe, expect, test } from 'vitest';
-import { buildMp3FfmpegArgs, createAudioExtractionTasks, normalizeAudioExtractionSegments, parseFfprobeJson } from './audioExtractionUtils.ts';
+import { buildMp3FfmpegArgs, buildOriginalAudioFfmpegArgs, createAudioExtractionTasks, getOriginalAudioOutputFormat, normalizeAudioExtractionSegments, parseFfprobeJson } from './audioExtractionUtils.ts';
 
 describe('MP3 extraction arguments', () => {
   const inputPath = '中文 文件.mp4';
@@ -23,6 +23,58 @@ describe('MP3 extraction arguments', () => {
       expect(args).not.toContain('copy');
     });
   }
+});
+
+
+describe('Original audio extraction arguments and container selection', () => {
+  test.each([
+    ['aac', { extension: 'm4a', muxer: 'ipod' }],
+    ['mp3', { extension: 'mp3', muxer: 'mp3' }],
+    ['alac', { extension: 'm4a', muxer: 'ipod' }],
+    ['ac3', { extension: 'ac3', muxer: 'ac3' }],
+    ['eac3', { extension: 'eac3', muxer: 'eac3' }],
+    ['opus', { extension: 'opus', muxer: 'opus' }],
+    ['vorbis', { extension: 'mka', muxer: 'matroska' }],
+  ])('selects the expected output container for %s', (codecName, expected) => {
+    expect(getOriginalAudioOutputFormat(codecName)).toStrictEqual(expected);
+  });
+
+  test('copies the selected audio stream without decoding or re-encoding', () => {
+    const args = buildOriginalAudioFfmpegArgs({
+      inputPath: 'lecture.mp4',
+      streamIndex: 2,
+      outputFormat: { extension: 'm4a', muxer: 'ipod' },
+      outputPath: 'lecture.tmp.m4a',
+    });
+
+    expect(args).toContain('lecture.mp4');
+    expect(args).toContain('0:2');
+    expect(args).toContain('-c:a');
+    expect(args).toContain('copy');
+    expect(args).toContain('-f');
+    expect(args).toContain('ipod');
+    expect(args.at(-1)).toBe('lecture.tmp.m4a');
+    expect(args).not.toContain('libmp3lame');
+    expect(args).not.toContain('-b:a');
+    expect(args).not.toContain('-q:a');
+  });
+
+  test('applies segment seeking and duration while preserving stream copy', () => {
+    const args = buildOriginalAudioFfmpegArgs({
+      inputPath: 'lecture.mp4',
+      streamIndex: 1,
+      outputFormat: { extension: 'mka', muxer: 'matroska' },
+      outputPath: 'lecture_segment-01.tmp.mka',
+      segment: { start: 8.323, end: 15.5 },
+    });
+
+    expect(args).toContain('-ss');
+    expect(args).toContain('8.323');
+    expect(args).toContain('-t');
+    expect(args).toContain('7.177');
+    expect(args).toContain('copy');
+    expect(args).toContain('matroska');
+  });
 });
 
 describe('FFprobe JSON parsing', () => {
