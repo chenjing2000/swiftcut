@@ -52,11 +52,9 @@ export default function getSwal() {
   };
 }
 
-export const errorToast = (text: string) => {
-  void showErrorNotification({
-    title: i18n.t('Error'),
-    message: text,
-  });
-};
+export const errorToast = (text: string) => showErrorNotification({
+  title: i18n.t('Error'),
+  message: text,
+});
 
 export const showPlaybackFailedMessage = () => errorToast(i18n.t('Unable to playback this file. Try to convert to supported format from the menu'));
