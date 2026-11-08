@@ -199,13 +199,13 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             }}
           >
             <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
-  
+
             <section style={{ marginBottom: '1.2em' }}>
               <strong>{t('Input file')}</strong>
               <div style={{ marginTop: '.35em', overflowWrap: 'anywhere' }}>{filePath ?? t('No media file opened')}</div>
               {!isMp4 && <p style={{ color: 'var(--red-10)', marginBottom: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
             </section>
-  
+
             <section style={{ marginBottom: '1.2em' }}>
               <strong>{t('Audio tracks')}</strong>
               {streams.length === 0 ? (
@@ -228,7 +228,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 </div>
               )}
             </section>
-  
+
             <section style={{ marginBottom: '1.2em' }}>
               <strong>{t('Output mode')}</strong>
               <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
@@ -247,7 +247,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 </p>
               )}
             </section>
-  
+
             <section style={{ marginBottom: '1.2em', opacity: mode === 'original' ? 0.5 : 1 }}>
               <strong>{t('MP3 quality')}</strong>
               <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
@@ -266,7 +266,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 })}
               </div>
             </section>
-  
+
             <section style={{ marginBottom: '1em' }}>
               <strong>{t('Extraction segments')}</strong>
               <p style={{ margin: '.35em 0' }}>
@@ -288,7 +288,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 </div>
               )}
             </section>
-  
+
             {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
             {job && (
               <section style={{ marginTop: '.6em' }}>
