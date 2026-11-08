@@ -211,11 +211,11 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             <strong>{t('Output mode')}</strong>
             <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                <input type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} onChange={() => setMode('original')} />
+                <input type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} disabled={isBusy} onChange={() => setMode('original')} />
                 {t('Original (no re-encoding)')}
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                <input type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} onChange={() => setMode('mp3')} />
+                <input type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} disabled={isBusy} onChange={() => setMode('mp3')} />
                 {t('MP3 (re-encode)')}
               </label>
             </div>
@@ -237,7 +237,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 const inputId = `audio-extraction-quality-${value}`;
                 return (
                   <label key={value} htmlFor={inputId} style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                    <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} disabled={mode === 'original'} onChange={() => setQuality(value)} />
+                    <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} disabled={mode === 'original' || isBusy} onChange={() => setQuality(value)} />
                     {label}
                   </label>
                 );
