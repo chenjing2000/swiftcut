@@ -101,7 +101,7 @@ export default function NotificationHost() {
   };
 
   const handleOpenAutoFocus = (event: Event) => {
-    if (active?.focusPrimary) {
+    if (active?.focusPrimary || active?.type === 'error') {
       event.preventDefault();
       primaryButtonRef.current?.focus();
     }
