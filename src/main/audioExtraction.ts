@@ -131,7 +131,7 @@ async function commitWithoutOverwrite({
       outputPath = await findAvailablePath(inputPath, suffix, extension, reservedPaths);
     }
   }
-  throw new Error('No available MP3 output filename');
+  throw new Error('No available audio output filename');
 }
 
 async function probe(path: string) {
