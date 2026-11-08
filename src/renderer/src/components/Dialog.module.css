@@ -113,3 +113,11 @@
 		opacity: 0;
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.DialogOverlay,
+	.DialogContent {
+		animation-duration: 0ms;
+		transition-duration: 0ms;
+	}
+}
