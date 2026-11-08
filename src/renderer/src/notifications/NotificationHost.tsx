@@ -33,6 +33,9 @@ function NotificationIcon({ type }: { type: NotificationType }) {
     case 'information': {
       return <FaInfoCircle {...commonProps} />;
     }
+    default: {
+      return <FaInfoCircle {...commonProps} />;
+    }
   }
 }
 
