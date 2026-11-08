@@ -58,7 +58,7 @@ function enqueue(message: NotificationInput, resolve?: (action: NotificationActi
 
   const entry: NotificationMessage = {
     ...message,
-    id: `notification-${++nextId}`,
+    id: `notification-${nextId += 1}`,
     ...(resolve && { resolve }),
   };
 
@@ -70,13 +70,13 @@ function enqueue(message: NotificationInput, resolve?: (action: NotificationActi
   const queue = [...snapshot.queue];
   if (isBlocking(entry.type)) {
     const firstTransientIndex = queue.findIndex((item) => !isBlocking(item.type));
-    if (firstTransientIndex < 0) queue.push(entry);
+    if (firstTransientIndex === -1) queue.push(entry);
     else queue.splice(firstTransientIndex, 0, entry);
   } else {
     const transientCount = queue.filter((item) => !isBlocking(item.type)).length;
     if (transientCount >= 20) {
       const oldestTransientIndex = queue.findIndex((item) => !isBlocking(item.type));
-      if (oldestTransientIndex >= 0) queue.splice(oldestTransientIndex, 1);
+      if (oldestTransientIndex !== -1) queue.splice(oldestTransientIndex, 1);
     }
     queue.push(entry);
   }
