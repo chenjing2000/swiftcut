@@ -207,7 +207,7 @@ export async function startAudioExtraction(args: {
     const stream = audioStreams.find((item) => item.index === task.streamIndex);
     const codecName = stream?.codec_name;
     if (mode === 'original' && !codecName) {
-      throw new Error('Cannot determine the codec for audio track ' + task.trackNumber);
+      throw new Error(`Cannot determine the codec for audio track ${task.trackNumber}`);
     }
     const originalOutputFormat = mode === 'original' ? getOriginalAudioOutputFormat(codecName!) : undefined;
     return {
