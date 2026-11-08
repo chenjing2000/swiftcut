@@ -198,144 +198,144 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               marginRight: '-.35em',
             }}
           >
-          <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
-
-          <section style={{ marginBottom: '1.2em' }}>
-            <strong>{t('Input file')}</strong>
-            <div style={{ marginTop: '.35em', overflowWrap: 'anywhere' }}>{filePath ?? t('No media file opened')}</div>
-            {!isMp4 && <p style={{ color: 'var(--red-10)', marginBottom: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
-          </section>
-
-          <section style={{ marginBottom: '1.2em' }}>
-            <strong>{t('Audio tracks')}</strong>
-            {streams.length === 0 ? (
-              <p>{t('No audio tracks found.')}</p>
-            ) : (
-              <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-                {streams.map((stream, index) => (
-                  <Checkbox
-                    key={stream.index}
-                    checked={selectedStreamIndexes.includes(stream.index)}
-                    onCheckedChange={(checked) => toggleStream(stream.index, checked === true)}
-                    label={t('Track {{number}} · {{codec}} · {{channels}} channels · {{sampleRate}} Hz', {
-                      number: index + 1,
-                      codec: stream.codec_name?.toUpperCase() ?? 'Unknown',
-                      channels: stream.channels ?? '?',
-                      sampleRate: stream.sample_rate ?? '?',
-                    })}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section style={{ marginBottom: '1.2em' }}>
-            <strong>{t('Output mode')}</strong>
-            <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-              <label htmlFor="audio-extraction-mode-original" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                <input id="audio-extraction-mode-original" type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} disabled={isBusy} onChange={() => setMode('original')} />
-                {t('Original (no re-encoding)')}
-              </label>
-              <label htmlFor="audio-extraction-mode-mp3" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                <input id="audio-extraction-mode-mp3" type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} disabled={isBusy} onChange={() => setMode('mp3')} />
-                {t('MP3 (re-encode)')}
-              </label>
-            </div>
-            {mode === 'original' && (
-              <p style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: 0 }}>
-                {t('Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.')}
-              </p>
-            )}
-          </section>
-
-          <section style={{ marginBottom: '1.2em', opacity: mode === 'original' ? 0.5 : 1 }}>
-            <strong>{t('MP3 quality')}</strong>
-            <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-              {([
-                ['vbr', t('VBR (LAME Quality 2) — Recommended')],
-                ['320k', '320 kbps'],
-                ['192k', '192 kbps'],
-              ] as const).map(([value, label]) => {
-                const inputId = `audio-extraction-quality-${value}`;
-                return (
-                  <label key={value} htmlFor={inputId} style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                    <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} disabled={mode === 'original' || isBusy} onChange={() => setQuality(value)} />
-                    {label}
-                  </label>
-                );
-              })}
-            </div>
-          </section>
-
-          <section style={{ marginBottom: '1em' }}>
-            <strong>{t('Extraction segments')}</strong>
-            <p style={{ margin: '.35em 0' }}>
-              {t('{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).', {
-                segments: segmentCount,
-                tracks: selectedCount,
-                outputs: outputCount,
-              })}
-            </p>
-            {segments.length === 0 ? (
-              <div>{t('Entire video')}</div>
-            ) : (
-              <div style={{ maxHeight: '8em', overflowY: 'auto', paddingLeft: '1.5em' }}>
-                {segments.map((segment, index) => (
-                  <div key={`${segment.originalIndex}-${segment.start}-${segment.end}`}>
-                    {t('Segment {{number}}', { number: index + 1 })}: {formatTime(segment.start)} – {formatTime(segment.end)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
-          {job && (
-            <section style={{ marginTop: '.6em' }}>
-              <div role="status" style={{ marginBottom: '.5em' }}>
-                {job.state === 'running' && t('Extracting {{progress}}% · {{current}}/{{total}}', {
-                  progress: Math.round(job.progress * 100),
-                  current: currentTaskNumber,
-                  total: job.totalTasks,
-                })}
-                {job.state === 'success' && t('{{count}} output file(s) saved.', { count: job.outputPaths.length })}
-                {job.state === 'cancelled' && t('Extraction cancelled. {{count}} output file(s) saved.', { count: job.outputPaths.length })}
-                {job.state === 'failed' && t('Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.', {
-                  failed: failedTaskCount,
-                  success: job.outputPaths.length,
-                })}
-              </div>
-              {job.state === 'cancelled' && (
-                <div style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: '.5em' }}>
-                  {savedTaskCount} {t('Saved')}
-                  {failedTaskCount > 0 && <> · {failedTaskCount} {t('Failed')}</>}
-                  {' · '}{cancelledTaskCount} {t('Cancelled')} · {skippedTaskCount} {t('Skipped')}
+            <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
+  
+            <section style={{ marginBottom: '1.2em' }}>
+              <strong>{t('Input file')}</strong>
+              <div style={{ marginTop: '.35em', overflowWrap: 'anywhere' }}>{filePath ?? t('No media file opened')}</div>
+              {!isMp4 && <p style={{ color: 'var(--red-10)', marginBottom: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
+            </section>
+  
+            <section style={{ marginBottom: '1.2em' }}>
+              <strong>{t('Audio tracks')}</strong>
+              {streams.length === 0 ? (
+                <p>{t('No audio tracks found.')}</p>
+              ) : (
+                <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
+                  {streams.map((stream, index) => (
+                    <Checkbox
+                      key={stream.index}
+                      checked={selectedStreamIndexes.includes(stream.index)}
+                      onCheckedChange={(checked) => toggleStream(stream.index, checked === true)}
+                      label={t('Track {{number}} · {{codec}} · {{channels}} channels · {{sampleRate}} Hz', {
+                        number: index + 1,
+                        codec: stream.codec_name?.toUpperCase() ?? 'Unknown',
+                        channels: stream.channels ?? '?',
+                        sampleRate: stream.sample_rate ?? '?',
+                      })}
+                    />
+                  ))}
                 </div>
               )}
-              {job.tasks.length > 0 && (
-                <div style={{ maxHeight: '10em', overflowY: 'auto', border: '1px solid var(--gray-6)', borderRadius: 6, padding: '.5em' }}>
-                  {job.tasks.map((task, index) => (
-                    <div key={`${task.segmentNumber}-${task.trackNumber}-${task.streamIndex}`} style={{ padding: '.25em 0', borderBottom: index < job.tasks.length - 1 ? '1px solid var(--gray-5)' : undefined }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '.5em' }}>
-                        <span>{t('Segment {{segment}} · Track {{track}}', { segment: task.segmentNumber, track: task.trackNumber })}</span>
-                        <strong style={{ color: getTaskStateColor(task) }}>{getTaskStateLabel(task, t)}{task.state === 'running' ? ` ${Math.round(task.progress * 100)}%` : ''}</strong>
-                      </div>
-                      {task.outputPath && <div style={{ overflowWrap: 'anywhere', color: 'var(--gray-11)', fontSize: '.85em' }}>{getFileName(task.outputPath)}</div>}
-                      {task.state === 'failed' && task.error && <div role="alert" style={{ color: 'var(--red-10)', fontSize: '.85em' }}>{task.error}</div>}
+            </section>
+  
+            <section style={{ marginBottom: '1.2em' }}>
+              <strong>{t('Output mode')}</strong>
+              <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
+                <label htmlFor="audio-extraction-mode-original" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                  <input id="audio-extraction-mode-original" type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} disabled={isBusy} onChange={() => setMode('original')} />
+                  {t('Original (no re-encoding)')}
+                </label>
+                <label htmlFor="audio-extraction-mode-mp3" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                  <input id="audio-extraction-mode-mp3" type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} disabled={isBusy} onChange={() => setMode('mp3')} />
+                  {t('MP3 (re-encode)')}
+                </label>
+              </div>
+              {mode === 'original' && (
+                <p style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: 0 }}>
+                  {t('Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.')}
+                </p>
+              )}
+            </section>
+  
+            <section style={{ marginBottom: '1.2em', opacity: mode === 'original' ? 0.5 : 1 }}>
+              <strong>{t('MP3 quality')}</strong>
+              <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
+                {([
+                  ['vbr', t('VBR (LAME Quality 2) — Recommended')],
+                  ['320k', '320 kbps'],
+                  ['192k', '192 kbps'],
+                ] as const).map(([value, label]) => {
+                  const inputId = `audio-extraction-quality-${value}`;
+                  return (
+                    <label key={value} htmlFor={inputId} style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                      <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} disabled={mode === 'original' || isBusy} onChange={() => setQuality(value)} />
+                      {label}
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+  
+            <section style={{ marginBottom: '1em' }}>
+              <strong>{t('Extraction segments')}</strong>
+              <p style={{ margin: '.35em 0' }}>
+                {t('{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).', {
+                  segments: segmentCount,
+                  tracks: selectedCount,
+                  outputs: outputCount,
+                })}
+              </p>
+              {segments.length === 0 ? (
+                <div>{t('Entire video')}</div>
+              ) : (
+                <div style={{ maxHeight: '8em', overflowY: 'auto', paddingLeft: '1.5em' }}>
+                  {segments.map((segment, index) => (
+                    <div key={`${segment.originalIndex}-${segment.start}-${segment.end}`}>
+                      {t('Segment {{number}}', { number: index + 1 })}: {formatTime(segment.start)} – {formatTime(segment.end)}
                     </div>
                   ))}
                 </div>
               )}
             </section>
-          )}
-          {error && <p role="alert" style={{ color: 'red' }}>{error}</p>}
+  
+            {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
+            {job && (
+              <section style={{ marginTop: '.6em' }}>
+                <div role="status" style={{ marginBottom: '.5em' }}>
+                  {job.state === 'running' && t('Extracting {{progress}}% · {{current}}/{{total}}', {
+                    progress: Math.round(job.progress * 100),
+                    current: currentTaskNumber,
+                    total: job.totalTasks,
+                  })}
+                  {job.state === 'success' && t('{{count}} output file(s) saved.', { count: job.outputPaths.length })}
+                  {job.state === 'cancelled' && t('Extraction cancelled. {{count}} output file(s) saved.', { count: job.outputPaths.length })}
+                  {job.state === 'failed' && t('Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.', {
+                    failed: failedTaskCount,
+                    success: job.outputPaths.length,
+                  })}
+                </div>
+                {job.state === 'cancelled' && (
+                  <div style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: '.5em' }}>
+                    {savedTaskCount} {t('Saved')}
+                    {failedTaskCount > 0 && <> · {failedTaskCount} {t('Failed')}</>}
+                    {' · '}{cancelledTaskCount} {t('Cancelled')} · {skippedTaskCount} {t('Skipped')}
+                  </div>
+                )}
+                {job.tasks.length > 0 && (
+                  <div style={{ maxHeight: '10em', overflowY: 'auto', border: '1px solid var(--gray-6)', borderRadius: 6, padding: '.5em' }}>
+                    {job.tasks.map((task, index) => (
+                      <div key={`${task.segmentNumber}-${task.trackNumber}-${task.streamIndex}`} style={{ padding: '.25em 0', borderBottom: index < job.tasks.length - 1 ? '1px solid var(--gray-5)' : undefined }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '.5em' }}>
+                          <span>{t('Segment {{segment}} · Track {{track}}', { segment: task.segmentNumber, track: task.trackNumber })}</span>
+                          <strong style={{ color: getTaskStateColor(task) }}>{getTaskStateLabel(task, t)}{task.state === 'running' ? ` ${Math.round(task.progress * 100)}%` : ''}</strong>
+                        </div>
+                        {task.outputPath && <div style={{ overflowWrap: 'anywhere', color: 'var(--gray-11)', fontSize: '.85em' }}>{getFileName(task.outputPath)}</div>}
+                        {task.state === 'failed' && task.error && <div role="alert" style={{ color: 'var(--red-10)', fontSize: '.85em' }}>{task.error}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+            {error && <p role="alert" style={{ color: 'red' }}>{error}</p>}
           </div>
           <div style={{ flex: '0 0 auto' }}>
-          <Dialog.ButtonRow>
-            {job?.state === 'running' && <DialogButton onClick={cancelExtraction}>{t('Cancel extraction')}</DialogButton>}
-            <DialogButton disabled={isBusy} onClick={() => handleOpenChange(false)}>{t('Close')}</DialogButton>
-            <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract Audio')} ({outputCount})</DialogButton>
-          </Dialog.ButtonRow>
+            <Dialog.ButtonRow>
+              {job?.state === 'running' && <DialogButton onClick={cancelExtraction}>{t('Cancel extraction')}</DialogButton>}
+              <DialogButton disabled={isBusy} onClick={() => handleOpenChange(false)}>{t('Close')}</DialogButton>
+              <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract Audio')} ({outputCount})</DialogButton>
+            </Dialog.ButtonRow>
           </div>
           <Dialog.CloseButton />
         </Dialog.Content>
