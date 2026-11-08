@@ -16,7 +16,7 @@ import type { NotificationAction, NotificationMessage, NotificationType } from '
 import styles from './NotificationHost.module.css';
 
 function NotificationIcon({ type }: { type: NotificationType }) {
-  const commonProps = { className: styles.icon, 'data-type': type, 'aria-hidden': true as const };
+  const commonProps = { className: styles['icon'], 'data-type': type, 'aria-hidden': true as const };
   switch (type) {
     case 'success':
       return <FaCheckCircle {...commonProps} />;
@@ -125,24 +125,24 @@ export default function NotificationHost() {
     return (
       <AlertDialog.Root key={active.id} open onOpenChange={() => undefined}>
         <AlertDialog.Portal>
-          <AlertDialog.Overlay className={styles.modalOverlay} data-phase={phase} />
+          <AlertDialog.Overlay className={styles['modalOverlay']} data-phase={phase} />
           <AlertDialog.Content
-            className={styles.modalContent}
+            className={styles['modalContent']}
             data-phase={phase}
             style={{ width: active.type === 'error' ? 480 : 440, maxWidth: '90vw' }}
             onOpenAutoFocus={handleOpenAutoFocus}
           >
-            <div className={styles.modalHeading}>
+            <div className={styles['modalHeading']}>
               <NotificationIcon type={active.type} />
-              <AlertDialog.Title className={styles.title}>{active.title ?? (isConfirmation ? t('Please confirm') : t('Error'))}</AlertDialog.Title>
+              <AlertDialog.Title className={styles['title']}>{active.title ?? (isConfirmation ? t('Please confirm') : t('Error'))}</AlertDialog.Title>
             </div>
-            <AlertDialog.Description className={styles.message}>{active.message}</AlertDialog.Description>
+            <AlertDialog.Description className={styles['message']}>{active.message}</AlertDialog.Description>
 
             {active.details && (
-              <details className={styles.details} open={detailsExpanded} onToggle={(event) => setDetailsExpanded(event.currentTarget.open)}>
+              <details className={styles['details']} open={detailsExpanded} onToggle={(event) => setDetailsExpanded(event.currentTarget.open)}>
                 <summary>{t('Show technical details')}</summary>
-                <pre className={styles.detailsText}>{active.details}</pre>
-                <button type="button" className={styles.copyButton} onClick={handleCopyDetails}>{t('Copy details')}</button>
+                <pre className={styles['detailsText']}>{active.details}</pre>
+                <button type="button" className={styles['copyButton']} onClick={handleCopyDetails}>{t('Copy details')}</button>
               </details>
             )}
 
@@ -165,20 +165,20 @@ export default function NotificationHost() {
   }
 
   return (
-    <div className={styles.toastLayer} aria-live="polite" aria-atomic="true">
+    <div className={styles['toastLayer']} aria-live="polite" aria-atomic="true">
       <div
-        className={styles.toastCard}
+        className={styles['toastCard']}
         data-type={active.type}
         data-phase={phase}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         role="status"
       >
-        <div className={styles.toastHeading}>
+        <div className={styles['toastHeading']}>
           <NotificationIcon type={active.type} />
-          {active.title && <div className={styles.title}>{active.title}</div>}
+          {active.title && <div className={styles['title']}>{active.title}</div>}
         </div>
-        <div className={styles.message}>{active.message}</div>
+        <div className={styles['message']}>{active.message}</div>
       </div>
     </div>
   );
