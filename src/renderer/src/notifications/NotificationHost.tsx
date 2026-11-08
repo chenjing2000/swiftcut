@@ -15,73 +15,77 @@ import type { NotificationAction, NotificationMessage, NotificationType } from '
 
 import styles from './NotificationHost.module.css';
 
+type NotificationPhase = 'entering' | 'visible' | 'exiting';
+
 function NotificationIcon({ type }: { type: NotificationType }) {
   const commonProps = { className: styles['icon'], 'data-type': type, 'aria-hidden': true as const };
   switch (type) {
-    case 'success':
+    case 'success': {
       return <FaCheckCircle {...commonProps} />;
-    case 'warning':
+    }
+    case 'warning': {
       return <FaExclamationTriangle {...commonProps} />;
-    case 'error':
+    }
+    case 'error': {
       return <FaTimesCircle {...commonProps} />;
-    case 'confirmation':
+    }
+    case 'confirmation': {
       return <FaQuestionCircle {...commonProps} />;
-    case 'information':
-    default:
+    }
+    default: {
       return <FaInfoCircle {...commonProps} />;
+    }
   }
 }
 
 function isBlocking(message: NotificationMessage | undefined) {
-  return message?.type === 'error' || message?.type === 'confirmation';
+  if (!message) return false;
+  const { type } = message;
+  return type === 'error' || type === 'confirmation';
 }
 
 export default function NotificationHost() {
   const { t } = useTranslation();
   const snapshot = useSyncExternalStore(subscribeNotificationStore, getNotificationSnapshot, getNotificationSnapshot);
   const active = snapshot.active;
+  const activeId = active?.id;
   const blocking = isBlocking(active);
-  const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting'>('entering');
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [phaseState, setPhaseState] = useState<{ id: string, value: Exclude<NotificationPhase, 'entering'> }>();
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const startedAtRef = useRef(0);
   const remainingRef = useRef(5000);
   const hoveredRef = useRef(false);
   const primaryButtonRef = useRef<HTMLButtonElement | null>(null);
   const isResolvingRef = useRef(false);
+  const phase: NotificationPhase = activeId != null && phaseState?.id === activeId ? phaseState.value : 'entering';
 
-  const beginExit = useCallback(() => {
-    setPhase('exiting');
+  const beginExit = useCallback((id: string) => {
+    setPhaseState({ id, value: 'exiting' });
     timerRef.current = setTimeout(() => completeActiveNotification(), 600);
   }, []);
 
-  const startHoldTimer = useCallback(() => {
+  const startHoldTimer = useCallback((id: string) => {
     startedAtRef.current = Date.now();
-    timerRef.current = setTimeout(beginExit, remainingRef.current);
+    timerRef.current = setTimeout(() => beginExit(id), remainingRef.current);
   }, [beginExit]);
 
   useLayoutEffect(() => {
     isResolvingRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
-    setDetailsExpanded(false);
     remainingRef.current = 5000;
     hoveredRef.current = false;
 
-    if (!active || blocking) {
-      setPhase('visible');
-      return undefined;
-    }
+    if (activeId == null || blocking) return undefined;
 
-    setPhase('entering');
     timerRef.current = setTimeout(() => {
-      setPhase('visible');
-      if (!hoveredRef.current) startHoldTimer();
+      setPhaseState({ id: activeId, value: 'visible' });
+      if (!hoveredRef.current) startHoldTimer(activeId);
     }, 600);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [active?.id, blocking, startHoldTimer]);
+  }, [activeId, blocking, startHoldTimer]);
 
   const handleMouseEnter = () => {
     hoveredRef.current = true;
@@ -93,19 +97,21 @@ export default function NotificationHost() {
 
   const handleMouseLeave = () => {
     hoveredRef.current = false;
-    if (!blocking && phase === 'visible') startHoldTimer();
+    if (!blocking && phase === 'visible' && activeId != null) startHoldTimer(activeId);
   };
 
   const handleAction = (action: NotificationAction) => {
-    if (isResolvingRef.current) return;
+    if (!activeId || isResolvingRef.current) return;
     isResolvingRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
-    setPhase('exiting');
+    setPhaseState({ id: activeId, value: 'exiting' });
     timerRef.current = setTimeout(() => completeActiveNotification(action), 600);
   };
 
   const handleCopyDetails = () => {
-    if (active?.details) void mainApi.writeClipboardText(active.details);
+    if (active?.details) {
+      mainApi.writeClipboardText(active.details).catch((error: unknown) => console.error('Failed to copy notification details', error));
+    }
   };
 
   const handleOpenAutoFocus = (event: Event) => {
@@ -119,8 +125,10 @@ export default function NotificationHost() {
 
   if (blocking) {
     const isConfirmation = active.type === 'confirmation';
+    const defaultTitle = isConfirmation ? t('Please confirm') : t('Error');
     const primaryLabel = active.primaryActionLabel ?? (isConfirmation ? t('Confirm') : t('OK'));
     const secondaryLabel = active.secondaryActionLabel ?? (isConfirmation ? t('Cancel') : undefined);
+    const modalWidth = active.type === 'error' ? 480 : 440;
 
     return (
       <AlertDialog.Root key={active.id} open onOpenChange={() => undefined}>
@@ -129,17 +137,17 @@ export default function NotificationHost() {
           <AlertDialog.Content
             className={styles['modalContent']}
             data-phase={phase}
-            style={{ width: active.type === 'error' ? 480 : 440, maxWidth: '90vw' }}
+            style={{ width: modalWidth, minWidth: 'min(320px, 90vw)', maxWidth: '90vw' }}
             onOpenAutoFocus={handleOpenAutoFocus}
           >
             <div className={styles['modalHeading']}>
               <NotificationIcon type={active.type} />
-              <AlertDialog.Title className={styles['title']}>{active.title ?? (isConfirmation ? t('Please confirm') : t('Error'))}</AlertDialog.Title>
+              <AlertDialog.Title className={styles['title']}>{active.title ?? defaultTitle}</AlertDialog.Title>
             </div>
             <AlertDialog.Description className={styles['message']}>{active.message}</AlertDialog.Description>
 
             {active.details && (
-              <details className={styles['details']} open={detailsExpanded} onToggle={(event) => setDetailsExpanded(event.currentTarget.open)}>
+              <details className={styles['details']}>
                 <summary>{t('Show technical details')}</summary>
                 <pre className={styles['detailsText']}>{active.details}</pre>
                 <button type="button" className={styles['copyButton']} onClick={handleCopyDetails}>{t('Copy details')}</button>
