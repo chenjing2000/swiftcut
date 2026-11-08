@@ -12,7 +12,6 @@ import { IoMdMenu } from 'react-icons/io';
 import fromPairs from 'lodash/fromPairs';
 import sum from 'lodash/sum';
 import invariant from 'tiny-invariant';
-import type { SweetAlertOptions } from 'sweetalert2';
 import { Theme } from '@radix-ui/themes';
 
 import useTimelineScroll from './hooks/useTimelineScroll';
@@ -88,7 +87,7 @@ import {
   calculateTimelinePercent,
   getFileDir,
 } from './util';
-import getSwal, { errorToast, showPlaybackFailedMessage } from './swal';
+import { errorToast, showPlaybackFailedMessage } from './swal';
 import { adjustRate } from './util/rate-calculator';
 import { askExtractFramesAsImages } from './dialogs/extractFrames';
 import type { CleanupChoicesType, OpenFileResponse } from './dialogs';
@@ -118,11 +117,12 @@ import { bottomStyle, videoStyle } from './styles';
 import styles from './App.module.css';
 import { DirectoryAccessDeclinedError, UserFacingError } from '../errors';
 import SwalContainer from './components/SwalContainer';
-import ErrorDialog from './components/ErrorDialog';
 import useErrorHandling from './hooks/useErrorHandling';
 import GenericDialog, { useDialog } from './components/GenericDialog';
 import useHtml5ify from './hooks/useHtml5ify';
 import WhatsNew from './components/WhatsNew';
+import NotificationHost from './notifications/NotificationHost';
+import { enqueueNotification, showErrorNotification } from './notifications/notificationStore';
 import mainApi from './mainApi.js';
 import type { AppEvent } from '../../main/index.js';
 import { appName } from '../../main/common.js';
@@ -199,7 +199,7 @@ function App() {
 
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(!simpleMode);
 
-  const { withErrorHandling, handleError, genericError, setGenericError } = useErrorHandling();
+  const { withErrorHandling, handleError } = useErrorHandling();
 
   const { showGenericDialog, genericDialog, closeGenericDialog, confirmDialog, openExportFinishedDialog, openCutFinishedDialog, openConcatFinishedDialog, openCleanupFilesDialog, openShiftSegmentsDialog, openDecimateDialog } = useDialog();
 
@@ -266,10 +266,18 @@ function App() {
 
   const hideAllNotifications = hideNotifications === 'all';
 
-  const showNotification = useCallback((opts: SweetAlertOptions) => {
-    if (!hideAllNotifications) {
-      getSwal().toast.fire(opts);
-    }
+  const showNotification = useCallback((opts: {
+    icon?: 'info' | 'success' | 'warning';
+    title?: string;
+    text?: string;
+  }) => {
+    if (hideAllNotifications) return;
+    enqueueNotification({
+      type: opts.icon === 'warning' ? 'warning' : opts.icon === 'success' ? 'success' : 'information',
+      title: opts.title,
+      message: opts.text ?? '',
+      source: 'app',
+    });
   }, [hideAllNotifications]);
 
   const showOsNotification = useCallback((text: string) => {
@@ -354,9 +362,9 @@ function App() {
 
   const checkFileOpened = useCallback(() => {
     if (isFileOpened) return true;
-    getSwal().toast.fire({ icon: 'info', title: i18n.t('You need to open a media file first') });
+    showNotification({ icon: 'info', title: i18n.t('You need to open a media file first') });
     return false;
-  }, [isFileOpened]);
+  }, [isFileOpened, showNotification]);
 
   const {
     cutSegments, cutSegmentsHistory, createSegmentsFromKeyframes, shuffleSegments, detectBlackScenes, detectSilentScenes, detectSceneChanges, removeSegment, invertAllSegments, fillSegmentsGaps, combineOverlappingSegments, combineSelectedSegments, modifySelectedSegmentTimes, alignSegmentTimesToKeyframes, updateSegOrder, updateSegOrders, reorderSegsByStartTime, addSegment, setCutStart, setCutEnd, labelSegment, splitCurrentSegment, focusSegmentAtCursor, selectSegmentsAtCursor, createNumSegments, createFixedDurationSegments, createFixedByteSizedSegments, createRandomSegments, getSegEstimatedSize, haveInvalidSegs, currentSegIndexSafe, currentCutSeg, inverseCutSegments, clearSegments, clearSegColorCounter, loadCutSegments, setCutTime, setCurrentSegIndex, labelSelectedSegments, deselectAllSegments, selectAllSegments, selectOnlyCurrentSegment, toggleCurrentSegmentSelected, invertSelectedSegments, removeSelectedSegments, selectSegmentsByLabel, selectSegmentsByExpr, selectAllMarkers, mutateSegmentsByExpr, toggleSegmentSelected, selectOnlySegment, selectedSegments, segmentsOrInverse, segmentsToExport, duplicateCurrentSegment, duplicateSegment, updateSegAtIndex, findSegmentsAtCursor, maybeCreateFullLengthSegment, currentCutSegOrWholeTimeline, segColorCounter,
@@ -702,7 +710,7 @@ function App() {
 
 
   const showNotNativelySupportedMessage = useCallback(() => {
-    showNotification({ timer: 13000, text: i18n.t('File is not natively supported. Preview playback may be slow and of low quality, but the final export will be lossless. You may convert the file from the menu for a better preview.') });
+    showNotification({ text: i18n.t('File is not natively supported. Preview playback may be slow and of low quality, but the final export will be lossless. You may convert the file from the menu for a better preview.') });
   }, [showNotification]);
 
   const showPreviewFileLoadedMessage = useCallback((fileName: string) => {
@@ -1320,12 +1328,12 @@ function App() {
         await captureFrameToClipboard({ filePath, time: currentTime, quality: captureFrameQuality });
 
         if (simpleMode && !prefersReducedMotion) shootConfetti();
-        if (!hideAllNotifications) getSwal().toast.fire({ icon: 'info', title: t('Screenshot captured clipboard') });
+        showNotification({ icon: 'info', title: t('Screenshot captured clipboard') });
       }, i18n.t('Failed to capture frame'));
     } finally {
       setWorking(undefined);
     }
-  }, [captureFrameQuality, captureFrameToClipboard, filePath, getRelevantTime, hideAllNotifications, prefersReducedMotion, setWorking, simpleMode, t, withErrorHandling, workingRef]);
+  }, [captureFrameQuality, captureFrameToClipboard, filePath, getRelevantTime, prefersReducedMotion, setWorking, showNotification, simpleMode, t, withErrorHandling, workingRef]);
 
   const extractSegmentsFramesAsImages = useCallback(async (segments: SegmentBase[]) => {
     if (!filePath || detectedFps == null || workingRef.current || segments.length === 0) return;
@@ -1548,7 +1556,7 @@ function App() {
       } else if (isAudioDefinitelyNotSupported(ffprobeMeta.streams)) {
         showNotification({ icon: 'info', text: i18n.t('The audio track is not supported while previewing. You can convert to a supported format from the menu') });
       } else if (!validDuration) {
-        getSwal().toast.fire({ icon: 'warning', timer: 10000, text: i18n.t('This file does not have a valid duration. This may cause issues. You can try to fix the file\'s duration from the File menu') });
+        showNotification({ icon: 'warning', text: i18n.t('This file does not have a valid duration. This may cause issues. You can try to fix the file\'s duration from the File menu') });
       }
 
       // This needs to be last, because it triggers <video> to load the video
@@ -2321,7 +2329,7 @@ function App() {
           setWorking(undefined);
         }
       } else if (error.code === PIPELINE_ERROR_READ) { // file is not readable or was removed
-        getSwal().toast.fire({ icon: 'error', timer: 10000, text: i18n.t('Failed to read file. Perhaps it has been moved?') });
+        errorToast(i18n.t('Failed to read file. Perhaps it has been moved?'));
       }
     } catch (err) {
       toastError(err);
@@ -2495,9 +2503,9 @@ function App() {
 
   useEffect(() => {
     (async () => {
-      setFfmpegInfo(await runStartupCheck({ customFfPath, onError: ({ title, message }) => setGenericError({ title, err: message }) }));
+      setFfmpegInfo(await runStartupCheck({ customFfPath, onError: ({ title, message }) => { void showErrorNotification({ title, message, source: 'startup-check' }); } }));
     })();
-  }, [customFfPath, setGenericError]);
+  }, [customFfPath]);
 
   const appContext = useMemo<AppContextType>(() => ({
     working,
@@ -2883,7 +2891,7 @@ function App() {
 
                 <WhatsNew />
 
-                <ErrorDialog error={genericError} onOpenChange={(open) => !open && setGenericError(undefined)} />
+                <NotificationHost />
               </div>
 
               <SwalContainer darkMode={darkMode} style={baseColorStyle} />
