@@ -945,5 +945,14 @@
   "Skipped": "Skipped",
   "Extraction segments": "Extraction segments",
   "VBR (LAME Quality 2) — Recommended": "VBR (LAME Quality 2) — Recommended",
-  "Preparing extraction...": "Preparing extraction..."
+  "Preparing extraction...": "Preparing extraction...",
+  "Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.": "Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.",
+  "Output mode": "Output mode",
+  "Original (no re-encoding)": "Original (no re-encoding)",
+  "MP3 (re-encode)": "MP3 (re-encode)",
+  "Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.": "Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.",
+  "{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).": "{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).",
+  "{{count}} output file(s) saved.": "{{count}} output file(s) saved.",
+  "Extraction cancelled. {{count}} output file(s) saved.": "Extraction cancelled. {{count}} output file(s) saved.",
+  "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.": "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved."
 }
