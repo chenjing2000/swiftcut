@@ -15,7 +15,7 @@ function SimpleModeButton({ style }: { style?: CSSProperties } = {}) {
   return (
     <button
       type="button"
-      className={styles.button}
+      className={styles['button']}
       aria-label={label}
       title={label}
       onClick={toggleSimpleMode}
