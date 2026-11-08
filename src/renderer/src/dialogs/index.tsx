@@ -179,7 +179,7 @@ export async function showOutputNotWritable() {
   });
 }
 
-export async function showRefuseToOverwrite() {
+export function showRefuseToOverwrite() {
   enqueueNotification({
     type: 'warning',
     message: i18n.t('Output file already exists, refusing to overwrite. You can turn on overwriting in settings.'),
