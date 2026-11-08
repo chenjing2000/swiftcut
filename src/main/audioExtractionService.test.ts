@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import {
   cancelAudioExtraction,
   getAudioExtractionStatus,
-  startMp3Extraction,
+  startAudioExtraction,
 } from './audioExtraction.js';
 
 type FfprobeMock = (args: readonly string[]) => Promise<{ stdout: Buffer }>;
@@ -47,7 +47,7 @@ const waitForJob = async (id: string, expectedState: string) => {
   });
 };
 
-describe('MP3 extraction task service', () => {
+describe('Audio extraction task service', () => {
   beforeEach(async () => {
     testDirectory = await mkdtemp(join(tmpdir(), 'swiftcut-audio-extraction-'));
     inputPath = join(testDirectory, 'lecture.mp4');
@@ -57,18 +57,27 @@ describe('MP3 extraction task service', () => {
     mocks.runFfprobe.mockImplementation(async (args) => {
       const targetPath = args.at(-1) ?? '';
       const isInput = targetPath.toLowerCase().endsWith('.mp4');
+      const outputExtension = targetPath.split('.').at(-1)?.toLowerCase() ?? 'mp3';
+      const outputCodecByExtension: Record<string, string> = {
+        m4a: 'aac',
+        mp3: 'mp3',
+        ac3: 'ac3',
+        eac3: 'eac3',
+        opus: 'opus',
+        mka: 'vorbis',
+      };
       const result = isInput
         ? {
           format: { format_name: 'mov,mp4,m4a,3gp,3g2,mj2', duration: '12' },
           streams: [
             { index: 0, codec_type: 'video', codec_name: 'h264' },
             { index: 1, codec_type: 'audio', codec_name: 'aac' },
-            { index: 2, codec_type: 'audio', codec_name: 'aac' },
+            { index: 2, codec_type: 'audio', codec_name: 'ac3' },
           ],
         }
         : {
-          format: { format_name: 'mp3', duration: '2' },
-          streams: [{ index: 0, codec_type: 'audio', codec_name: 'mp3' }],
+          format: { format_name: outputExtension, duration: '2' },
+          streams: [{ index: 0, codec_type: 'audio', codec_name: outputCodecByExtension[outputExtension] ?? 'mp3' }],
         };
       return { stdout: Buffer.from(JSON.stringify(result), 'utf8') };
     });
@@ -86,7 +95,7 @@ describe('MP3 extraction task service', () => {
   });
 
   test('extracts every selected track from every selected segment', async () => {
-    const id = await startMp3Extraction({
+    const id = await startAudioExtraction({
       inputPath,
       streamIndexes: [1, 2],
       quality: 'vbr',
@@ -119,11 +128,114 @@ describe('MP3 extraction task service', () => {
     }
   });
 
+
+  test('extracts selected original tracks into codec-specific containers for every segment', async () => {
+    const id = await startAudioExtraction({
+      inputPath,
+      streamIndexes: [1, 2],
+      mode: 'original',
+      quality: 'vbr',
+      segments: [{ start: 1, end: 3 }, { start: 5, end: 8 }],
+    });
+
+    await waitForJob(id, 'success');
+    const status = getAudioExtractionStatus(id)!;
+
+    expect(status.totalTasks).toBe(4);
+    expect(status.outputPaths.map((path) => path.split(/[\\/]/u).at(-1))).toStrictEqual([
+      'lecture_segment-01_track-01.m4a',
+      'lecture_segment-01_track-02.ac3',
+      'lecture_segment-02_track-01.m4a',
+      'lecture_segment-02_track-02.ac3',
+    ]);
+
+    const ffmpegCalls = mocks.runScopedFfmpeg.mock.calls;
+    expect(ffmpegCalls).toHaveLength(4);
+    for (const [index, call] of ffmpegCalls.entries()) {
+      expect(call[0].ffmpegArgs).toContain('-c:a');
+      expect(call[0].ffmpegArgs).toContain('copy');
+      expect(call[0].ffmpegArgs).not.toContain('libmp3lame');
+      expect(call[0].ffmpegArgs).not.toContain('-b:a');
+      expect(call[0].ffmpegArgs).not.toContain('-q:a');
+      expect(call[0].ffmpegArgs.at(-1)).toMatch(index % 2 === 0 ? /\.m4a$/u : /\.ac3$/u);
+    }
+    expect(ffmpegCalls[0]![0].ffmpegArgs).toContain('ipod');
+    expect(ffmpegCalls[1]![0].ffmpegArgs).toContain('ac3');
+    for (const outputPath of status.outputPaths) {
+      await expect(readFile(outputPath)).resolves.toStrictEqual(Buffer.from('mock MP3 data'));
+    }
+  });
+
+  test('uses Matroska Audio as the fallback container for other original codecs', async () => {
+    mocks.runFfprobe.mockImplementationOnce(async () => ({
+      stdout: Buffer.from(JSON.stringify({
+        format: { format_name: 'mov,mp4,m4a,3gp,3g2,mj2', duration: '12' },
+        streams: [
+          { index: 0, codec_type: 'video', codec_name: 'h264' },
+          { index: 1, codec_type: 'audio', codec_name: 'vorbis' },
+        ],
+      }), 'utf8'),
+    }));
+
+    const id = await startAudioExtraction({
+      inputPath,
+      streamIndexes: [1],
+      mode: 'original',
+      quality: 'vbr',
+    });
+
+    await waitForJob(id, 'success');
+    const status = getAudioExtractionStatus(id)!;
+    expect(status.outputPaths).toStrictEqual([join(testDirectory, 'lecture.mka')]);
+    expect(mocks.runScopedFfmpeg.mock.calls[0]![0].ffmpegArgs).toContain('matroska');
+  });
+
+  test('does not overwrite an existing Original-mode output file', async () => {
+    const existingPath = join(testDirectory, 'lecture.m4a');
+    await writeFile(existingPath, 'keep original content');
+
+    const id = await startAudioExtraction({
+      inputPath,
+      streamIndexes: [1],
+      mode: 'original',
+      quality: 'vbr',
+    });
+
+    await waitForJob(id, 'success');
+    const status = getAudioExtractionStatus(id)!;
+    expect(status.outputPaths[0]).toBe(join(testDirectory, 'lecture_1.m4a'));
+    await expect(readFile(existingPath, 'utf8')).resolves.toBe('keep original content');
+  });
+
+  test('removes the Original-mode temporary file when cancelled', async () => {
+    const currentTask = Promise.withResolvers<unknown>();
+    const cancel = vi.fn<() => void>(() => currentTask.reject(new Error('mock cancellation')));
+    mocks.runScopedFfmpeg.mockImplementation(({ ffmpegArgs }) => {
+      writeFileSync(ffmpegArgs.at(-1)!, Buffer.from('partial original audio data'));
+      return { result: currentTask.promise, cancel };
+    });
+
+    const id = await startAudioExtraction({
+      inputPath,
+      streamIndexes: [1],
+      mode: 'original',
+      quality: 'vbr',
+    });
+
+    await vi.waitFor(() => expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(1));
+    cancelAudioExtraction(id);
+    await waitForJob(id, 'cancelled');
+
+    const files = await readdir(testDirectory);
+    expect(files.some((file) => file.endsWith('.tmp.m4a'))).toBe(false);
+    expect(mocks.logger.error).not.toHaveBeenCalled();
+  });
+
   test('does not overwrite an existing output file', async () => {
     const existingPath = join(testDirectory, 'lecture.mp3');
     await writeFile(existingPath, 'keep existing content');
 
-    const id = await startMp3Extraction({
+    const id = await startAudioExtraction({
       inputPath,
       streamIndexes: [1],
       quality: '192k',
@@ -147,7 +259,7 @@ describe('MP3 extraction task service', () => {
       cancel: vi.fn<() => void>(),
     });
 
-    const id = await startMp3Extraction({
+    const id = await startAudioExtraction({
       inputPath,
       streamIndexes: [1, 2],
       quality: '320k',
@@ -169,7 +281,7 @@ describe('MP3 extraction task service', () => {
       return { result: currentTask.promise, cancel };
     });
 
-    const id = await startMp3Extraction({
+    const id = await startAudioExtraction({
       inputPath,
       streamIndexes: [1, 2],
       quality: 'vbr',
@@ -211,7 +323,7 @@ describe('MP3 extraction task service', () => {
       return { result: Promise.resolve({}), cancel: vi.fn<() => void>() };
     });
 
-    const id = await startMp3Extraction({
+    const id = await startAudioExtraction({
       inputPath,
       streamIndexes: [1, 2],
       quality: 'vbr',
@@ -258,7 +370,7 @@ describe('MP3 extraction task service', () => {
       return { result: Promise.resolve({}), cancel: vi.fn<() => void>() };
     });
 
-    const id = await startMp3Extraction({
+    const id = await startAudioExtraction({
       inputPath,
       streamIndexes: [1, 2],
       quality: 'vbr',
@@ -272,7 +384,7 @@ describe('MP3 extraction task service', () => {
   });
 
   test('uses the whole media duration when no timeline segments are selected', async () => {
-    const id = await startMp3Extraction({
+    const id = await startAudioExtraction({
       inputPath,
       streamIndexes: [1, 2],
       quality: 'vbr',
@@ -290,7 +402,7 @@ describe('MP3 extraction task service', () => {
   });
 
   test('rejects a selected stream that is not an audio stream', async () => {
-    await expect(startMp3Extraction({
+    await expect(startAudioExtraction({
       inputPath,
       streamIndexes: [0],
       quality: 'vbr',
@@ -301,7 +413,7 @@ describe('MP3 extraction task service', () => {
     const wrongInput = join(testDirectory, 'lecture.mov');
     await writeFile(wrongInput, 'not an MP4 extension');
 
-    await expect(startMp3Extraction({
+    await expect(startAudioExtraction({
       inputPath: wrongInput,
       streamIndexes: [1],
       quality: 'vbr',
