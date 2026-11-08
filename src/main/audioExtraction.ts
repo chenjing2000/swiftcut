@@ -160,12 +160,12 @@ export async function startAudioExtraction(args: {
   /** Backward-compatible single-stream argument. */
   streamIndex?: number;
   mode?: AudioExtractionMode;
-  quality: Mp3Quality;
+  quality?: Mp3Quality;
   segments?: AudioExtractionSegment[];
 }) {
   const {
     inputPath,
-    quality,
+    quality = 'vbr',
     mode = 'mp3',
   } = args;
   const selectedStreamIndexes = args.streamIndexes
