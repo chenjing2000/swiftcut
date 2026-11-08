@@ -181,7 +181,6 @@ describe('Audio extraction task service', () => {
       inputPath,
       streamIndexes: [1],
       mode: 'original',
-      quality: 'vbr',
     });
 
     await waitForJob(id, 'success');
