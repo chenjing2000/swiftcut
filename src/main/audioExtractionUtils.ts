@@ -172,12 +172,6 @@ export function buildOriginalAudioFfmpegArgs({
   if (segment?.start != null && segment.start > 0) args.push('-ss', String(segment.start));
   if (segment?.end != null) args.push('-t', String(segment.end - (segment.start ?? 0)));
 
-  args.push(
-    '-map', `0:${streamIndex}`,
-    '-vn', '-sn', '-dn',
-    '-c:a', 'copy',
-    '-f', outputFormat.muxer,
-    outputPath,
-  );
+  args.push('-map', `0:${streamIndex}`, '-vn', '-sn', '-dn', '-c:a', 'copy', '-f', outputFormat.muxer, outputPath);
   return args;
 }
