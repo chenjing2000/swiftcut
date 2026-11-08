@@ -83,7 +83,7 @@ export function resumeAudioExtraction(id: string) {
   const job = jobs.get(id);
   if (job?.status.state === 'paused' && !job.cancelled) {
     job.status.state = 'running';
-    const resume = job.resume;
+    const { resume } = job;
     job.resume = undefined;
     resume?.();
   }
@@ -350,7 +350,8 @@ export async function startAudioExtraction(args: {
         }
         job.cancel = undefined;
         status.completedTasks = status.tasks.filter((item) => item.state !== 'pending' && item.state !== 'running').length;
-        if (!job.cancelled) status.progress = status.completedTasks / tasks.length;
+        if (job.cancelled) continue;
+        status.progress = status.completedTasks / tasks.length;
       }
 
       if (taskStatus.state === 'failed' && !job.cancelled) {
