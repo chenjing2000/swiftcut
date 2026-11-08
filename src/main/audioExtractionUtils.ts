@@ -1,5 +1,26 @@
 export type Mp3Quality = 'vbr' | '320k' | '192k';
 
+export type AudioExtractionMode = 'original' | 'mp3';
+
+export interface OriginalAudioOutputFormat {
+  extension: string;
+  muxer: string;
+}
+
+const originalAudioOutputFormats: Record<string, OriginalAudioOutputFormat> = {
+  aac: { extension: 'm4a', muxer: 'ipod' },
+  mp3: { extension: 'mp3', muxer: 'mp3' },
+  alac: { extension: 'm4a', muxer: 'ipod' },
+  ac3: { extension: 'ac3', muxer: 'ac3' },
+  eac3: { extension: 'eac3', muxer: 'eac3' },
+  opus: { extension: 'opus', muxer: 'opus' },
+};
+
+export function getOriginalAudioOutputFormat(codecName: string): OriginalAudioOutputFormat {
+  const normalizedCodecName = codecName.trim().toLowerCase();
+  return originalAudioOutputFormats[normalizedCodecName] ?? { extension: 'mka', muxer: 'matroska' };
+}
+
 export interface AudioExtractionSegment {
   start: number;
   end?: number;
@@ -129,5 +150,34 @@ export function buildMp3FfmpegArgs({
   if (quality === 'vbr') args.push('-q:a', '2');
   else args.push('-b:a', quality);
   args.push(outputPath);
+  return args;
+}
+
+export function buildOriginalAudioFfmpegArgs({
+  inputPath,
+  streamIndex,
+  outputFormat,
+  outputPath,
+  segment,
+}: {
+  inputPath: string;
+  streamIndex: number;
+  outputFormat: OriginalAudioOutputFormat;
+  outputPath: string;
+  segment?: AudioExtractionSegment;
+}) {
+  const args = ['-hide_banner', '-nostdin', '-n', '-i', inputPath];
+
+  // Stream-copy seeking is packet-based and cannot guarantee sample-accurate segment boundaries.
+  if (segment?.start != null && segment.start > 0) args.push('-ss', String(segment.start));
+  if (segment?.end != null) args.push('-t', String(segment.end - (segment.start ?? 0)));
+
+  args.push(
+    '-map', `0:${streamIndex}`,
+    '-vn', '-sn', '-dn',
+    '-c:a', 'copy',
+    '-f', outputFormat.muxer,
+    outputPath,
+  );
   return args;
 }
