@@ -95,6 +95,23 @@
   margin-top: 0;
 }
 
+
+.modalOverlay {
+  transition: opacity 600ms ease;
+}
+
+.modalOverlay[data-phase='exiting'] {
+  opacity: 0;
+}
+
+.modalContent {
+  transition: opacity 600ms ease;
+}
+
+.modalContent[data-phase='exiting'] {
+  opacity: 0;
+}
+
 .modalContent {
   box-sizing: border-box;
   padding: 20px 24px !important;
