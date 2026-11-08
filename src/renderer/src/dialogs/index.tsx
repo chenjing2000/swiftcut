@@ -602,10 +602,10 @@ export async function deleteFiles({ paths, deleteIfTrashFails, signal }: { paths
 export function toastError(err: unknown) {
   console.error('toastError', err);
   const text = err instanceof Error ? err.message : String(err);
-  void showErrorNotification({
+  return showErrorNotification({
     title: i18n.t('Error'),
     message: text.slice(0, 300),
-    ...(text.length > 300 ? { details: text } : {}),
+    ...(text.length > 300 && { details: text }),
     source: 'renderer-error',
   });
 }
@@ -613,11 +613,11 @@ export function toastError(err: unknown) {
 export function mustDisallowVob() {
   // Because Apple is being nazi about the ability to open "copy protected DVD files"
   if (isMasBuild) {
-    void showErrorNotification({
+    showErrorNotification({
       title: i18n.t('Error'),
       message: 'Unfortunately .vob files are not supported in the App Store version of SwiftCut due to Apple restrictions',
       source: 'unsupported-vob',
-    });
+    }).catch((error: unknown) => console.error('Failed to show unsupported VOB notification', error));
     return true;
   }
   return false;
