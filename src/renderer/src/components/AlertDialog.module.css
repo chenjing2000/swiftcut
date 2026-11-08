@@ -6,11 +6,11 @@
 	inset: 0;
 
 	&[data-state="open"] {
-		animation: overlayShow 500ms cubic-bezier(0.16, 1, 0.3, 1);
+		animation: overlayShow 600ms ease;
 	}
 
 	&[data-state="closed"] {
-		animation: overlayHide 500ms cubic-bezier(0.16, 1, 0.3, 1);
+		animation: overlayHide 600ms ease;
 	}
 }
 
@@ -39,11 +39,11 @@
   box-shadow: 0 0 1em .3em var(--black-a1);
 
 	&[data-state="open"] {
-		animation: contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+		animation: contentShow 600ms ease;
 	}
 
 	&[data-state="closed"] {
-		animation: contentHide 150ms cubic-bezier(0.16, 1, 0.3, 1);
+		animation: contentHide 600ms ease;
 	}
 }
 
@@ -95,21 +95,17 @@
 @keyframes contentShow {
 	from {
 		opacity: 0;
-		transform: translate(-50%, -48%) scale(0.96);
 	}
 	to {
 		opacity: 1;
-		transform: translate(-50%, -50%) scale(1);
 	}
 }
 
 @keyframes contentHide {
 	from {
 		opacity: 1;
-		transform: translate(-50%, -50%) scale(1);
 	}
 	to {
 		opacity: 0;
-		transform: translate(-50%, -48%) scale(0.96);
 	}
 }
