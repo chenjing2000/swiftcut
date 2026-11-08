@@ -15,8 +15,6 @@ import type { NotificationAction, NotificationMessage, NotificationType } from '
 
 import styles from './NotificationHost.module.css';
 
-type NotificationPhase = 'entering' | 'visible' | 'exiting';
-
 function NotificationIcon({ type }: { type: NotificationType }) {
   const commonProps = { className: styles['icon'], 'data-type': type, 'aria-hidden': true as const };
   switch (type) {
@@ -32,7 +30,7 @@ function NotificationIcon({ type }: { type: NotificationType }) {
     case 'confirmation': {
       return <FaQuestionCircle {...commonProps} />;
     }
-    default: {
+    case 'information': {
       return <FaInfoCircle {...commonProps} />;
     }
   }
@@ -46,8 +44,8 @@ function isBlocking(message: NotificationMessage | undefined) {
 
 export default function NotificationHost() {
   const { t } = useTranslation();
-  const snapshot = useSyncExternalStore(subscribeNotificationStore, getNotificationSnapshot, getNotificationSnapshot);
-  const active = snapshot.active;
+  type NotificationPhase = 'entering' | 'visible' | 'exiting';
+  const { active } = useSyncExternalStore(subscribeNotificationStore, getNotificationSnapshot, getNotificationSnapshot);
   const activeId = active?.id;
   const blocking = isBlocking(active);
   const [phaseState, setPhaseState] = useState<{ id: string, value: Exclude<NotificationPhase, 'entering'> }>();
@@ -125,8 +123,8 @@ export default function NotificationHost() {
 
   if (blocking) {
     const isConfirmation = active.type === 'confirmation';
-    const defaultTitle = isConfirmation ? t('Please confirm') : t('Error');
-    const primaryLabel = active.primaryActionLabel ?? (isConfirmation ? t('Confirm') : t('OK'));
+    const defaultTitle = t(isConfirmation ? 'Please confirm' : 'Error');
+    const primaryLabel = active.primaryActionLabel ?? t(isConfirmation ? 'Confirm' : 'OK');
     const secondaryLabel = active.secondaryActionLabel ?? (isConfirmation ? t('Cancel') : undefined);
     const modalWidth = active.type === 'error' ? 480 : 440;
 
