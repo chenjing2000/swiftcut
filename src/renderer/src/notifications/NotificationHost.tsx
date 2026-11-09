@@ -129,7 +129,6 @@ export default function NotificationHost() {
     const defaultTitle = t(isConfirmation ? 'Please confirm' : 'Error');
     const primaryLabel = active.primaryActionLabel ?? t(isConfirmation ? 'Confirm' : 'OK');
     const secondaryLabel = active.secondaryActionLabel ?? (isConfirmation ? t('Cancel') : undefined);
-    const modalWidth = active.type === 'error' ? 480 : 440;
 
     return (
       <AlertDialog.Root key={active.id} open onOpenChange={() => undefined}>
@@ -138,7 +137,6 @@ export default function NotificationHost() {
           <AlertDialog.Content
             className={styles['modalContent']}
             data-phase={phase}
-            style={{ width: modalWidth, minWidth: 'min(320px, 90vw)', maxWidth: '90vw' }}
             onOpenAutoFocus={handleOpenAutoFocus}
           >
             <div className={styles['modalHeading']}>
