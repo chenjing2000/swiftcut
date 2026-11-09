@@ -9,11 +9,15 @@
   pointer-events: none;
 }
 
-.toastCard {
+.toastCard,
+.modalContent {
   box-sizing: border-box;
-  width: 440px;
-  min-width: min(320px, 90vw);
-  max-width: 90vw;
+  width: 360px;
+  min-width: min(300px, 90vw);
+  max-width: min(480px, 90vw);
+}
+
+.toastCard {
   padding: 20px 24px;
   border: 1px solid var(--black-a3);
   border-radius: 12px;
@@ -95,7 +99,6 @@
   margin-top: 0;
 }
 
-
 .modalOverlay {
   transition: opacity 600ms ease;
 }
@@ -105,17 +108,13 @@
 }
 
 .modalContent {
+  padding: 20px 24px !important;
+  border-radius: 12px !important;
   transition: opacity 600ms ease;
 }
 
 .modalContent[data-phase='exiting'] {
   opacity: 0;
-}
-
-.modalContent {
-  box-sizing: border-box;
-  padding: 20px 24px !important;
-  border-radius: 12px !important;
 }
 
 .details {
