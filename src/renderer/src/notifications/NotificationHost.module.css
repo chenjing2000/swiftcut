@@ -12,9 +12,6 @@
 .toastCard,
 .modalContent {
   box-sizing: border-box;
-  width: 360px;
-  min-width: min(300px, 90vw);
-  max-width: min(480px, 90vw);
 }
 
 .toastCard {
