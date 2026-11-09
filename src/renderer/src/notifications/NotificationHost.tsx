@@ -39,6 +39,12 @@ function NotificationIcon({ type }: { type: NotificationType }) {
   }
 }
 
+const notificationDimensions = {
+  width: 360,
+  minWidth: 'min(300px, 90vw)',
+  maxWidth: 'min(480px, 90vw)',
+};
+
 function isBlocking(message: NotificationMessage | undefined) {
   if (!message) return false;
   const { type } = message;
@@ -137,6 +143,7 @@ export default function NotificationHost() {
           <AlertDialog.Content
             className={styles['modalContent']}
             data-phase={phase}
+            style={notificationDimensions}
             onOpenAutoFocus={handleOpenAutoFocus}
           >
             <div className={styles['modalHeading']}>
@@ -179,6 +186,7 @@ export default function NotificationHost() {
     <div className={styles['toastLayer']} aria-live="polite" aria-atomic="true">
       <div
         className={styles['toastCard']}
+        style={notificationDimensions}
         data-type={active.type}
         data-phase={phase}
         onMouseEnter={handleMouseEnter}
