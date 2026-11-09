@@ -36,7 +36,7 @@ import * as i18nCommon from './i18nCommon.js';
 import './i18n.js';
 import type { ApiActionRequest, Config } from '../common/types.js';
 import * as ffmpeg from './ffmpeg.js';
-import { startMp3Extraction, getAudioExtractionStatus, cancelAudioExtraction, cancelAllAudioExtractions } from './audioExtraction.js';
+import { startAudioExtraction, getAudioExtractionStatus, cancelAudioExtraction, cancelAllAudioExtractions } from './audioExtraction.js';
 import * as compatPlayer from './compatPlayer.js';
 import { downloadMediaUrl } from './ffmpeg.js';
 import { hasDisabledNetworking, setDisableNetworking, shouldBlockNetworkUrl } from './networking.js';
@@ -450,7 +450,7 @@ function sendOsNotification(options: NotificationConstructorOptions) {
 app.on('before-quit', cancelAllAudioExtractions);
 
 const remoteApi = {
-  startMp3Extraction,
+  startAudioExtraction,
   getAudioExtractionStatus,
   cancelAudioExtraction,
   pathExists,

@@ -3,15 +3,17 @@ import { access, link, stat, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { runFfprobe, runScopedFfmpeg } from './ffmpeg.js';
 import logger from './logger.js';
-import type { Mp3Quality, AudioExtractionSegment } from './audioExtractionUtils.js';
+import type { AudioExtractionMode, Mp3Quality, AudioExtractionSegment } from './audioExtractionUtils.js';
 import {
   buildMp3FfmpegArgs,
+  buildOriginalAudioFfmpegArgs,
   createAudioExtractionTasks,
+  getOriginalAudioOutputFormat,
   normalizeAudioExtractionSegments,
   parseFfprobeJson,
 } from './audioExtractionUtils.js';
 
-export type { Mp3Quality, AudioExtractionSegment } from './audioExtractionUtils.js';
+export type { AudioExtractionMode, Mp3Quality, AudioExtractionSegment } from './audioExtractionUtils.js';
 export type AudioJobState = 'running' | 'success' | 'failed' | 'cancelled';
 export type AudioExtractionTaskState = 'pending' | 'running' | 'success' | 'failed' | 'cancelled' | 'skipped';
 
@@ -87,18 +89,18 @@ async function exists(path: string) {
   }
 }
 
-async function findAvailablePath(inputPath: string, suffix: string, reservedPaths: Set<string>) {
+async function findAvailablePath(inputPath: string, suffix: string, extension: string, reservedPaths: Set<string>) {
   const base = basename(inputPath, extname(inputPath));
   const folder = dirname(inputPath);
   for (let index = 0; index < 10000; index += 1) {
     const collisionSuffix = index === 0 ? '' : `_${index}`;
-    const candidate = join(folder, `${base}${suffix}${collisionSuffix}.mp3`);
+    const candidate = join(folder, `${base}${suffix}${collisionSuffix}.${extension}`);
     if (!reservedPaths.has(candidate) && !(await exists(candidate))) {
       reservedPaths.add(candidate);
       return candidate;
     }
   }
-  throw new Error('No available MP3 output filename');
+  throw new Error('No available audio output filename');
 }
 
 async function commitWithoutOverwrite({
@@ -106,12 +108,14 @@ async function commitWithoutOverwrite({
   initialOutputPath,
   inputPath,
   suffix,
+  extension,
   reservedPaths,
 }: {
   tempPath: string;
   initialOutputPath: string;
   inputPath: string;
   suffix: string;
+  extension: string;
   reservedPaths: Set<string>;
 }) {
   let outputPath = initialOutputPath;
@@ -119,15 +123,15 @@ async function commitWithoutOverwrite({
     try {
       await link(tempPath, outputPath);
       await unlink(tempPath).catch((error: unknown) => {
-        if (getErrorCode(error) !== 'ENOENT') logger.warn('Failed to remove linked temporary MP3 file', tempPath, error);
+        if (getErrorCode(error) !== 'ENOENT') logger.warn('Failed to remove linked temporary audio file', tempPath, error);
       });
       return outputPath;
     } catch (error) {
       if (getErrorCode(error) !== 'EEXIST') throw error;
-      outputPath = await findAvailablePath(inputPath, suffix, reservedPaths);
+      outputPath = await findAvailablePath(inputPath, suffix, extension, reservedPaths);
     }
   }
-  throw new Error('No available MP3 output filename');
+  throw new Error('No available audio output filename');
 }
 
 async function probe(path: string) {
@@ -150,17 +154,19 @@ function pruneCompletedJobs() {
   for (const id of completedJobIds.slice(0, excessCount)) jobs.delete(id);
 }
 
-export async function startMp3Extraction(args: {
+export async function startAudioExtraction(args: {
   inputPath: string;
   streamIndexes?: number[];
   /** Backward-compatible single-stream argument. */
   streamIndex?: number;
-  quality: Mp3Quality;
+  mode?: AudioExtractionMode;
+  quality?: Mp3Quality;
   segments?: AudioExtractionSegment[];
 }) {
   const {
     inputPath,
-    quality,
+    quality = 'vbr',
+    mode = 'mp3',
   } = args;
   const selectedStreamIndexes = args.streamIndexes
     ?? (args.streamIndex != null ? [args.streamIndex] : []);
@@ -175,7 +181,8 @@ export async function startMp3Extraction(args: {
   if (selectedStreamIndexes.some((index) => !Number.isSafeInteger(index) || index < 0)) {
     throw new Error('Invalid audio stream index');
   }
-  if (!validQualities.has(quality)) throw new Error('Invalid MP3 quality');
+  if (mode !== 'mp3' && mode !== 'original') throw new Error('Invalid audio extraction mode');
+  if (mode === 'mp3' && !validQualities.has(quality)) throw new Error('Invalid MP3 quality');
   if (!Array.isArray(requestedSegments)) throw new Error('Invalid extraction segments');
 
   const fileStat = await stat(inputPath);
@@ -184,10 +191,10 @@ export async function startMp3Extraction(args: {
   const info = await probe(inputPath);
   if (!info.format?.format_name?.split(',').includes('mp4')) throw new Error('Input is not an MP4 file');
 
-  const audioStreamIndexes = (info.streams ?? [])
+  const audioStreams = (info.streams ?? [])
     .filter((stream) => stream.codec_type === 'audio')
-    .map((stream) => stream.index)
-    .toSorted((a, b) => a - b);
+    .toSorted((a, b) => a.index - b.index);
+  const audioStreamIndexes = audioStreams.map((stream) => stream.index);
 
   const durationValue = Number(info.format?.duration);
   const duration = Number.isFinite(durationValue) && durationValue > 0 ? durationValue : undefined;
@@ -196,6 +203,19 @@ export async function startMp3Extraction(args: {
     segments,
     selectedStreamIndexes,
     audioStreamIndexes,
+  }).map((task) => {
+    const stream = audioStreams.find((item) => item.index === task.streamIndex);
+    const codecName = stream?.codec_name;
+    if (mode === 'original' && !codecName) {
+      throw new Error(`Cannot determine the codec for audio track ${task.trackNumber}`);
+    }
+    const originalOutputFormat = mode === 'original' ? getOriginalAudioOutputFormat(codecName!) : undefined;
+    return {
+      ...task,
+      codecName,
+      originalOutputFormat,
+      outputExtension: originalOutputFormat?.extension ?? 'mp3',
+    };
   });
 
   const id = randomUUID();
@@ -231,25 +251,33 @@ export async function startMp3Extraction(args: {
       let tempPath: string | undefined;
 
       try {
-        const outputPath = await findAvailablePath(inputPath, task.outputSuffix, reservedPaths);
+        const outputPath = await findAvailablePath(inputPath, task.outputSuffix, task.outputExtension, reservedPaths);
         // Cancellation may arrive while the output path is being prepared. In
         // that case no FFmpeg process has started, so this task was skipped.
         if (job.cancelled) {
           taskStatus.state = 'skipped';
           continue;
         }
-        tempPath = join(dirname(outputPath), `.${basename(outputPath)}.${randomUUID()}.tmp.mp3`);
+        tempPath = join(dirname(outputPath), `.${basename(outputPath)}.${randomUUID()}.tmp.${task.outputExtension}`);
         const segment: AudioExtractionSegment = {
           start: task.start,
           ...(task.end != null && { end: task.end }),
         };
-        const ffmpegArgs = buildMp3FfmpegArgs({
-          inputPath,
-          streamIndex: task.streamIndex,
-          quality,
-          outputPath: tempPath,
-          segment,
-        });
+        const ffmpegArgs = mode === 'original'
+          ? buildOriginalAudioFfmpegArgs({
+            inputPath,
+            streamIndex: task.streamIndex,
+            outputFormat: task.originalOutputFormat!,
+            outputPath: tempPath,
+            segment,
+          })
+          : buildMp3FfmpegArgs({
+            inputPath,
+            streamIndex: task.streamIndex,
+            quality,
+            outputPath: tempPath,
+            segment,
+          });
         const taskDuration = task.end != null ? task.end - task.start : undefined;
         const runner = runScopedFfmpeg({
           ffmpegArgs,
@@ -267,11 +295,14 @@ export async function startMp3Extraction(args: {
 
         const verified = await probe(tempPath);
         const tempStat = await stat(tempPath);
+        const outputAudioStreams = verified.streams?.filter((stream) => stream.codec_type === 'audio') ?? [];
+        const expectedCodecName = mode === 'original' ? task.codecName : 'mp3';
         if (
           tempStat.size === 0
-          || !verified.streams?.some((stream) => stream.codec_type === 'audio' && stream.codec_name === 'mp3')
+          || outputAudioStreams.length !== 1
+          || outputAudioStreams[0]?.codec_name !== expectedCodecName
         ) {
-          throw new Error('Output MP3 validation failed');
+          throw new Error(mode === 'original' ? 'Original audio stream validation failed' : 'Output MP3 validation failed');
         }
         if (job.cancelled) throw new Error('Extraction cancelled');
 
@@ -280,6 +311,7 @@ export async function startMp3Extraction(args: {
           initialOutputPath: outputPath,
           inputPath,
           suffix: task.outputSuffix,
+          extension: task.outputExtension,
           reservedPaths,
         });
         tempPath = undefined;
@@ -295,12 +327,12 @@ export async function startMp3Extraction(args: {
         } else {
           taskStatus.state = 'failed';
           taskStatus.error = getErrorMessage(error);
-          logger.error('MP3 extraction task failed', taskStatus.error);
+          logger.error('Audio extraction task failed', taskStatus.error);
         }
       } finally {
         if (tempPath) {
           await unlink(tempPath).catch((error: unknown) => {
-            if (getErrorCode(error) !== 'ENOENT') logger.warn('Failed to remove temporary MP3 file', tempPath, error);
+            if (getErrorCode(error) !== 'ENOENT') logger.warn('Failed to remove temporary audio file', tempPath, error);
           });
         }
         job.cancel = undefined;
@@ -350,9 +382,13 @@ export async function startMp3Extraction(args: {
     } else {
       status.state = 'failed';
       status.error = getErrorMessage(error);
-      logger.error('Unexpected MP3 extraction task failure', error);
+      logger.error('Unexpected audio extraction task failure', error);
     }
   });
 
   return id;
 }
+
+
+/** @deprecated Use startAudioExtraction. */
+export const startMp3Extraction = startAudioExtraction;

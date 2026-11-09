@@ -1158,5 +1158,14 @@
   "Skipped": "已跳过",
   "Extraction segments": "提取片段",
   "VBR (LAME Quality 2) — Recommended": "VBR（LAME 质量 2）— 推荐",
-  "Preparing extraction...": "正在准备提取..."
+  "Preparing extraction...": "正在准备提取...",
+  "Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.": "从当前打开的 MP4 文件中提取所选片段和音轨。每个片段与音轨的组合将分别保存为一个音频文件。",
+  "Output mode": "输出模式",
+  "Original (no re-encoding)": "原始音频（不重新编码）",
+  "MP3 (re-encode)": "MP3（重新编码）",
+  "Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.": "原始模式直接复制所选音轨，不进行解码或重新编码。程序会根据原始编码自动选择输出容器。分段边界可能会对齐到音频数据包边界。",
+  "{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).": "{{segments}} 个片段 × {{tracks}} 条音轨 = {{outputs}} 个输出文件。",
+  "{{count}} output file(s) saved.": "已保存 {{count}} 个输出文件。",
+  "Extraction cancelled. {{count}} output file(s) saved.": "提取已取消，已保存 {{count}} 个输出文件。",
+  "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.": "提取完成，但有 {{failed}} 个任务失败，成功保存 {{success}} 个输出文件。"
 }
