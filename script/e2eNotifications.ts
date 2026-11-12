@@ -129,8 +129,8 @@ async function getToastMetrics() {
     const style = getComputedStyle(card);
     return {
       width: card.getBoundingClientRect().width,
-      minWidth: style.minWidth,
-      maxWidth: style.maxWidth,
+      minWidth: card.style.minWidth,
+      maxWidth: card.style.maxWidth,
       transitionDuration: style.transitionDuration,
       messageFits: !message || message.scrollWidth <= message.clientWidth + 1,
       iconColor: icon ? getComputedStyle(icon).color : '',
@@ -150,8 +150,8 @@ async function testTransientNotification(type: 'information' | 'success' | 'warn
   const metrics = await getToastMetrics();
   assert.equal(metrics.width, 360, `${type} notification should be 360 CSS px wide`);
   assert.equal(metrics.transitionDuration, '0.6s', 'Toast opacity transition should last 0.6 seconds');
-  assert.ok(Number.parseFloat(metrics.minWidth) >= 0 && Number.parseFloat(metrics.minWidth) <= 300);
-  assert.ok(Number.parseFloat(metrics.maxWidth) <= 480);
+  assert.ok(metrics.minWidth.includes('300px') && metrics.minWidth.includes('90vw'));
+  assert.ok(metrics.maxWidth.includes('480px') && metrics.maxWidth.includes('90vw'));
   assert.equal(metrics.messageFits, true, 'Notification message should not overflow horizontally');
   assert.ok(metrics.iconColor.length > 0, 'Notification icon should have a computed color');
 
