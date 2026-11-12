@@ -122,7 +122,7 @@ import GenericDialog, { useDialog } from './components/GenericDialog';
 import useHtml5ify from './hooks/useHtml5ify';
 import WhatsNew from './components/WhatsNew';
 import NotificationHost from './notifications/NotificationHost';
-import { enqueueNotification, requestConfirmation, showErrorNotification } from './notifications/notificationStore';
+import { enqueueNotification, showErrorNotification } from './notifications/notificationStore';
 import mainApi from './mainApi.js';
 import type { AppEvent } from '../../main/index.js';
 import { appName } from '../../main/common.js';
@@ -2373,58 +2373,7 @@ function App() {
       }
     }
 
-    const e2eActions = process.env['SWIFTCUT_E2E'] === '1'
-      ? [[
-        '__e2eNotification',
-        async (...argsRaw: unknown[]) => {
-          const [payloadRaw] = argsRaw;
-          if (payloadRaw == null || typeof payloadRaw !== 'object') {
-            throw new Error('Invalid E2E notification payload');
-          }
-
-          const { type, title, message, details } = payloadRaw as Record<string, unknown>;
-          if (typeof message !== 'string' || !['information', 'success', 'warning', 'error', 'confirmation'].includes(String(type))) {
-            throw new Error('Invalid E2E notification type or message');
-          }
-
-          const notification = {
-            message,
-            ...(typeof title === 'string' && { title }),
-            ...(typeof details === 'string' && { details }),
-            source: 'e2e',
-          };
-
-          switch (type) {
-            case 'information': {
-              enqueueNotification({ ...notification, type: 'information' });
-              break;
-            }
-            case 'success': {
-              enqueueNotification({ ...notification, type: 'success' });
-              break;
-            }
-            case 'warning': {
-              enqueueNotification({ ...notification, type: 'warning' });
-              break;
-            }
-            case 'error': {
-              document.documentElement.dataset['e2eLastErrorAction'] = await showErrorNotification(notification);
-              break;
-            }
-            case 'confirmation': {
-              document.documentElement.dataset['e2eLastConfirmationResult'] = String(await requestConfirmation(notification));
-              break;
-            }
-            default: {
-              throw new Error('Unsupported E2E notification type');
-            }
-          }
-        },
-      ]] as const
-      : [];
-
     const allActions = [
-      ...e2eActions,
       // actions with arguments:
       [
         'openFiles',
@@ -2493,7 +2442,6 @@ function App() {
 
     ipcActions.forEach(([key, action]) => ipcRenderer.on(key, action));
     ipcRenderer.on('apiAction', tryApiAction);
-    if (process.env['SWIFTCUT_E2E'] === '1') document.documentElement.dataset['e2eActionsReady'] = 'true';
 
     return () => {
       ipcActions.forEach(([key, action]) => ipcRenderer.off(key, action));
