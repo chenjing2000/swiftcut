@@ -10,17 +10,14 @@ export interface CropSourceSegment {
 export function getExplicitCropSegments(segments: readonly CropSourceSegment[], duration: number): CropTimeSegment[] {
   if (!Number.isFinite(duration) || duration <= 0) return [];
   return segments.flatMap((segment, originalIndex) => {
-    if (!segment.selected || segment.initial || segment.end == null) return [];
-    if (!Number.isFinite(segment.start) || !Number.isFinite(segment.end)) return [];
-    if (segment.start < 0 || segment.end > duration || segment.start >= segment.end) return [];
+    if (!segment.selected || segment.initial || segment.end == null
+      || !Number.isFinite(segment.start) || !Number.isFinite(segment.end)
+      || segment.start < 0 || segment.end > duration || segment.start >= segment.end) return [];
     return [{ start: segment.start, end: segment.end, originalIndex }];
-  }).sort((a, b) => a.start - b.start || a.originalIndex - b.originalIndex);
+  }).toSorted((a, b) => a.start - b.start || a.originalIndex - b.originalIndex);
 }
 
-/**
- * Crop Video never inherits useSegments' "no selection means all segments" fallback.
- * Inverse mode is passed as already-resolved inverse intervals by its caller.
- */
+/** Crop Video avoids the ordinary export selection fallback; inverse intervals are caller-resolved. */
 export function resolveVideoCropSegments({
   segments, inverseSegments, inverted, duration, timeRange,
 }: {
@@ -39,7 +36,7 @@ export function resolveVideoCropSegments({
       && seg.start >= 0 && seg.end <= duration && seg.end > seg.start
         ? [{ start: seg.start, end: seg.end, originalIndex }] : []
     ));
-    return ranges.sort((a, b) => a.start - b.start || a.originalIndex - b.originalIndex);
+    return ranges.toSorted((a, b) => a.start - b.start || a.originalIndex - b.originalIndex);
   }
   return getExplicitCropSegments(segments, duration);
 }
@@ -49,6 +46,6 @@ export function getDefaultCropTimeRange(segments: readonly CropSourceSegment[], 
 }
 
 export function doCropSegmentsOverlap(segments: readonly CropTimeSegment[]) {
-  const sorted = [...segments].sort((a, b) => a.start - b.start);
+  const sorted = segments.toSorted((a, b) => a.start - b.start);
   return sorted.some((segment, i) => i > 0 && segment.start < sorted[i - 1]!.end);
 }

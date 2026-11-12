@@ -56,12 +56,15 @@ export function getCropDisplayTransform(frame: CropFrameGeometry, viewport: Crop
   const displayHeight = visible.height;
   const sx = viewport.width / displayWidth;
   const sy = viewport.height / displayHeight;
-  const scaleX = viewport.fit === 'fill' ? sx : viewport.fit === 'cover' ? Math.max(sx, sy) : Math.min(sx, sy);
+  const scaleX = viewport.fit === 'fill' ? sx : (viewport.fit === 'cover' ? Math.max(sx, sy) : Math.min(sx, sy));
   const scaleY = viewport.fit === 'fill' ? sy : scaleX;
   const drawnWidth = displayWidth * scaleX;
   const drawnHeight = displayHeight * scaleY;
   return {
-    displayWidth, displayHeight, drawnWidth, drawnHeight,
+    displayWidth,
+    displayHeight,
+    drawnWidth,
+    drawnHeight,
     drawnLeft: viewport.left + (viewport.width - drawnWidth) / 2,
     drawnTop: viewport.top + (viewport.height - drawnHeight) / 2,
   };
@@ -71,8 +74,8 @@ export function getCropDisplayTransform(frame: CropFrameGeometry, viewport: Crop
 export function screenToCropPoint(screen: CropPoint, frame: CropFrameGeometry, viewport: CropViewport): CropPoint | undefined {
   const layout = getCropDisplayTransform(frame, viewport);
   const { width, height } = getCropVisibleSize(frame);
-  const x = (screen.x - layout.drawnLeft) * width / layout.drawnWidth;
-  const y = (screen.y - layout.drawnTop) * height / layout.drawnHeight;
+  const x = ((screen.x - layout.drawnLeft) * width) / layout.drawnWidth;
+  const y = ((screen.y - layout.drawnTop) * height) / layout.drawnHeight;
 
   // Floating-point layout arithmetic can put an exact edge a tiny fraction
   // outside the frame. Snap only values within numerical noise of an edge;
@@ -91,18 +94,19 @@ export function cropPointToScreen(point: CropPoint, frame: CropFrameGeometry, vi
   const layout = getCropDisplayTransform(frame, viewport);
   const visible = getCropVisibleSize(frame);
   return {
-    x: layout.drawnLeft + point.x * layout.drawnWidth / visible.width,
-    y: layout.drawnTop + point.y * layout.drawnHeight / visible.height,
+    x: layout.drawnLeft + ((point.x * layout.drawnWidth) / visible.width),
+    y: layout.drawnTop + ((point.y * layout.drawnHeight) / visible.height),
   };
 }
 
 /** Transforms a corner of the rotated visible pixel grid into the unrotated decoded frame. */
 export function visibleToFramePoint({ x, y }: CropPoint, frame: CropFrameGeometry): CropPoint {
   switch (frame.rotation) {
-    case 0: return { x, y };
-    case 90: return { x: y, y: frame.height - x };
-    case 180: return { x: frame.width - x, y: frame.height - y };
-    case 270: return { x: frame.width - y, y: x };
+    case 0: { return { x, y }; }
+    case 90: { return { x: y, y: frame.height - x }; }
+    case 180: { return { x: frame.width - x, y: frame.height - y }; }
+    case 270: { return { x: frame.width - y, y: x }; }
+    default: { throw new Error('Unsupported frame rotation'); }
   }
 }
 
@@ -123,7 +127,7 @@ export function visibleRectToFrameRect(rect: CropRect, frame: CropFrameGeometry)
 
 export function isValidCropRect(rect: CropRect, frame: CropFrameGeometry) {
   const visible = getCropVisibleSize(frame);
-  return Object.values(rect).every(Number.isSafeInteger)
+  return Object.values(rect).every((value) => Number.isSafeInteger(value))
     && rect.x >= 0 && rect.y >= 0 && rect.width > 0 && rect.height > 0
     && rect.x + rect.width <= visible.width && rect.y + rect.height <= visible.height;
 }
@@ -132,20 +136,14 @@ export function getCropTargetAspect(preset: CropAspectPreset, frame: CropFrameGe
   if (preset === 'free') return undefined;
   if (preset === 'source') {
     const { width, height } = getCropVisibleSize(frame);
-    return width * getCropVisibleSar(frame) / height;
+    return (width * getCropVisibleSar(frame)) / height;
   }
   const [w, h] = preset.split(':').map(Number);
   if (!w || !h) throw new Error('Unsupported crop ratio');
   return w / h;
 }
 
-/**
- * Resolve an exact theoretical aspect into an integer visible-pixel rectangle.
- * The actively edited dimension is retained; only the dependent one is snapped.
- * Ties use the smaller integer. No intermediate rounding is performed.
- * If the dependent dimension does not fit, the active dimension shrinks to fit
- * while preserving the anchored top-left corner.
- */
+/** Resolve the theoretical ratio to integer pixels; keep the active dimension where possible. */
 export function alignCropSize({
   rect, frame, aspect, primary,
 }: { rect: CropRect; frame: CropFrameGeometry; aspect: number; primary: 'width' | 'height' }): CropRect {
@@ -163,17 +161,17 @@ export function alignCropSize({
   let height: number;
   if (primary === 'width') {
     width = Math.min(Math.max(1, Math.trunc(rect.width)), availableWidth);
-    height = nearest(width * sar / aspect);
+    height = nearest((width * sar) / aspect);
     while (width > 1 && (height < 1 || height > availableHeight)) {
       width -= 1;
-      height = nearest(width * sar / aspect);
+      height = nearest((width * sar) / aspect);
     }
   } else {
     height = Math.min(Math.max(1, Math.trunc(rect.height)), availableHeight);
-    width = nearest(height * aspect / sar);
+    width = nearest((height * aspect) / sar);
     while (height > 1 && (width < 1 || width > availableWidth)) {
       height -= 1;
-      width = nearest(height * aspect / sar);
+      width = nearest((height * aspect) / sar);
     }
   }
   if (width < 1 || height < 1 || width > availableWidth || height > availableHeight) {
@@ -183,4 +181,4 @@ export function alignCropSize({
 }
 
 /** Strip non-ASCII digits on both typing and paste. Empty drafts are allowed. */
-export const sanitizeCropDigits = (text: string) => text.replace(/[^0-9]/g, '');
+export const sanitizeCropDigits = (text: string) => text.replaceAll(/[^0-9]/g, '');

@@ -1,4 +1,4 @@
-import type { CropOutputSettings, CropRect } from './videoCropTypes';
+import type { CropOutputSettings, CropRect } from './videoCropTypes.js';
 
 export interface CropValidationProblem {
   field: string;
@@ -24,10 +24,7 @@ export function validateCropRect(rect: CropRect, bounds: { width: number; height
   return issues;
 }
 
-/**
- * Output dimensions describe real encoded pixels, not theoretical aspect-ratio
- * dimensions. Padding is explicit and does not change the source crop region.
- */
+/** Output dimensions describe real encoded pixels. Padding never changes the source crop. */
 export function getCropEncodedDimensions({
   width, height, pixelFormat, padToCompatible,
 }: {
@@ -52,7 +49,7 @@ export function validateCropOutput(output: CropOutputSettings, crop: CropRect): 
   const height = output.resize ? output.height : crop.height;
   if (!positiveInteger(width)) issues.push({ field: 'width', message: 'Output width must be a positive integer' });
   if (!positiveInteger(height)) issues.push({ field: 'height', message: 'Output height must be a positive integer' });
-  if (!Number.isInteger(output.crf) || output.crf < 0 || output.crf > 51) {
+  if (!Number.isSafeInteger(output.crf) || output.crf < 0 || output.crf > 51) {
     issues.push({ field: 'crf', message: 'CRF must be between 0 and 51' });
   }
   if (output.timeRange !== 'selected' && output.timeRange !== 'entire') {
