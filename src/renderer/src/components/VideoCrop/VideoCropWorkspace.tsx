@@ -376,7 +376,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             onPointerMove={(event) => {
               const drag = panelDragRef.current;
               if (!drag || drag.pointerId !== event.pointerId) return;
-              if ((event.buttons & 1) === 0) {
+              if (event.buttons % 2 === 0) {
                 stopPanelDrag(event.pointerId);
                 return;
               }
