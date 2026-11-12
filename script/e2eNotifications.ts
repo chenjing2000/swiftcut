@@ -96,6 +96,7 @@ async function postNotification(payload: {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(30000),
   });
 }
 
@@ -179,6 +180,7 @@ async function testHoverPauseAndNarrowViewport() {
   });
   assert.equal(response.status, 200);
   await waitForToast('information');
+  await delay(2000);
 
   const metrics = await evaluate<{ width: number; maxWidth: string }>(`(() => {
     const card = document.querySelector('[data-testid=notification-toast]');
@@ -207,7 +209,7 @@ async function testHoverPauseAndNarrowViewport() {
   );
 
   await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 });
-  await delay(4500);
+  await delay(2500);
   await waitForExpression(
     'Boolean(document.querySelector("[data-testid=notification-toast]"))',
     'toast to remain visible for its remaining hold time after hover',
@@ -215,7 +217,7 @@ async function testHoverPauseAndNarrowViewport() {
   await waitForExpression(
     '!document.querySelector("[data-testid=notification-toast]")',
     'toast to dismiss after the remaining hold time',
-    2000,
+    1500,
   );
 
   await cdp('Emulation.clearDeviceMetricsOverride');
@@ -349,6 +351,11 @@ async function testBlockingNotifications() {
   assert.ok(detailsMetrics.scrollHeight > detailsMetrics.clientHeight, 'Long technical details should be scrollable');
 
   await captureScreenshot('notification-error-dialog.png');
+  await delay(6500);
+  await waitForExpression(
+    'Boolean(document.querySelector("[data-testid=notification-modal]"))',
+    'error dialog to remain open without auto-dismissal',
+  );
   await evaluate('document.querySelector("[data-testid=notification-primary-action]").click()');
   const errorResponse = await errorRequest;
   assert.equal(errorResponse.status, 200);
@@ -370,6 +377,11 @@ async function testBlockingNotifications() {
     'Confirmation dialog should be 360 CSS px wide',
   );
   await captureScreenshot('notification-confirmation-dialog.png');
+  await delay(5500);
+  await waitForExpression(
+    'Boolean(document.querySelector("[data-testid=notification-modal]"))',
+    'confirmation dialog to remain open without auto-dismissal',
+  );
   await evaluate('document.querySelector("[data-testid=notification-secondary-action]").click()');
   assert.equal((await cancelRequest).status, 200);
   assert.equal(await evaluate<boolean>('document.documentElement.dataset.e2eLastConfirmationResult === "true"'), false);
