@@ -341,8 +341,8 @@ async function testBlockingNotifications() {
   assert.equal(errorMetrics.messageFits, true, 'Long error message should wrap without horizontal overflow');
   assert.equal(errorMetrics.transitionDuration, '0.6s');
 
-  await evaluate('document.querySelector("[data-testid=notification-copy-details]").click()');
   await evaluate('document.querySelector("[data-testid=notification-modal] details summary").click()');
+  await evaluate('document.querySelector("[data-testid=notification-copy-details]").click()');
   const detailsMetrics = await evaluate<{ scrollHeight: number; clientHeight: number }>(`(() => {
     const details = document.querySelector('[data-testid=notification-modal] .detailsText');
     return { scrollHeight: details.scrollHeight, clientHeight: details.clientHeight };
