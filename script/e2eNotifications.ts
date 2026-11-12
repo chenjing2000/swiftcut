@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import react from '@vitejs/plugin-react';
 import { createServer } from 'vite';
@@ -131,7 +131,7 @@ async function postNotification(payload: {
   message: string;
   details?: string;
 }) {
-  await evaluate(`window.swiftcutNotificationE2E.send(${JSON.stringify(payload)})`);
+  await evaluate(`document.dispatchEvent(new CustomEvent('swiftcut-e2e-notification', { detail: ${JSON.stringify(payload)} }))`);
   return { status: 200 };
 }
 
@@ -441,7 +441,7 @@ async function testBlockingNotifications() {
 
 const vite = await createServer({
   configFile: false,
-  root: resolve('src/renderer'),
+  root: resolvePath('src/renderer'),
   plugins: [react()],
   server: { host: '127.0.0.1', port: httpPort, strictPort: true },
 });
@@ -450,7 +450,7 @@ await vite.listen();
 const browserProfile = await mkdtemp(join(tmpdir(), 'swiftcut-notification-browser-'));
 const chromePath = process.env['CHROME_BIN']
   ?? (process.platform === 'win32'
-    ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+    ? String.raw`C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`
     : 'google-chrome');
 
 logStage(`Launching headless Chromium: ${chromePath}`);
