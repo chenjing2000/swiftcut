@@ -1,11 +1,10 @@
 /* eslint-disable no-console */
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-
-import { spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
 
 const httpPort = 18081;
 const debuggingPort = 19222;
