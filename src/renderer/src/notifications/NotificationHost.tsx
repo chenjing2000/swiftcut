@@ -142,6 +142,7 @@ export default function NotificationHost() {
           <AlertDialog.Overlay className={styles['modalOverlay']} data-phase={phase} />
           <AlertDialog.Content
             className={styles['modalContent']}
+            data-testid="notification-modal"
             data-phase={phase}
             style={notificationDimensions}
             onOpenAutoFocus={handleOpenAutoFocus}
@@ -156,19 +157,20 @@ export default function NotificationHost() {
               <details className={styles['details']}>
                 <summary>{t('Show technical details')}</summary>
                 <pre className={styles['detailsText']}>{active.details}</pre>
-                <button type="button" className={styles['copyButton']} onClick={handleCopyDetails}>{t('Copy details')}</button>
+                <button type="button" data-testid="notification-copy-details" className={styles['copyButton']} onClick={handleCopyDetails}>{t('Copy details')}</button>
               </details>
             )}
 
             <Dialog.ButtonRow>
               {secondaryLabel && (
                 <AlertDialog.Cancel asChild>
-                  <DialogButton onClick={() => handleAction('cancel')}>{secondaryLabel}</DialogButton>
+                  <DialogButton data-testid="notification-secondary-action" onClick={() => handleAction('cancel')}>{secondaryLabel}</DialogButton>
                 </AlertDialog.Cancel>
               )}
               <AlertDialog.Action asChild>
                 <DialogButton
                   primary
+                  data-testid="notification-primary-action"
                   ref={primaryButtonRef}
                   onClick={() => handleAction(isConfirmation ? 'confirm' : 'acknowledge')}
                 >
@@ -186,6 +188,7 @@ export default function NotificationHost() {
     <div className={styles['toastLayer']} aria-live="polite" aria-atomic="true">
       <div
         className={styles['toastCard']}
+        data-testid="notification-toast"
         style={notificationDimensions}
         data-type={active.type}
         data-phase={phase}
