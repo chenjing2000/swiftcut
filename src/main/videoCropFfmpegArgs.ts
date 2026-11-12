@@ -14,9 +14,23 @@ export function buildCropFfmpegArgs({
   // from Phase 2 are applied after the source's existing orientation is normalized.
   // For odd X/Y and subsampled input, upsample chroma before crop to preserve the luma origin.
   const filters: string[] = ['format=yuv444p'];
-  if (frame.rotation === 90) filters.push('transpose=clock');
-  else if (frame.rotation === 180) filters.push('hflip', 'vflip');
-  else if (frame.rotation === 270) filters.push('transpose=cclock');
+  switch (frame.rotation) {
+    case 90: {
+      filters.push('transpose=clock');
+      break;
+    }
+    case 180: {
+      filters.push('hflip', 'vflip');
+      break;
+    }
+    case 270: {
+      filters.push('transpose=cclock');
+      break;
+    }
+    default: {
+      break;
+    }
+  }
   filters.push(`crop=w=${crop.width}:h=${crop.height}:x=${crop.x}:y=${crop.y}:exact=1`);
   if (output.resize) filters.push(`scale=w=${plan.outputWidth}:h=${plan.outputHeight}:flags=lanczos`);
   if (plan.encodedWidth !== plan.outputWidth || plan.encodedHeight !== plan.outputHeight) {

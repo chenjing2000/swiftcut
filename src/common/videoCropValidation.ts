@@ -127,4 +127,3 @@ export function validateCropExportRequest(request: CropExportRequest): CropValid
   }
   return problems;
 }
-
