@@ -1,3 +1,4 @@
+// eslint-disable-next-line import-js/no-extraneous-dependencies
 import { describe, expect, it } from 'vitest';
 import type { CropExportRequest } from '../../common/videoCropTypes.js';
 import { createCropExportPlan } from './videoCropExportPlanner.js';

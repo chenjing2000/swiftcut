@@ -115,7 +115,7 @@ export function validateCropExportRequest(request: CropExportRequest): CropValid
   if (config.output.outputMode === 'merge' && doTimeRangesOverlap(segments)) {
     problems.push({ field: 'segments', message: 'Overlapping segments cannot be merged' });
   }
-  if (config.output.timeRange === 'entire' && (segments.length !== 1 || segments[0]?.start !== 0 || segments[0].end !== sourceDuration)) {
+  if (config.output.timeRange === 'entire' && (segments.length !== 1 || segments[0]?.start !== 0 || segments[0]?.end !== sourceDuration)) {
     problems.push({ field: 'segments', message: 'Entire video must cover the full source duration' });
   }
   return problems;
