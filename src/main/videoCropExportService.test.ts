@@ -99,24 +99,23 @@ describe('Crop Video single-segment service', () => {
     const status = getCropExportStatus(jobId)!;
     expect(status.progress).toBe(1);
     expect(status.outputPath).toBe(join(directory, 'clip.crop.mp4'));
-    expect(await readFile(status.outputPath!)).toStrictEqual(Buffer.from('mock encoded video'));
-    expect(await readdir(join(directory, '.swiftcut-crop-tmp'))).toStrictEqual([]);
+    await expect(readFile(status.outputPath!)).resolves.toStrictEqual(Buffer.from('mock encoded video'));
+    await expect(readdir(join(directory, '.swiftcut-crop-tmp'))).resolves.toStrictEqual([]);
   });
 
   it('never overwrites a pre-existing output file', async () => {
     await writeFile(join(directory, 'clip.crop.mp4'), 'original');
     const jobId = await startCropExport(makePlan());
     await expectState(jobId, 'success');
-    expect(await readFile(join(directory, 'clip.crop.mp4'), 'utf8')).toBe('original');
+    await expect(readFile(join(directory, 'clip.crop.mp4'), 'utf8')).resolves.toBe('original');
     expect(getCropExportStatus(jobId)?.outputPath).toBe(join(directory, 'clip.crop_1.mp4'));
   });
 
   it('reports cancellation and does not commit a partial output', async () => {
     mocks.run.mockImplementation(({ ffmpegArgs }) => {
       writeFileSync(ffmpegArgs.at(-1)!, 'partial');
-      let rejectTask: (error: Error) => void = () => undefined;
-      const result = new Promise<unknown>((_resolve, reject) => { rejectTask = reject; });
-      return { result, cancel: () => rejectTask(new Error('aborted')) };
+      const { promise, reject } = Promise.withResolvers<unknown>();
+      return { result: promise, cancel: () => reject(new Error('aborted')) };
     });
     const jobId = await startCropExport(makePlan());
     await vi.waitFor(() => expect(getCropExportStatus(jobId)?.state).toBe('encoding'));
