@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -20,6 +20,10 @@ let nextMessageId = 0;
 let socket: WebSocket | undefined;
 let appProcessExit: { exitCode: number | null | undefined; error?: unknown } | undefined;
 
+function logStage(stage: string) {
+  console.log(`[notification-e2e] ${new Date().toISOString()} ${stage}`);
+}
+
 function connectToCdp(url: string) {
   interface CdpResponse {
     id?: number;
@@ -29,8 +33,18 @@ function connectToCdp(url: string) {
 
   return new Promise<WebSocket>((resolve, reject) => {
     const ws = new WebSocket(url);
-    ws.addEventListener('open', () => resolve(ws), { once: true });
-    ws.addEventListener('error', () => reject(new Error('Failed to connect to Electron DevTools Protocol')), { once: true });
+    const connectionTimeout = setTimeout(() => {
+      ws.close();
+      reject(new Error('Timed out connecting to Electron DevTools WebSocket'));
+    }, 8000);
+    ws.addEventListener('open', () => {
+      clearTimeout(connectionTimeout);
+      resolve(ws);
+    }, { once: true });
+    ws.addEventListener('error', () => {
+      clearTimeout(connectionTimeout);
+      reject(new Error('Failed to connect to Electron DevTools Protocol'));
+    }, { once: true });
     ws.addEventListener('message', (event) => {
       const message = JSON.parse(String(event.data)) as CdpResponse;
       if (message.id == null) return;
@@ -53,8 +67,21 @@ function cdp(method: string, params: Record<string, unknown> = {}) {
   nextMessageId += 1;
   const id = nextMessageId;
   return new Promise<Record<string, unknown>>((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    ws.send(JSON.stringify({ id, method, params }));
+    const timeout = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error(`DevTools command timed out: ${method}`));
+    }, 8000);
+    pending.set(id, {
+      resolve: (value) => { clearTimeout(timeout); resolve(value); },
+      reject: (error) => { clearTimeout(timeout); reject(error); },
+    });
+    try {
+      ws.send(JSON.stringify({ id, method, params }));
+    } catch (error) {
+      clearTimeout(timeout);
+      pending.delete(id);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 }
 
@@ -420,6 +447,7 @@ appProcess.on('error', (error) => { appProcessExit = { exitCode: null, error }; 
 
 try {
   await mkdir(artifactDirectory, { recursive: true });
+  logStage('Waiting for HTTP API');
 
   await waitFor(async () => {
     if (appProcessExit) throw new Error(`SwiftCut exited before HTTP API startup: ${JSON.stringify(appProcessExit)}`);
@@ -431,26 +459,31 @@ try {
     }
   }, 'SwiftCut HTTP API to start', 60000);
 
+  logStage('HTTP API ready; finding Electron renderer target');
   const targets = await waitFor(async () => {
     if (appProcessExit) throw new Error(`SwiftCut exited before DevTools became available: ${JSON.stringify(appProcessExit)}`);
     try {
       const response = await fetch(`http://127.0.0.1:${debuggingPort}/json/list`);
       if (!response.ok) return undefined;
-      const items = await response.json() as { type: string; url: string; webSocketDebuggerUrl: string }[];
-      return items.find((item) => item.type === 'page' && item.webSocketDebuggerUrl);
+      const items = await response.json() as { type: string; url: string; title?: string; webSocketDebuggerUrl: string }[];
+      return items.find((item) => item.type === 'page' && item.webSocketDebuggerUrl && !item.url.startsWith('devtools://'));
     } catch {
       return undefined;
     }
   }, 'Electron DevTools Protocol target', 30000);
 
+  logStage(`Connecting DevTools target: ${targets.url}`);
   socket = await connectToCdp(targets.webSocketDebuggerUrl);
+  logStage('Connected to renderer DevTools');
   await cdp('Page.enable');
   await cdp('Runtime.enable');
+  logStage('Waiting for renderer E2E action listener');
   await waitForExpression(
     'document.documentElement.dataset.e2eActionsReady === "true"',
     'renderer E2E action listener to become ready',
   );
 
+  logStage('Starting notification test cases');
   await testTransientNotification('information');
   await testTransientNotification('success');
   await testTransientNotification('warning');
@@ -459,26 +492,37 @@ try {
   await testBlockingPriorityAndQueueOrder();
   await testBlockingNotifications();
 
-  console.log('All notification desktop E2E tests passed.');
+  logStage('All notification desktop E2E tests passed');
 } catch (error) {
+  console.error('[notification-e2e] Test failure:', error);
   try {
     if (socket?.readyState === WebSocket.OPEN) await captureScreenshot('failure.png');
   } catch (screenshotError) {
-    console.error('Could not capture failure screenshot', screenshotError);
+    console.error('[notification-e2e] Could not capture failure screenshot:', screenshotError);
   }
   throw error;
 } finally {
+  logStage('Cleaning up renderer connection and Electron process');
   socket?.close();
   try {
-    await fetch(`${baseUrl}/api/action/quit`, { method: 'POST' });
-  } catch {
-    // The app may not have reached the HTTP API startup stage.
+    await fetch(`${baseUrl}/api/action/quit`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch (error) {
+    console.warn('[notification-e2e] Graceful quit unavailable:', error);
   }
-  try {
-    if (!appProcessExit?.error && appProcess.exitCode == null && appProcess.signalCode == null) {
-      await new Promise<void>((resolve) => { appProcess.once('exit', () => resolve()); });
+  if (appProcess.exitCode == null && appProcess.signalCode == null) {
+    if (process.platform === 'win32' && appProcess.pid != null) {
+      const terminated = spawnSync('taskkill', ['/PID', String(appProcess.pid), '/T', '/F'], {
+        timeout: 5000,
+        windowsHide: true,
+        stdio: 'ignore',
+      });
+      if (terminated.error) console.warn('[notification-e2e] taskkill failed:', terminated.error);
+    } else {
+      appProcess.kill();
     }
-  } catch {
-    // Preserve the original E2E failure if the app had to be terminated.
   }
+  logStage('Cleanup complete');
 }
