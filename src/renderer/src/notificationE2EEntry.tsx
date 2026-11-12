@@ -26,7 +26,12 @@ function TestHarness() {
   useEffect(() => {
     window.swiftcutNotificationE2E = {
       send({ type, title, message, details }) {
-        const notification = { title, message, details, source: 'notification-e2e' };
+        const notification = {
+          message,
+          ...(title != null && { title }),
+          ...(details != null && { details }),
+          source: 'notification-e2e',
+        };
         switch (type) {
           case 'information':
           case 'success':
