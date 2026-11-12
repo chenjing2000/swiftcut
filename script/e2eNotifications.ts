@@ -48,6 +48,7 @@ function connectToCdp(url: string) {
     ws.addEventListener('message', (event) => {
       const message = JSON.parse(String(event.data)) as CdpResponse;
       if (message.id == null) return;
+      logStage(`DevTools response received: ${message.id}${message.error ? ' error' : ''}`);
       const request = pending.get(message.id);
       if (!request) return;
       pending.delete(message.id);
@@ -478,6 +479,9 @@ try {
   logStage('Connected to renderer DevTools');
   await cdp('Page.enable');
   await cdp('Runtime.enable');
+  logStage('Probing JavaScript execution in renderer');
+  const probe = await cdp('Runtime.evaluate', { expression: '1 + 1', returnByValue: true, awaitPromise: false });
+  logStage(`Renderer JavaScript probe: ${JSON.stringify(probe)}`);
   logStage('Waiting for renderer E2E action listener');
   await waitForExpression(
     'document.documentElement.dataset.e2eActionsReady === "true"',
