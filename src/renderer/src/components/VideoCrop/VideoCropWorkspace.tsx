@@ -100,8 +100,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [panelPosition, setPanelPosition] = useState({ right: 16, top: 48 });
   const [focused, setFocused] = useState(false);
-  const panelDrag = useRef<{ x: number; y: number; top: number; right: number }>();
-  const pointerDrag = useRef<{ x: number; y: number; rect: CropRect; mode: Handle }>();
+  const panelDrag = useRef<{ x: number; y: number; top: number; right: number } | undefined>(undefined);
+  const pointerDrag = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -129,8 +129,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const displayRect = useMemo(() => {
     const a = cropPointToScreen({ x: rect.x, y: rect.y }, frame, viewport);
     const b = cropPointToScreen({ x: rect.x + rect.width, y: rect.y + rect.height }, frame, viewport);
-    return { left: a.x, top: a.y, width: b.x - a.x, height: b.y - a.y };
-  }, [rect, frame, viewport]);
+    return { left: a.x - layout.drawnLeft, top: a.y - layout.drawnTop, width: b.x - a.x, height: b.y - a.y };
+  }, [rect, frame, viewport, layout.drawnLeft, layout.drawnTop]);
 
   const changeRect = useCallback((next: CropRect, dimension: Dimension) => {
     let candidate = next;
