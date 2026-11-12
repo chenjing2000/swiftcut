@@ -152,7 +152,7 @@ async function getToastMetrics() {
   }>(`(() => {
     const card = document.querySelector('[data-testid=notification-toast]');
     if (!card) return null;
-    const message = card.querySelector('.message');
+    const message = card.querySelector('[data-testid=notification-message]');
     const icon = card.querySelector('svg[data-type]');
     const style = getComputedStyle(card);
     return {
@@ -313,7 +313,7 @@ async function testBlockingPriorityAndQueueOrder() {
     'Boolean(document.querySelector("[data-testid=notification-toast]"))',
     'active toast to remain visible while a blocking error is queued',
   );
-  const activeText = await evaluate<string>('document.querySelector("[data-testid=notification-toast] .message")?.textContent ?? ""');
+  const activeText = await evaluate<string>('document.querySelector("[data-testid=notification-toast] [data-testid=notification-message]")?.textContent ?? ""');
   assert.ok(activeText.includes('must not be interrupted'), 'A queued blocking error must not interrupt the active toast');
   assert.equal(await evaluate<boolean>('!document.querySelector("[data-testid=notification-modal]")'), true);
 
@@ -327,7 +327,7 @@ async function testBlockingPriorityAndQueueOrder() {
   assert.equal(await evaluate<string>('document.documentElement.dataset.e2eLastErrorAction'), 'acknowledge');
 
   await waitForToast('success');
-  const queuedText = await evaluate<string>('document.querySelector("[data-testid=notification-toast] .message")?.textContent ?? ""');
+  const queuedText = await evaluate<string>('document.querySelector("[data-testid=notification-toast] [data-testid=notification-message]")?.textContent ?? ""');
   assert.ok(queuedText.includes('wait until the blocking error is acknowledged'));
   await waitForExpression(
     '!document.querySelector("[data-testid=notification-toast]")',
@@ -358,7 +358,7 @@ async function testBlockingNotifications() {
     transitionDuration: string;
   }>(`(() => {
     const modal = document.querySelector('[data-testid=notification-modal]');
-    const message = modal.querySelector('.message');
+    const message = modal.querySelector('[data-testid=notification-message]');
     return {
       width: modal.getBoundingClientRect().width,
       messageFits: message.scrollWidth <= message.clientWidth + 1,
@@ -372,7 +372,7 @@ async function testBlockingNotifications() {
   await evaluate('document.querySelector("[data-testid=notification-modal] details summary").click()');
   await evaluate('document.querySelector("[data-testid=notification-copy-details]").click()');
   const detailsMetrics = await evaluate<{ scrollHeight: number; clientHeight: number }>(`(() => {
-    const details = document.querySelector('[data-testid=notification-modal] .detailsText');
+    const details = document.querySelector('[data-testid=notification-modal] [data-testid=notification-details-text]');
     return { scrollHeight: details.scrollHeight, clientHeight: details.clientHeight };
   })()`);
   assert.ok(detailsMetrics.scrollHeight > detailsMetrics.clientHeight, 'Long technical details should be scrollable');
