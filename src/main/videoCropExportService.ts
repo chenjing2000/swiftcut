@@ -37,7 +37,8 @@ function assertNotCancelled(job: CropJob) {
 
 function pruneJobs() {
   const completed = [...jobs].filter(([, job]) => ['success', 'failed', 'cancelled'].includes(job.status.state));
-  for (const [id] of completed.slice(0, Math.max(0, completed.length - MAX_COMPLETED))) jobs.delete(id);
+  const excess = completed.slice(0, Math.max(0, completed.length - MAX_COMPLETED));
+  for (const [id] of excess) jobs.delete(id);
 }
 
 export function getCropExportStatus(id: string): CropExportStatus | undefined {
@@ -124,10 +125,8 @@ async function verifyOutput(path: string, plan: CropExportPlan) {
   }
 }
 
-/**
- * Phase 3B deliberately executes only one time range. Multi-segment export
- * and concatenation are reserved for Phase 3C.
- */
+// Phase 3B deliberately executes only one time range.
+// Multi-segment export and concatenation are reserved for Phase 3C.
 export async function startCropExport(plan: CropExportPlan): Promise<string> {
   if (plan.tasks.length !== 1 || plan.mergedOutputName) throw new Error('Multi-segment crop export is not available yet');
   const requestProblems = validateCropExportRequest({

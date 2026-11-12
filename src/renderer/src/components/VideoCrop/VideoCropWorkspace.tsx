@@ -499,7 +499,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             <div className={styles['footer']}>
               <span className={styles['phaseNote']}>{t('Multi-segment export is available in Phase 3C')}</span>
               <button type="button" onClick={onClose}>{t('Cancel')}</button>
-              <button type="button" disabled={!valid || submitting || quality === 'custom' || multiple} onClick={() => { void submitExport(); }}>{t('Export Video')}</button>
+              <button type="button" disabled={!valid || submitting || quality === 'custom' || multiple} onClick={() => { submitExport().catch(console.error); }}>{t('Export Video')}</button>
             </div>
             <div className={styles['previewRow']}>
               <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>

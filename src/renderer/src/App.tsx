@@ -495,14 +495,14 @@ function App() {
   }, [filePath, cropFrame, fileDuration, outputDir, activeVideoStream, cropExportStatus, cutSegments, inverseCutSegments, invertCutSegments, activeAudioStreams]);
 
   useEffect(() => {
-    if (cropExportJobId == null) return;
+    if (cropExportJobId == null) return undefined;
     let active = true;
     const update = async () => {
       const result = await mainApi.getCropExportStatus(cropExportJobId);
       if (active && result != null) setCropExportStatus(result);
     };
-    void update();
-    const interval = setInterval(() => { void update(); }, 300);
+    update().catch(console.error);
+    const interval = setInterval(() => { update().catch(console.error); }, 300);
     return () => { active = false; clearInterval(interval); };
   }, [cropExportJobId]);
 
@@ -2717,12 +2717,12 @@ function App() {
                         <strong>Exporting Cropped Video</strong>
                         <div style={{ marginTop: 8 }}>{cropExportStatus.state}: {Math.round(cropExportStatus.progress * 100)}%</div>
                         <progress style={{ width: '100%' }} value={cropExportStatus.progress} max={1} />
-                        <button type="button" style={{ marginTop: 8 }} onClick={() => { if (cropExportJobId) void mainApi.cancelCropExport(cropExportJobId); }}>Cancel Export</button>
+                        <button type="button" style={{ marginTop: 8 }} onClick={() => { if (cropExportJobId) mainApi.cancelCropExport(cropExportJobId).catch(console.error); }}>Cancel Export</button>
                       </div>
                     )}
                     {cropExportStatus && ['success', 'failed', 'cancelled'].includes(cropExportStatus.state) && (
                       <div style={{ position: 'fixed', right: 16, bottom: 24, zIndex: 300, width: 310, padding: 14, borderRadius: 10, border: '1px solid var(--gray-7)', background: 'var(--gray-2)', color: 'var(--gray-12)', boxShadow: '0 6px 22px #0005' }}>
-                        <strong>{cropExportStatus.state === 'success' ? 'Crop export completed' : cropExportStatus.state === 'failed' ? 'Crop export failed' : 'Crop export cancelled'}</strong>
+                        <strong>{cropExportStatus.state === 'success' ? 'Crop export completed' : (cropExportStatus.state === 'failed' ? 'Crop export failed' : 'Crop export cancelled')}</strong>
                         {cropExportStatus.outputPath && <div style={{ overflowWrap: 'anywhere' }}>{cropExportStatus.outputPath}</div>}
                         {cropExportStatus.error && <div role="alert">{cropExportStatus.error}</div>}
                         <button type="button" style={{ marginTop: 8 }} onClick={() => { setCropExportJobId(undefined); setCropExportStatus(undefined); }}>Dismiss</button>
