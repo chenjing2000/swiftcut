@@ -7,6 +7,7 @@
     <script>
       // Isolated browser harness: only the dependencies used while rendering
       // the notification components are represented here.
+      window.process = { mas: false, env: {} };
       window.electron = { writeClipboardText: async () => undefined };
       window.require = (name) => {
         if (name === '@electron/remote') {
