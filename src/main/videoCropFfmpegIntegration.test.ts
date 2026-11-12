@@ -1,7 +1,7 @@
 // eslint-disable-next-line import-js/no-extraneous-dependencies
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CropExportPlan } from '../common/videoCropTypes.js';
