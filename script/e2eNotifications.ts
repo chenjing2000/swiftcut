@@ -433,6 +433,7 @@ async function testBlockingNotifications() {
 
 const electronExecutablePath = createRequire(import.meta.url)('electron') as string;
 const appProcess = spawn(electronExecutablePath, [
+  ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
   `--remote-debugging-port=${debuggingPort}`,
   '.',
   '--http-api',
