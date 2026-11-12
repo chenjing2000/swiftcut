@@ -15,6 +15,9 @@ export function buildCropFfmpegArgs({
   // For odd X/Y and subsampled input, upsample chroma before crop to preserve the luma origin.
   const filters: string[] = ['format=yuv444p'];
   switch (frame.rotation) {
+    case 0: {
+      break;
+    }
     case 90: {
       filters.push('transpose=clock');
       break;
