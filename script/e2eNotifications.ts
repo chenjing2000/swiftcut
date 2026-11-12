@@ -229,7 +229,6 @@ async function testHoverPauseAndNarrowViewport() {
 }
 
 async function testDarkThemeStyles() {
-  const before = await evaluate<string>(`getComputedStyle(document.querySelector('[data-testid="notification-toast"]') ?? document.body).backgroundColor`).catch(() => '');
   const response = await postNotification({
     type: 'information',
     title: 'Theme style check',
@@ -254,7 +253,55 @@ async function testDarkThemeStyles() {
     'theme-check toast to auto-dismiss',
     8000,
   );
-  console.log(`PASS dark-theme style override (initial background: ${before || 'not sampled'})`);
+  console.log('PASS dark-theme style override');
+}
+
+async function testBlockingPriorityAndQueueOrder() {
+  const activeResponse = await postNotification({
+    type: 'information',
+    title: 'Active notification',
+    message: 'This message must not be interrupted.',
+  });
+  assert.equal(activeResponse.status, 200);
+  await waitForToast('information');
+
+  const queuedResponse = await postNotification({
+    type: 'success',
+    title: 'Queued notification',
+    message: 'This message should wait until the blocking error is acknowledged.',
+  });
+  assert.equal(queuedResponse.status, 200);
+
+  const errorRequest = postNotification({
+    type: 'error',
+    title: 'Priority error',
+    message: 'A blocking error must be shown before queued transient messages.',
+  });
+
+  await waitForExpression(
+    `Boolean(document.querySelector('[data-testid="notification-toast"]'))`,
+    'active toast to remain visible while a blocking error is queued',
+  );
+  assert.equal(await evaluate<boolean>(`!document.querySelector('[data-testid="notification-modal"]')`), true);
+
+  await waitForExpression(
+    `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
+    'blocking error to become active after the current toast',
+    10000,
+  );
+  await evaluate(`document.querySelector('[data-testid="notification-primary-action"]').click()`);
+  assert.equal((await errorRequest).status, 200);
+  assert.equal(await evaluate<string>(`window.__swiftcutE2E?.lastErrorAction`), 'acknowledge');
+
+  await waitForToast('success');
+  const queuedText = await evaluate<string>(`document.querySelector('[data-testid="notification-toast"] .message')?.textContent ?? ''`);
+  assert.ok(queuedText.includes('wait until the blocking error is acknowledged'));
+  await waitForExpression(
+    `!document.querySelector('[data-testid="notification-toast"]')`,
+    'queued notification to finish',
+    8000,
+  );
+  console.log('PASS blocking notification priority and queue order');
 }
 
 async function testBlockingNotifications() {
@@ -268,7 +315,7 @@ async function testBlockingNotifications() {
   });
 
   await waitForExpression(
-    `document.querySelector('[data-testid="notification-modal"]')?.dataset.phase === 'visible'`,
+    `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
     'error notification dialog',
   );
 
@@ -300,6 +347,7 @@ async function testBlockingNotifications() {
   await evaluate(`document.querySelector('[data-testid="notification-primary-action"]').click()`);
   const errorResponse = await errorRequest;
   assert.equal(errorResponse.status, 200);
+  assert.equal(await evaluate<string>(`window.__swiftcutE2E?.lastErrorAction`), 'acknowledge');
   await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'error dialog to close');
 
   const cancelRequest = postNotification({
@@ -308,12 +356,13 @@ async function testBlockingNotifications() {
     message: 'Choose Cancel to resolve this confirmation as false.',
   });
   await waitForExpression(
-    `document.querySelector('[data-testid="notification-modal"]')?.dataset.phase === 'visible'`,
+    `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
     'confirmation dialog for cancel action',
   );
   await captureScreenshot('notification-confirmation-dialog.png');
   await evaluate(`document.querySelector('[data-testid="notification-secondary-action"]').click()`);
   assert.equal((await cancelRequest).status, 200);
+  assert.equal(await evaluate<boolean>(`window.__swiftcutE2E?.lastConfirmationResult`), false);
   await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'cancelled confirmation to close');
 
   const confirmRequest = postNotification({
@@ -322,11 +371,12 @@ async function testBlockingNotifications() {
     message: 'Choose Confirm to resolve this confirmation as true.',
   });
   await waitForExpression(
-    `document.querySelector('[data-testid="notification-modal"]')?.dataset.phase === 'visible'`,
+    `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
     'confirmation dialog for confirm action',
   );
   await evaluate(`document.querySelector('[data-testid="notification-primary-action"]').click()`);
   assert.equal((await confirmRequest).status, 200);
+  assert.equal(await evaluate<boolean>(`window.__swiftcutE2E?.lastConfirmationResult`), true);
   await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'confirmed dialog to close');
 
   console.log('PASS error and confirmation dialogs');
@@ -379,6 +429,7 @@ try {
   await testTransientNotification('warning');
   await testHoverPauseAndNarrowViewport();
   await testDarkThemeStyles();
+  await testBlockingPriorityAndQueueOrder();
   await testBlockingNotifications();
 
   console.log('All notification desktop E2E tests passed.');
