@@ -39,10 +39,11 @@ const makeFullRect = (frame: CropFrameGeometry): CropRect => {
   return { x: 0, y: 0, width: visible.width, height: visible.height };
 };
 
-function CropNumericField({ label, value, onCommit }: {
+function CropNumericField({ label, value, onCommit, disabled = false }: {
   label: string;
   value: number;
   onCommit: (value: number) => void;
+  disabled?: boolean;
 }) {
   const [draft, setDraft] = useState(String(value));
   const [editing, setEditing] = useState(false);
@@ -63,6 +64,7 @@ function CropNumericField({ label, value, onCommit }: {
       <span>{label}</span>
       <input
         type="text"
+        disabled={disabled}
         inputMode="numeric"
         pattern="[0-9]*"
         aria-label={label}
@@ -144,8 +146,14 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     if (aspect != null && (dimension === 'width' || dimension === 'height')) {
       try { candidate = alignCropSize({ rect: next, frame, aspect, primary: dimension }); } catch { return; }
     }
-    if (validateCropRect(candidate, getCropVisibleSize(frame)).length === 0) setRect(candidate);
-  }, [frame, ratio]);
+    if (validateCropRect(candidate, getCropVisibleSize(frame)).length === 0) {
+      setRect(candidate);
+      if (!resize) {
+        setResizeWidth(candidate.width);
+        setResizeHeight(candidate.height);
+      }
+    }
+  }, [frame, ratio, resize]);
 
   const updateDimension = (dimension: Dimension, value: number) => {
     changeRect({ ...rect, [dimension]: value }, dimension);
@@ -214,7 +222,13 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       const wanted = aspect ?? ((drag.rect.width * (frame.sarNum / frame.sarDen)) / drag.rect.height);
       try { next = alignCropSize({ rect: next, frame, aspect: wanted, primary: Math.abs(dx) >= Math.abs(dy) ? 'width' : 'height' }); } catch { return; }
     }
-    if (validateCropRect(next, bounds).length === 0) setRect(next);
+    if (validateCropRect(next, bounds).length === 0) {
+      setRect(next);
+      if (!resize) {
+        setResizeWidth(next.width);
+        setResizeHeight(next.height);
+      }
+    }
     event.preventDefault();
     event.stopPropagation();
   };
@@ -323,16 +337,32 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             <CropNumericField label="H" value={rect.height} onCommit={(value) => updateDimension('height', value)} />
           </div>
           <label className={styles.row}><span>{t('Aspect ratio')}</span>
-            <select value={ratio} onChange={(event) => setRatio(event.target.value as CropAspectPreset)}>
+            <select value={ratio} onChange={(event) => {
+              const preset = event.target.value as CropAspectPreset;
+              const aspect = getCropTargetAspect(preset, frame);
+              setRatio(preset);
+              if (aspect != null) {
+                try {
+                  const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
+                  setRect(aligned);
+                  if (!resize) {
+                    setResizeWidth(aligned.width);
+                    setResizeHeight(aligned.height);
+                  }
+                } catch {
+                  // Keep the last valid integer crop while the ratio cannot fit.
+                }
+              }
+            }}>
               {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
             </select>
           </label>
           <strong>{t('Output Size')}</strong>
           <label className={styles.radio}><input type="radio" checked={!resize} onChange={() => setResize(false)} />{t('Original crop size')}</label>
           <div className={styles.resizeRow}>
-            <label className={styles.radio}><input type="radio" checked={resize} onChange={() => { setResize(true); setResizeWidth(rect.width); setResizeHeight(rect.height); }} />{t('Resize to:')}</label>
-            <CropNumericField label="W" value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
-            <CropNumericField label="H" value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
+            <label className={styles.radio}><input type="radio" checked={resize} onChange={() => setResize(true)} />{t('Resize to:')}</label>
+            <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
+            <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
           </div>
           {resize && <label className={styles.checkbox}><input type="checkbox" checked={lockResizeAspect} onChange={(event) => setLockResizeAspect(event.target.checked)} />{t('Lock aspect ratio')}</label>}
           <strong>{t('Video Quality')}</strong>

@@ -2566,6 +2566,7 @@ function App() {
     const scale = Math.min(view.clientWidth / cropPreviewRect.width, view.clientHeight / cropPreviewRect.height);
     return {
       transformOrigin: 'top left',
+      clipPath: `inset(${Math.max(0, cropPreviewRect.top)}px ${Math.max(0, view.clientWidth - cropPreviewRect.left - cropPreviewRect.width)}px ${Math.max(0, view.clientHeight - cropPreviewRect.top - cropPreviewRect.height)}px ${Math.max(0, cropPreviewRect.left)}px)`,
       transform: `translate(${((view.clientWidth - (cropPreviewRect.width * scale)) / 2) - (cropPreviewRect.left * scale)}px, ${((view.clientHeight - (cropPreviewRect.height * scale)) / 2) - (cropPreviewRect.top * scale)}px) scale(${scale})`,
     };
   }, [cropPreviewRect, cropVideoOpen, videoContainerRef]);
