@@ -49,7 +49,6 @@ jobs:
   notification-desktop-e2e:
     name: Notification desktop E2E (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: test
     timeout-minutes: 15
     continue-on-error: ${{ matrix.os == 'windows-2022' }}
     strategy:
