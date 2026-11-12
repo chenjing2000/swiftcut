@@ -505,7 +505,7 @@ try {
   const initialDom = await evaluate<string>('document.body?.innerText?.slice(0, 600) ?? "(empty)"');
   logStage(`Initial document text: ${initialDom}`);
   await waitForExpression(
-    'document.documentElement.dataset.e2eActionsReady === "true"',
+    'document.documentElement?.dataset.e2eActionsReady === "true"',
     'renderer E2E action listener to become ready',
   );
 
