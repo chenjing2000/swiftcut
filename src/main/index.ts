@@ -54,6 +54,10 @@ app.commandLine.appendSwitch('disable-features', [app.commandLine.getSwitchValue
 
 remote.initialize();
 
+// GitHub-hosted Windows runners cannot provide a normal interactive desktop.
+// Use offscreen software rendering only for explicitly enabled desktop E2E tests.
+const e2eOffscreen = process.env['SWIFTCUT_E2E'] === '1';
+if (e2eOffscreen) app.disableHardwareAcceleration();
 
 app.name = appName;
 
@@ -155,7 +159,9 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     ...savedBounds.options,
     darkTheme: true,
+    show: !e2eOffscreen,
     webPreferences: {
+      offscreen: e2eOffscreen,
       contextIsolation: false,
       nodeIntegration: true,
       // https://github.com/electron/electron/issues/5107
