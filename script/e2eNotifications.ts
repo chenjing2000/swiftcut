@@ -4,7 +4,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { execa } from 'execa';
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const httpPort = 18081;
 const debuggingPort = 19222;
@@ -392,8 +393,8 @@ async function testBlockingNotifications() {
   console.log('PASS error and confirmation dialogs');
 }
 
-const appProcess = execa('yarn', [
-  'electron',
+const electronExecutablePath = createRequire(import.meta.url)('electron') as string;
+const appProcess = spawn(electronExecutablePath, [
   `--remote-debugging-port=${debuggingPort}`,
   '.',
   '--http-api',
@@ -401,18 +402,10 @@ const appProcess = execa('yarn', [
 ], {
   env: { ...process.env, SWIFTCUT_E2E: '1' },
   windowsHide: true,
-  forceKillAfterDelay: 10000,
+  stdio: 'inherit',
 });
-async function monitorAppProcess() {
-  try {
-    const result = await appProcess;
-    appProcessExit = { exitCode: result.exitCode };
-  } catch (error) {
-    appProcessExit = { exitCode: null, error };
-  }
-}
-
-const appProcessMonitor = monitorAppProcess();
+appProcess.on('exit', (exitCode) => { appProcessExit = { exitCode }; });
+appProcess.on('error', (error) => { appProcessExit = { exitCode: null, error }; });
 
 try {
   await mkdir(artifactDirectory, { recursive: true });
@@ -467,7 +460,9 @@ try {
     // The app may not have reached the HTTP API startup stage.
   }
   try {
-    await appProcessMonitor;
+    if (!appProcessExit?.error && appProcess.exitCode == null && appProcess.signalCode == null) {
+      await new Promise<void>((resolve) => { appProcess.once('exit', () => resolve()); });
+    }
   } catch {
     // Preserve the original E2E failure if the app had to be terminated.
   }
