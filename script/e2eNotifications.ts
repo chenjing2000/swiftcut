@@ -1,0 +1,405 @@
+/* eslint-disable no-console */
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
+
+import { execa } from 'execa';
+
+const httpPort = 18081;
+const debuggingPort = 19222;
+const baseUrl = `http://127.0.0.1:${httpPort}`;
+const artifactDirectory = join('artifacts', 'notification-e2e');
+
+type CdpResponse = {
+  id?: number;
+  result?: Record<string, unknown>;
+  error?: { message: string };
+};
+
+type CdpTarget = {
+  type: string;
+  url: string;
+  webSocketDebuggerUrl: string;
+};
+
+const pending = new Map<number, {
+  resolve: (value: Record<string, unknown>) => void;
+  reject: (error: Error) => void;
+}>();
+
+let nextMessageId = 0;
+let socket: WebSocket | undefined;
+let shuttingDown = false;
+
+function connectToCdp(url: string) {
+  return new Promise<WebSocket>((resolve, reject) => {
+    const ws = new WebSocket(url);
+    ws.addEventListener('open', () => resolve(ws), { once: true });
+    ws.addEventListener('error', () => reject(new Error('Failed to connect to Electron DevTools Protocol')), { once: true });
+    ws.addEventListener('message', (event) => {
+      const message = JSON.parse(String(event.data)) as CdpResponse;
+      if (message.id == null) return;
+      const request = pending.get(message.id);
+      if (!request) return;
+      pending.delete(message.id);
+      if (message.error) request.reject(new Error(message.error.message));
+      else request.resolve(message.result ?? {});
+    });
+    ws.addEventListener('close', () => {
+      for (const request of pending.values()) request.reject(new Error('CDP connection closed'));
+      pending.clear();
+    });
+  });
+}
+
+function cdp(method: string, params: Record<string, unknown> = {}) {
+  assert.ok(socket);
+  const id = nextMessageId += 1;
+  return new Promise<Record<string, unknown>>((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    socket!.send(JSON.stringify({ id, method, params }));
+  });
+}
+
+async function evaluate<T>(expression: string): Promise<T> {
+  const response = await cdp('Runtime.evaluate', {
+    expression,
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  const exceptionDetails = response['exceptionDetails'];
+  if (exceptionDetails) throw new Error(`Renderer evaluation failed: ${JSON.stringify(exceptionDetails)}`);
+  const result = response['result'] as { value?: T } | undefined;
+  return result?.value as T;
+}
+
+async function waitFor<T>(callback: () => Promise<T | undefined | false>, description: string, timeoutMs = 15000): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = await callback();
+    if (value !== undefined && value !== false) return value as T;
+    await delay(100);
+  }
+  throw new Error(`Timed out waiting for ${description}`);
+}
+
+async function waitForExpression(expression: string, description: string, timeoutMs = 15000) {
+  return waitFor(async () => {
+    const value = await evaluate<boolean | undefined>(expression);
+    return value || undefined;
+  }, description, timeoutMs);
+}
+
+async function postNotification(payload: {
+  type: 'information' | 'success' | 'warning' | 'error' | 'confirmation';
+  title?: string;
+  message: string;
+  details?: string;
+}) {
+  return fetch(`${baseUrl}/api/action/__e2eNotification`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function captureScreenshot(name: string) {
+  const response = await cdp('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  const data = response['data'];
+  assert.equal(typeof data, 'string');
+  await writeFile(join(artifactDirectory, name), Buffer.from(data as string, 'base64'));
+}
+
+async function waitForToast(type: string) {
+  const selector = '[data-testid="notification-toast"]';
+  await waitForExpression(
+    `(() => { const el = document.querySelector('${selector}'); return el?.dataset.type === ${JSON.stringify(type)} && el.dataset.phase === 'visible'; })()`,
+    `${type} toast to become visible`,
+  );
+}
+
+async function getToastMetrics() {
+  return evaluate<{
+    width: number;
+    minWidth: string;
+    maxWidth: string;
+    transitionDuration: string;
+    messageFits: boolean;
+    iconColor: string;
+  }>(`(() => {
+    const card = document.querySelector('[data-testid="notification-toast"]');
+    if (!card) return null;
+    const message = card.querySelector('.message');
+    const icon = card.querySelector('svg[data-type]');
+    const style = getComputedStyle(card);
+    return {
+      width: card.getBoundingClientRect().width,
+      minWidth: style.minWidth,
+      maxWidth: style.maxWidth,
+      transitionDuration: style.transitionDuration,
+      messageFits: !message || message.scrollWidth <= message.clientWidth + 1,
+      iconColor: icon ? getComputedStyle(icon).color : '',
+    };
+  })()`);
+}
+
+async function testTransientNotification(type: 'information' | 'success' | 'warning') {
+  const response = await postNotification({
+    type,
+    title: `${type} notification`,
+    message: `Automated desktop UI test for the ${type} notification.`,
+  });
+  assert.equal(response.status, 200, `Failed to enqueue ${type} notification`);
+
+  await waitForToast(type);
+  const metrics = await getToastMetrics();
+  assert.equal(metrics.width, 360, `${type} notification should be 360 CSS px wide`);
+  assert.equal(metrics.transitionDuration, '0.6s', 'Toast opacity transition should last 0.6 seconds');
+  assert.ok(Number.parseFloat(metrics.minWidth) >= 0 && Number.parseFloat(metrics.minWidth) <= 300);
+  assert.ok(Number.parseFloat(metrics.maxWidth) <= 480);
+  assert.equal(metrics.messageFits, true, 'Notification message should not overflow horizontally');
+  assert.ok(metrics.iconColor.length > 0, 'Notification icon should have a computed color');
+
+  await captureScreenshot(`toast-${type}.png`);
+  await waitForExpression(
+    `!document.querySelector('[data-testid="notification-toast"]')`,
+    `${type} toast to auto-dismiss after its visible interval`,
+    8000,
+  );
+  console.log(`PASS transient notification: ${type}`);
+}
+
+async function testHoverPauseAndNarrowViewport() {
+  await cdp('Emulation.setDeviceMetricsOverride', {
+    width: 320,
+    height: 720,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+
+  const response = await postNotification({
+    type: 'information',
+    title: 'Hover pause',
+    message: 'This notification must remain visible while the pointer is over it.',
+  });
+  assert.equal(response.status, 200);
+  await waitForToast('information');
+
+  const metrics = await evaluate<{ width: number; maxWidth: string }>(`(() => {
+    const card = document.querySelector('[data-testid="notification-toast"]');
+    if (!card) return null;
+    return { width: card.getBoundingClientRect().width, maxWidth: getComputedStyle(card).maxWidth };
+  })()`);
+  assert.ok(metrics.width <= 320 * 0.9 + 1, 'Toast should fit within 90% of a narrow viewport');
+  assert.ok(metrics.width < 300, 'The 90vw constraint should take precedence when the viewport is narrow');
+  await captureScreenshot('toast-narrow-viewport.png');
+
+  const rect = await evaluate<{ x: number; y: number; width: number; height: number }>(`(() => {
+    const card = document.querySelector('[data-testid="notification-toast"]');
+    const r = card.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  })()`);
+  await cdp('Input.dispatchMouseEvent', {
+    type: 'mouseMoved',
+    x: rect.x + rect.width / 2,
+    y: rect.y + rect.height / 2,
+  });
+
+  await delay(5500);
+  await waitForExpression(
+    `Boolean(document.querySelector('[data-testid="notification-toast"]'))`,
+    'toast to remain visible while hovered',
+  );
+
+  await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 });
+  await delay(4500);
+  await waitForExpression(
+    `Boolean(document.querySelector('[data-testid="notification-toast"]'))`,
+    'toast to remain visible for its remaining hold time after hover',
+  );
+  await waitForExpression(
+    `!document.querySelector('[data-testid="notification-toast"]')`,
+    'toast to dismiss after the remaining hold time',
+    2000,
+  );
+
+  await cdp('Emulation.clearDeviceMetricsOverride');
+  console.log('PASS hover pause and narrow viewport');
+}
+
+async function testDarkThemeStyles() {
+  const before = await evaluate<string>(`getComputedStyle(document.querySelector('[data-testid="notification-toast"]') ?? document.body).backgroundColor`).catch(() => '');
+  const response = await postNotification({
+    type: 'information',
+    title: 'Theme style check',
+    message: 'Checking the dark-theme notification style.',
+  });
+  assert.equal(response.status, 200);
+  await waitForToast('information');
+
+  const colors = await evaluate<{ light: string; dark: string }>(`(() => {
+    const root = document.querySelector('#app-root');
+    const card = document.querySelector('[data-testid="notification-toast"]');
+    const light = getComputedStyle(card).backgroundColor;
+    root.classList.add('dark-theme');
+    const dark = getComputedStyle(card).backgroundColor;
+    root.classList.remove('dark-theme');
+    return { light, dark };
+  })()`);
+  assert.notEqual(colors.light, colors.dark, 'Dark-theme CSS should change the toast background');
+  await captureScreenshot('toast-dark-theme-style.png');
+  await waitForExpression(
+    `!document.querySelector('[data-testid="notification-toast"]')`,
+    'theme-check toast to auto-dismiss',
+    8000,
+  );
+  console.log(`PASS dark-theme style override (initial background: ${before || 'not sampled'})`);
+}
+
+async function testBlockingNotifications() {
+  const longMessage = 'Long diagnostic message for notification wrapping. '.repeat(30);
+  const longDetails = 'FFmpeg diagnostic output line. '.repeat(300);
+  const errorRequest = postNotification({
+    type: 'error',
+    title: 'Automated error notification',
+    message: longMessage,
+    details: longDetails,
+  });
+
+  await waitForExpression(
+    `document.querySelector('[data-testid="notification-modal"]')?.dataset.phase === 'visible'`,
+    'error notification dialog',
+  );
+
+  const errorMetrics = await evaluate<{
+    width: number;
+    messageFits: boolean;
+    transitionDuration: string;
+  }>(`(() => {
+    const modal = document.querySelector('[data-testid="notification-modal"]');
+    const message = modal.querySelector('.message');
+    return {
+      width: modal.getBoundingClientRect().width,
+      messageFits: message.scrollWidth <= message.clientWidth + 1,
+      transitionDuration: getComputedStyle(modal).transitionDuration,
+    };
+  })()`);
+  assert.equal(errorMetrics.width, 360, 'Error dialog should be 360 CSS px wide');
+  assert.equal(errorMetrics.messageFits, true, 'Long error message should wrap without horizontal overflow');
+  assert.equal(errorMetrics.transitionDuration, '0.6s');
+
+  await evaluate(`document.querySelector('[data-testid="notification-modal"] details summary').click()`);
+  const detailsMetrics = await evaluate<{ scrollHeight: number; clientHeight: number }>(`(() => {
+    const details = document.querySelector('[data-testid="notification-modal"] .detailsText');
+    return { scrollHeight: details.scrollHeight, clientHeight: details.clientHeight };
+  })()`);
+  assert.ok(detailsMetrics.scrollHeight > detailsMetrics.clientHeight, 'Long technical details should be scrollable');
+
+  await captureScreenshot('notification-error-dialog.png');
+  await evaluate(`document.querySelector('[data-testid="notification-primary-action"]').click()`);
+  const errorResponse = await errorRequest;
+  assert.equal(errorResponse.status, 200);
+  await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'error dialog to close');
+
+  const cancelRequest = postNotification({
+    type: 'confirmation',
+    title: 'Cancel confirmation',
+    message: 'Choose Cancel to resolve this confirmation as false.',
+  });
+  await waitForExpression(
+    `document.querySelector('[data-testid="notification-modal"]')?.dataset.phase === 'visible'`,
+    'confirmation dialog for cancel action',
+  );
+  await captureScreenshot('notification-confirmation-dialog.png');
+  await evaluate(`document.querySelector('[data-testid="notification-secondary-action"]').click()`);
+  assert.equal((await cancelRequest).status, 200);
+  await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'cancelled confirmation to close');
+
+  const confirmRequest = postNotification({
+    type: 'confirmation',
+    title: 'Confirm confirmation',
+    message: 'Choose Confirm to resolve this confirmation as true.',
+  });
+  await waitForExpression(
+    `document.querySelector('[data-testid="notification-modal"]')?.dataset.phase === 'visible'`,
+    'confirmation dialog for confirm action',
+  );
+  await evaluate(`document.querySelector('[data-testid="notification-primary-action"]').click()`);
+  assert.equal((await confirmRequest).status, 200);
+  await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'confirmed dialog to close');
+
+  console.log('PASS error and confirmation dialogs');
+}
+
+const appProcess = execa('yarn', [
+  'electron',
+  '--remote-debugging-port=' + debuggingPort,
+  '.',
+  '--http-api',
+  String(httpPort),
+], {
+  env: { ...process.env, SWIFTCUT_E2E: '1' },
+  windowsHide: true,
+  forceKillAfterDelay: 10000,
+});
+appProcess.catch((error: unknown) => {
+  if (!shuttingDown) console.error('SwiftCut process exited unexpectedly', error);
+});
+
+try {
+  await mkdir(artifactDirectory, { recursive: true });
+
+  await waitFor(async () => {
+    try {
+      const response = await fetch(baseUrl);
+      return response.ok || undefined;
+    } catch {
+      return undefined;
+    }
+  }, 'SwiftCut HTTP API to start', 60000);
+
+  const targets = await waitFor(async () => {
+    try {
+      const response = await fetch(`http://127.0.0.1:${debuggingPort}/json/list`);
+      if (!response.ok) return undefined;
+      const items = await response.json() as CdpTarget[];
+      return items.find((item) => item.type === 'page' && item.webSocketDebuggerUrl);
+    } catch {
+      return undefined;
+    }
+  }, 'Electron DevTools Protocol target', 30000);
+
+  socket = await connectToCdp(targets.webSocketDebuggerUrl);
+  await cdp('Page.enable');
+  await cdp('Runtime.enable');
+
+  await testTransientNotification('information');
+  await testTransientNotification('success');
+  await testTransientNotification('warning');
+  await testHoverPauseAndNarrowViewport();
+  await testDarkThemeStyles();
+  await testBlockingNotifications();
+
+  console.log('All notification desktop E2E tests passed.');
+} catch (error) {
+  try {
+    if (socket?.readyState === WebSocket.OPEN) await captureScreenshot('failure.png');
+  } catch (screenshotError) {
+    console.error('Could not capture failure screenshot', screenshotError);
+  }
+  throw error;
+} finally {
+  shuttingDown = true;
+  socket?.close();
+  try {
+    await fetch(`${baseUrl}/api/action/quit`, { method: 'POST' });
+  } catch {
+    // The app may not have reached the HTTP API startup stage.
+  }
+  try {
+    await appProcess;
+  } catch {
+    // Preserve the original E2E failure if the app had to be terminated.
+  }
+}
