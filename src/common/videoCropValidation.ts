@@ -1,4 +1,4 @@
-import type { CropOutputSettings, CropRect } from './videoCropTypes.js';
+import type { CropExportRequest, CropOutputSettings, CropRect, CropTimeSegment } from './videoCropTypes.js';
 
 export interface CropValidationProblem {
   field: string;
@@ -56,4 +56,72 @@ export function validateCropOutput(output: CropOutputSettings, crop: CropRect): 
     issues.push({ field: 'timeRange', message: 'Unsupported crop time range' });
   }
   return issues;
+}
+
+/** The planner is pure: filesystem existence/overwrites are checked by Phase 3B. */
+export function validateCropExportRequest(request: CropExportRequest): CropValidationProblem[] {
+  const problems: CropValidationProblem[] = [];
+  const { config, frame, sourceDuration, segments } = request;
+  if (!request.sourcePath.trim()) problems.push({ field: 'sourcePath', message: 'Missing source video path' });
+  if (!request.outputDir.trim()) problems.push({ field: 'outputDir', message: 'Missing output directory' });
+  if (!Number.isSafeInteger(request.videoStreamIndex) || request.videoStreamIndex < 0) {
+    problems.push({ field: 'videoStreamIndex', message: 'Invalid video stream index' });
+  }
+  if (request.audioStreamIndex != null && (!Number.isSafeInteger(request.audioStreamIndex) || request.audioStreamIndex < 0)) {
+    problems.push({ field: 'audioStreamIndex', message: 'Invalid audio stream index' });
+  }
+  if (!positiveInteger(frame.width) || !positiveInteger(frame.height)) {
+    problems.push({ field: 'frame', message: 'Invalid source video dimensions' });
+  }
+  if (!positiveInteger(frame.sarNum) || !positiveInteger(frame.sarDen)) {
+    problems.push({ field: 'sar', message: 'Invalid sample aspect ratio' });
+  }
+  if (![0, 90, 180, 270].includes(frame.rotation)) {
+    problems.push({ field: 'rotation', message: 'Unsupported source display orientation' });
+  }
+  const rotated = frame.rotation === 90 || frame.rotation === 270;
+  problems.push(...validateCropRect(config.rect, {
+    width: rotated ? frame.height : frame.width,
+    height: rotated ? frame.width : frame.height,
+  }));
+  problems.push(...validateCropOutput(config.output, config.rect));
+  if (!Number.isFinite(sourceDuration) || sourceDuration <= 0) {
+    problems.push({ field: 'sourceDuration', message: 'Invalid source duration' });
+  }
+  if (!['mp4', 'mkv'].includes(config.output.format)) {
+    problems.push({ field: 'format', message: 'Unsupported output container' });
+  }
+  if (!['merge', 'separate'].includes(config.output.outputMode)) {
+    problems.push({ field: 'outputMode', message: 'Unsupported output mode' });
+  }
+  if (!['yuv420p', 'yuv422p', 'yuv444p'].includes(config.output.pixelFormat)) {
+    problems.push({ field: 'pixelFormat', message: 'Unsupported output pixel format' });
+  }
+  // Only the reviewed CPU presets are available in Phase 3A/3B.
+  const high = config.output.quality === 'high' && config.output.crf === 18;
+  const standard = config.output.quality === 'standard' && config.output.crf === 23;
+  if (!high && !standard) problems.push({ field: 'quality', message: 'Unsupported crop encoding preset' });
+  if (config.output.encoder !== 'libx264' || config.output.preset !== 'medium' || config.output.pixelFormat !== 'yuv420p') {
+    problems.push({ field: 'encoder', message: 'Only libx264 medium yuv420p is supported in this phase' });
+  }
+  if (segments.length === 0) {
+    problems.push({ field: 'segments', message: 'No exportable segments selected' });
+  }
+  segments.forEach(({ start, end }, index) => {
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > sourceDuration) {
+      problems.push({ field: 'segments', message: `Invalid export segment at index ${index}` });
+    }
+  });
+  if (config.output.outputMode === 'merge' && doTimeRangesOverlap(segments)) {
+    problems.push({ field: 'segments', message: 'Overlapping segments cannot be merged' });
+  }
+  if (config.output.timeRange === 'entire' && (segments.length !== 1 || segments[0]?.start !== 0 || segments[0].end !== sourceDuration)) {
+    problems.push({ field: 'segments', message: 'Entire video must cover the full source duration' });
+  }
+  return problems;
+}
+
+function doTimeRangesOverlap(segments: readonly CropTimeSegment[]): boolean {
+  const ordered = [...segments].sort((a, b) => a.start - b.start);
+  return ordered.some((segment, index) => index > 0 && segment.start < ordered[index - 1]!.end);
 }

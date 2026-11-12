@@ -40,3 +40,51 @@ export interface CropVideoConfig {
   aspectPreset: CropAspectPreset;
   output: CropOutputSettings;
 }
+
+/** Immutable description of a crop export, prepared before launching FFmpeg. */
+export interface CropExportFrame {
+  width: number;
+  height: number;
+  /** Source display orientation; this is metadata compatibility, not a rotation tool. */
+  rotation: CropRotation;
+  sarNum: number;
+  sarDen: number;
+}
+
+export interface CropExportRequest {
+  sourcePath: string;
+  outputDir: string;
+  frame: CropExportFrame;
+  videoStreamIndex: number;
+  audioStreamIndex?: number;
+  sourceDuration: number;
+  config: CropVideoConfig;
+  /** Already-resolved selected or inverse time ranges, in source seconds. */
+  segments: readonly CropTimeSegment[];
+}
+
+export interface CropExportTask {
+  start: number;
+  end: number;
+  originalIndex: number;
+  outputName: string;
+}
+
+export interface CropExportPlan {
+  sourcePath: string;
+  outputDir: string;
+  frame: CropExportFrame;
+  videoStreamIndex: number;
+  audioStreamIndex?: number;
+  crop: CropRect;
+  output: CropOutputSettings;
+  outputWidth: number;
+  outputHeight: number;
+  encodedWidth: number;
+  encodedHeight: number;
+  /** Keep visible-frame SAR for unscaled output; resized output uses square pixels. */
+  outputSarNum: number;
+  outputSarDen: number;
+  tasks: readonly CropExportTask[];
+  mergedOutputName?: string;
+}
