@@ -157,7 +157,7 @@ async function testTransientNotification(type: 'information' | 'success' | 'warn
 
   await captureScreenshot(`toast-${type}.png`);
   await waitForExpression(
-    `!document.querySelector('[data-testid=notification-toast]')`,
+    '!document.querySelector("[data-testid=notification-toast]")',
     `${type} toast to auto-dismiss after its visible interval`,
     8000,
   );
@@ -202,18 +202,18 @@ async function testHoverPauseAndNarrowViewport() {
 
   await delay(5500);
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid=notification-toast]'))`,
+    'Boolean(document.querySelector("[data-testid=notification-toast]"))',
     'toast to remain visible while hovered',
   );
 
   await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 });
   await delay(4500);
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid=notification-toast]'))`,
+    'Boolean(document.querySelector("[data-testid=notification-toast]"))',
     'toast to remain visible for its remaining hold time after hover',
   );
   await waitForExpression(
-    `!document.querySelector('[data-testid=notification-toast]')`,
+    '!document.querySelector("[data-testid=notification-toast]")',
     'toast to dismiss after the remaining hold time',
     2000,
   );
@@ -251,7 +251,7 @@ async function testDarkThemeStyles() {
     delete root.dataset.e2eRestoreDarkTheme;
   })()`);
   await waitForExpression(
-    `!document.querySelector('[data-testid=notification-toast]')`,
+    '!document.querySelector("[data-testid=notification-toast]")',
     'theme-check toast to auto-dismiss',
     8000,
   );
@@ -281,27 +281,27 @@ async function testBlockingPriorityAndQueueOrder() {
   });
 
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid=notification-toast]'))`,
+    'Boolean(document.querySelector("[data-testid=notification-toast]"))',
     'active toast to remain visible while a blocking error is queued',
   );
-  const activeText = await evaluate<string>(`document.querySelector('[data-testid=notification-toast] .message')?.textContent ?? ''`);
+  const activeText = await evaluate<string>('document.querySelector("[data-testid=notification-toast] .message")?.textContent ?? ""');
   assert.ok(activeText.includes('must not be interrupted'), 'A queued blocking error must not interrupt the active toast');
-  assert.equal(await evaluate<boolean>(`!document.querySelector('[data-testid=notification-modal]')`), true);
+  assert.equal(await evaluate<boolean>('!document.querySelector("[data-testid=notification-modal]")'), true);
 
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid=notification-modal]'))`,
+    'Boolean(document.querySelector("[data-testid=notification-modal]"))',
     'blocking error to become active after the current toast',
     10000,
   );
-  await evaluate(`document.querySelector('[data-testid=notification-primary-action]').click()`);
+  await evaluate('document.querySelector("[data-testid=notification-primary-action]").click()');
   assert.equal((await errorRequest).status, 200);
-  assert.equal(await evaluate<string>(`document.documentElement.dataset.e2eLastErrorAction`), 'acknowledge');
+  assert.equal(await evaluate<string>('document.documentElement.dataset.e2eLastErrorAction'), 'acknowledge');
 
   await waitForToast('success');
-  const queuedText = await evaluate<string>(`document.querySelector('[data-testid=notification-toast] .message')?.textContent ?? ''`);
+  const queuedText = await evaluate<string>('document.querySelector("[data-testid=notification-toast] .message")?.textContent ?? ""');
   assert.ok(queuedText.includes('wait until the blocking error is acknowledged'));
   await waitForExpression(
-    `!document.querySelector('[data-testid=notification-toast]')`,
+    '!document.querySelector("[data-testid=notification-toast]")',
     'queued notification to finish',
     8000,
   );
@@ -319,7 +319,7 @@ async function testBlockingNotifications() {
   });
 
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid=notification-modal]'))`,
+    'Boolean(document.querySelector("[data-testid=notification-modal]"))',
     'error notification dialog',
   );
 
@@ -340,8 +340,8 @@ async function testBlockingNotifications() {
   assert.equal(errorMetrics.messageFits, true, 'Long error message should wrap without horizontal overflow');
   assert.equal(errorMetrics.transitionDuration, '0.6s');
 
-  await evaluate(`document.querySelector('[data-testid=notification-copy-details]').click()`);
-  await evaluate(`document.querySelector('[data-testid=notification-modal] details summary').click()`);
+  await evaluate('document.querySelector("[data-testid=notification-copy-details]").click()');
+  await evaluate('document.querySelector("[data-testid=notification-modal] details summary").click()');
   const detailsMetrics = await evaluate<{ scrollHeight: number; clientHeight: number }>(`(() => {
     const details = document.querySelector('[data-testid=notification-modal] .detailsText');
     return { scrollHeight: details.scrollHeight, clientHeight: details.clientHeight };
@@ -349,11 +349,11 @@ async function testBlockingNotifications() {
   assert.ok(detailsMetrics.scrollHeight > detailsMetrics.clientHeight, 'Long technical details should be scrollable');
 
   await captureScreenshot('notification-error-dialog.png');
-  await evaluate(`document.querySelector('[data-testid=notification-primary-action]').click()`);
+  await evaluate('document.querySelector("[data-testid=notification-primary-action]").click()');
   const errorResponse = await errorRequest;
   assert.equal(errorResponse.status, 200);
-  assert.equal(await evaluate<string>(`document.documentElement.dataset.e2eLastErrorAction`), 'acknowledge');
-  await waitForExpression(`!document.querySelector('[data-testid=notification-modal]')`, 'error dialog to close');
+  assert.equal(await evaluate<string>('document.documentElement.dataset.e2eLastErrorAction'), 'acknowledge');
+  await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'error dialog to close');
 
   const cancelRequest = postNotification({
     type: 'confirmation',
@@ -361,19 +361,19 @@ async function testBlockingNotifications() {
     message: 'Choose Cancel to resolve this confirmation as false.',
   });
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid=notification-modal]'))`,
+    'Boolean(document.querySelector("[data-testid=notification-modal]"))',
     'confirmation dialog for cancel action',
   );
   assert.equal(
-    await evaluate<number>(`document.querySelector('[data-testid=notification-modal]').getBoundingClientRect().width`),
+    await evaluate<number>('document.querySelector("[data-testid=notification-modal]").getBoundingClientRect().width'),
     360,
     'Confirmation dialog should be 360 CSS px wide',
   );
   await captureScreenshot('notification-confirmation-dialog.png');
-  await evaluate(`document.querySelector('[data-testid=notification-secondary-action]').click()`);
+  await evaluate('document.querySelector("[data-testid=notification-secondary-action]").click()');
   assert.equal((await cancelRequest).status, 200);
-  assert.equal(await evaluate<boolean>(`document.documentElement.dataset.e2eLastConfirmationResult === 'true'`), false);
-  await waitForExpression(`!document.querySelector('[data-testid=notification-modal]')`, 'cancelled confirmation to close');
+  assert.equal(await evaluate<boolean>('document.documentElement.dataset.e2eLastConfirmationResult === "true"'), false);
+  await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'cancelled confirmation to close');
 
   const confirmRequest = postNotification({
     type: 'confirmation',
@@ -381,13 +381,13 @@ async function testBlockingNotifications() {
     message: 'Choose Confirm to resolve this confirmation as true.',
   });
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid=notification-modal]'))`,
+    'Boolean(document.querySelector("[data-testid=notification-modal]"))',
     'confirmation dialog for confirm action',
   );
-  await evaluate(`document.querySelector('[data-testid=notification-primary-action]').click()`);
+  await evaluate('document.querySelector("[data-testid=notification-primary-action]").click()');
   assert.equal((await confirmRequest).status, 200);
-  assert.equal(await evaluate<boolean>(`document.documentElement.dataset.e2eLastConfirmationResult === 'true'`), true);
-  await waitForExpression(`!document.querySelector('[data-testid=notification-modal]')`, 'confirmed dialog to close');
+  assert.equal(await evaluate<boolean>('document.documentElement.dataset.e2eLastConfirmationResult === "true"'), true);
+  await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'confirmed dialog to close');
 
   console.log('PASS error and confirmation dialogs');
 }
@@ -403,14 +403,16 @@ const appProcess = execa('yarn', [
   windowsHide: true,
   forceKillAfterDelay: 10000,
 });
-const appProcessMonitor = (async () => {
+async function monitorAppProcess() {
   try {
     const result = await appProcess;
     appProcessExit = { exitCode: result.exitCode };
   } catch (error) {
     appProcessExit = { exitCode: null, error };
   }
-})();
+}
+
+const appProcessMonitor = monitorAppProcess();
 
 try {
   await mkdir(artifactDirectory, { recursive: true });
