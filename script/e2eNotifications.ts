@@ -495,6 +495,9 @@ try {
   logStage('Connected to renderer DevTools');
   await cdp('Page.enable');
   await cdp('Runtime.enable');
+  await cdp('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+  });
   logStage('Probing JavaScript execution in renderer');
   const probe = await cdp('Runtime.evaluate', { expression: '1 + 1', returnByValue: true, awaitPromise: false });
   logStage(`Renderer JavaScript probe: ${JSON.stringify(probe)}`);
