@@ -18,7 +18,7 @@ const pending = new Map<number, {
 
 let nextMessageId = 0;
 let socket: WebSocket | undefined;
-let appProcessExit: { exitCode: number | null; error?: unknown } | undefined;
+let appProcessExit: { exitCode: number | null | undefined; error?: unknown } | undefined;
 
 function connectToCdp(url: string) {
   interface CdpResponse {
