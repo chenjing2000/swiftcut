@@ -33,10 +33,12 @@ function TestHarness() {
           break;
         }
         case 'error': {
+          delete document.documentElement.dataset['e2eLastErrorAction'];
           document.documentElement.dataset['e2eLastErrorAction'] = await showErrorNotification(notification);
           break;
         }
         case 'confirmation': {
+          delete document.documentElement.dataset['e2eLastConfirmationResult'];
           document.documentElement.dataset['e2eLastConfirmationResult'] = String(await requestConfirmation(notification));
           break;
         }
