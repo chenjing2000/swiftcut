@@ -151,12 +151,12 @@ export default function NotificationHost() {
               <NotificationIcon type={active.type} />
               <AlertDialog.Title className={styles['title']}>{active.title ?? defaultTitle}</AlertDialog.Title>
             </div>
-            <AlertDialog.Description className={styles['message']}>{active.message}</AlertDialog.Description>
+            <AlertDialog.Description className={styles['message']} data-testid="notification-message">{active.message}</AlertDialog.Description>
 
             {active.details && (
               <details className={styles['details']}>
                 <summary>{t('Show technical details')}</summary>
-                <pre className={styles['detailsText']}>{active.details}</pre>
+                <pre className={styles['detailsText']} data-testid="notification-details-text">{active.details}</pre>
                 <button type="button" data-testid="notification-copy-details" className={styles['copyButton']} onClick={handleCopyDetails}>{t('Copy details')}</button>
               </details>
             )}
@@ -200,7 +200,7 @@ export default function NotificationHost() {
           <NotificationIcon type={active.type} />
           {active.title && <div className={styles['title']}>{active.title}</div>}
         </div>
-        <div className={styles['message']}>{active.message}</div>
+        <div className={styles['message']} data-testid="notification-message">{active.message}</div>
       </div>
     </div>
   );
