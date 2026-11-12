@@ -332,7 +332,7 @@ async function testBlockingPriorityAndQueueOrder() {
   );
   await evaluate('document.querySelector("[data-testid=notification-primary-action]").click()');
   assert.equal((await errorRequest).status, 200);
-  assert.equal(await evaluate<string>('document.documentElement.dataset.e2eLastErrorAction'), 'acknowledge');
+  await waitForExpression('document.documentElement.dataset.e2eLastErrorAction === "acknowledge"', 'error acknowledgment result');
 
   await waitForToast('success');
   const queuedText = await evaluate<string>('document.querySelector("[data-testid=notification-toast] [data-testid=notification-message]")?.textContent ?? ""');
@@ -394,7 +394,7 @@ async function testBlockingNotifications() {
   await evaluate('document.querySelector("[data-testid=notification-primary-action]").click()');
   const errorResponse = await errorRequest;
   assert.equal(errorResponse.status, 200);
-  assert.equal(await evaluate<string>('document.documentElement.dataset.e2eLastErrorAction'), 'acknowledge');
+  await waitForExpression('document.documentElement.dataset.e2eLastErrorAction === "acknowledge"', 'error acknowledgment result');
   await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'error dialog to close');
 
   const cancelRequest = postNotification({
@@ -419,7 +419,7 @@ async function testBlockingNotifications() {
   );
   await evaluate('document.querySelector("[data-testid=notification-secondary-action]").click()');
   assert.equal((await cancelRequest).status, 200);
-  assert.equal(await evaluate<boolean>('document.documentElement.dataset.e2eLastConfirmationResult === "true"'), false);
+  await waitForExpression('document.documentElement.dataset.e2eLastConfirmationResult === "false"', 'confirmation cancel result');
   await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'cancelled confirmation to close');
 
   const confirmRequest = postNotification({
@@ -433,7 +433,7 @@ async function testBlockingNotifications() {
   );
   await evaluate('document.querySelector("[data-testid=notification-primary-action]").click()');
   assert.equal((await confirmRequest).status, 200);
-  assert.equal(await evaluate<boolean>('document.documentElement.dataset.e2eLastConfirmationResult === "true"'), true);
+  await waitForExpression('document.documentElement.dataset.e2eLastConfirmationResult === "true"', 'confirmation accept result');
   await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'confirmed dialog to close');
 
   console.log('PASS error and confirmation dialogs');
