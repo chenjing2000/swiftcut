@@ -1,10 +1,12 @@
 /* eslint-disable no-console */
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import react from '@vitejs/plugin-react';
+import { createServer } from 'vite';
 
 const httpPort = 18081;
 const debuggingPort = 19222;
@@ -120,12 +122,8 @@ async function postNotification(payload: {
   message: string;
   details?: string;
 }) {
-  return fetch(`${baseUrl}/api/action/__e2eNotification`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(30000),
-  });
+  await evaluate(`window.swiftcutNotificationE2E.send(${JSON.stringify(payload)})`);
+  return { status: 200 };
 }
 
 async function captureScreenshot(name: string) {
@@ -432,15 +430,35 @@ async function testBlockingNotifications() {
   console.log('PASS error and confirmation dialogs');
 }
 
-const electronExecutablePath = createRequire(import.meta.url)('electron') as string;
-const appProcess = spawn(electronExecutablePath, [
-  ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
+const vite = await createServer({
+  configFile: false,
+  root: resolve('src/renderer'),
+  plugins: [react()],
+  server: { host: '127.0.0.1', port: httpPort, strictPort: true },
+});
+await vite.listen();
+
+const browserProfile = await mkdtemp(join(tmpdir(), 'swiftcut-notification-browser-'));
+const chromePath = process.env['CHROME_BIN']
+  ?? (process.platform === 'win32'
+    ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+    : 'google-chrome');
+
+logStage(`Launching headless Chromium: ${chromePath}`);
+const appProcess = spawn(chromePath, [
+  '--headless=new',
+  '--disable-gpu',
+  '--disable-dev-shm-usage',
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--no-sandbox',
+  '--remote-allow-origins=*',
   `--remote-debugging-port=${debuggingPort}`,
-  '.',
-  '--http-api',
-  String(httpPort),
+  '--window-size=1280,800',
+  `--user-data-dir=${browserProfile}`,
+  `${baseUrl}/notification-e2e.html`,
 ], {
-  env: { ...process.env, SWIFTCUT_E2E: '1' },
+  env: process.env,
   windowsHide: true,
   stdio: 'inherit',
 });
@@ -449,26 +467,15 @@ appProcess.on('error', (error) => { appProcessExit = { exitCode: null, error }; 
 
 try {
   await mkdir(artifactDirectory, { recursive: true });
-  logStage('Waiting for HTTP API');
+  logStage('Waiting for headless Chromium DevTools target');
 
-  await waitFor(async () => {
-    if (appProcessExit) throw new Error(`SwiftCut exited before HTTP API startup: ${JSON.stringify(appProcessExit)}`);
-    try {
-      const response = await fetch(baseUrl);
-      return response.ok || undefined;
-    } catch {
-      return undefined;
-    }
-  }, 'SwiftCut HTTP API to start', 60000);
-
-  logStage('HTTP API ready; finding Electron renderer target');
   const targets = await waitFor(async () => {
-    if (appProcessExit) throw new Error(`SwiftCut exited before DevTools became available: ${JSON.stringify(appProcessExit)}`);
+    if (appProcessExit) throw new Error(`Chromium exited before DevTools became available: ${JSON.stringify(appProcessExit)}`);
     try {
       const response = await fetch(`http://127.0.0.1:${debuggingPort}/json/list`);
       if (!response.ok) return undefined;
       const items = await response.json() as { type: string; url: string; title?: string; webSocketDebuggerUrl: string }[];
-      return items.find((item) => item.type === 'page' && item.webSocketDebuggerUrl && !item.url.startsWith('devtools://'));
+      return items.find((item) => item.type === 'page' && item.webSocketDebuggerUrl && item.url.includes('notification-e2e.html'));
     } catch {
       return undefined;
     }
@@ -507,16 +514,8 @@ try {
   }
   throw error;
 } finally {
-  logStage('Cleaning up renderer connection and Electron process');
+  logStage('Cleaning up Chromium and Vite test server');
   socket?.close();
-  try {
-    await fetch(`${baseUrl}/api/action/quit`, {
-      method: 'POST',
-      signal: AbortSignal.timeout(3000),
-    });
-  } catch (error) {
-    console.warn('[notification-e2e] Graceful quit unavailable:', error);
-  }
   if (appProcess.exitCode == null && appProcess.signalCode == null) {
     if (process.platform === 'win32' && appProcess.pid != null) {
       const terminated = spawnSync('taskkill', ['/PID', String(appProcess.pid), '/T', '/F'], {
@@ -529,5 +528,7 @@ try {
       appProcess.kill();
     }
   }
+  await vite.close();
+  await rm(browserProfile, { recursive: true, force: true, maxRetries: 2 });
   logStage('Cleanup complete');
 }
