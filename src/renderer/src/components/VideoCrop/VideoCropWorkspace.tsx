@@ -340,30 +340,30 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               id="crop-aspect-ratio"
               value={ratio}
               onChange={(event) => {
-              const preset = event.target.value as CropAspectPreset;
-              const aspect = getCropTargetAspect(preset, frame);
-              setRatio(preset);
-              if (aspect != null) {
-                try {
-                  const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
-                  setRect(aligned);
-                  if (!resize) {
-                    setResizeWidth(aligned.width);
-                    setResizeHeight(aligned.height);
+                const preset = event.target.value as CropAspectPreset;
+                const aspect = getCropTargetAspect(preset, frame);
+                setRatio(preset);
+                if (aspect != null) {
+                  try {
+                    const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
+                    setRect(aligned);
+                    if (!resize) {
+                      setResizeWidth(aligned.width);
+                      setResizeHeight(aligned.height);
+                    }
+                  } catch {
+                    // Keep the last valid integer crop while the ratio cannot fit.
                   }
-                } catch {
-                  // Keep the last valid integer crop while the ratio cannot fit.
                 }
-              }
               }}
             >
               {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
             </select>
           </label>
           <strong>{t('Output Size')}</strong>
-          <label className={styles['radio']} htmlFor="crop-original-size"><input id="crop-original-size" name="crop-output-size" type="radio" checked={!resize onChange={() => setResize(false)} />{t('Original crop size')}</label>
+          <label className={styles['radio']} htmlFor="crop-original-size"><input id="crop-original-size" name="crop-output-size" type="radio" checked={!resize} onChange={() => setResize(false)} />{t('Original crop size')}</label>
           <div className={styles['resizeRow']}>
-            <label className={styles['radio']} htmlFor="crop-resize"><input id="crop-resize" name="crop-output-size" type="radio" checked={resize onChange={() => setResize(true)} />{t('Resize to:')}</label>
+            <label className={styles['radio']} htmlFor="crop-resize"><input id="crop-resize" name="crop-output-size" type="radio" checked={resize} onChange={() => setResize(true)} />{t('Resize to:')}</label>
             <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
             <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
           </div>
