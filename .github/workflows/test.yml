@@ -45,3 +45,43 @@ jobs:
         run: |
           yarn generate-licenses
           git reset --hard HEAD
+
+  notification-desktop-e2e:
+    name: Notification desktop E2E (Windows)
+    runs-on: windows-2022
+    needs: test
+    timeout-minutes: 30
+
+    steps:
+      - run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v6
+
+      - run: corepack enable
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'yarn'
+
+      - run: yarn install --immutable
+
+      # Dependency install scripts are disabled by .yarnrc.yml. Install the Electron
+      # binary explicitly so the packaged runtime can be launched in the desktop test.
+      - run: yarn run install-electron --no
+
+      - name: Download Windows FFmpeg binaries
+        run: yarn download-ffmpeg-win32-x64
+
+      - run: yarn build
+
+      - name: Run notification desktop E2E tests
+        run: node script/e2eNotifications.ts
+
+      - name: Upload notification screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notification-desktop-e2e-screenshots
+          path: artifacts/notification-e2e/
+          if-no-files-found: ignore
