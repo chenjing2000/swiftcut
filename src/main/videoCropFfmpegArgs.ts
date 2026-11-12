@@ -6,18 +6,17 @@ export function buildCropFfmpegArgs({
   plan, task, outputPath,
 }: { plan: CropExportPlan; task: CropExportTask; outputPath: string }): string[] {
   if (!outputPath) throw new Error('Missing temporary output path');
-  if (!plan.tasks.some((candidate) => candidate.start === task.start && candidate.end === task.end
-    && candidate.originalIndex === task.originalIndex)) throw new Error('Unknown crop task');
+  if (plan.tasks.every((candidate) => candidate.start !== task.start || candidate.end !== task.end
+    || candidate.originalIndex !== task.originalIndex)) throw new Error('Unknown crop task');
 
   const { frame, crop, output } = plan;
-  const filters: string[] = [];
   // Never rely on implicit metadata-based autorotation. Display-space coordinates
   // from Phase 2 are applied after the source's existing orientation is normalized.
   // For odd X/Y and subsampled input, upsample chroma before crop to preserve the luma origin.
-  filters.push('format=yuv444p');
+  const filters: string[] = ['format=yuv444p'];
   if (frame.rotation === 90) filters.push('transpose=clock');
-  if (frame.rotation === 180) filters.push('hflip', 'vflip');
-  if (frame.rotation === 270) filters.push('transpose=cclock');
+  else if (frame.rotation === 180) filters.push('hflip', 'vflip');
+  else if (frame.rotation === 270) filters.push('transpose=cclock');
   filters.push(`crop=w=${crop.width}:h=${crop.height}:x=${crop.x}:y=${crop.y}:exact=1`);
   if (output.resize) filters.push(`scale=w=${plan.outputWidth}:h=${plan.outputHeight}:flags=lanczos`);
   if (plan.encodedWidth !== plan.outputWidth || plan.encodedHeight !== plan.outputHeight) {

@@ -4,8 +4,8 @@ import type { CropExportRequest } from '../../common/videoCropTypes.js';
 import { createCropExportPlan } from './videoCropExportPlanner.js';
 
 const makeRequest = (): CropExportRequest => ({
-  sourcePath: 'C:\\Videos\\test.clip.mp4',
-  outputDir: 'C:\\Exports',
+  sourcePath: String.raw`C:\Videos\test.clip.mp4`,
+  outputDir: String.raw`C:\Exports`,
   frame: { width: 1920, height: 1080, rotation: 0, sarNum: 1, sarDen: 1 },
   videoStreamIndex: 0,
   audioStreamIndex: 1,
@@ -15,10 +15,19 @@ const makeRequest = (): CropExportRequest => ({
     rect: { x: 101, y: 51, width: 853, height: 479 },
     aspectPreset: 'free',
     output: {
-      resize: false, width: 853, height: 479, lockAspect: true,
-      quality: 'high', encoder: 'libx264', crf: 18, preset: 'medium',
-      pixelFormat: 'yuv420p', format: 'mp4', keepAudio: true,
-      timeRange: 'selected', outputMode: 'merge',
+      resize: false,
+      width: 853,
+      height: 479,
+      lockAspect: true,
+      quality: 'high',
+      encoder: 'libx264',
+      crf: 18,
+      preset: 'medium',
+      pixelFormat: 'yuv420p',
+      format: 'mp4',
+      keepAudio: true,
+      timeRange: 'selected',
+      outputMode: 'merge',
     },
   },
 });
@@ -77,7 +86,7 @@ describe('Crop Video Phase 3A export planner', () => {
     request.segments = [{ start: 10, end: 20, originalIndex: 0 }, { start: 19, end: 30, originalIndex: 1 }];
     expect(() => createCropExportPlan(request)).toThrow('Overlapping segments cannot be merged');
     request.config.output.outputMode = 'separate';
-    expect(() => createCropExportPlan(request)).not.toThrow();
+    expect(() => createCropExportPlan(request)).not.toThrow('Missing temporary output path');
     request.config.output.quality = 'custom';
     expect(() => createCropExportPlan(request)).toThrow('Unsupported crop encoding preset');
   });
@@ -87,6 +96,6 @@ describe('Crop Video Phase 3A export planner', () => {
     request.config.output.timeRange = 'entire';
     expect(() => createCropExportPlan(request)).toThrow('Entire video must cover the full source duration');
     request.segments = [{ start: 0, end: 100, originalIndex: 0 }];
-    expect(() => createCropExportPlan(request)).not.toThrow();
+    expect(() => createCropExportPlan(request)).not.toThrow('Missing temporary output path');
   });
 });

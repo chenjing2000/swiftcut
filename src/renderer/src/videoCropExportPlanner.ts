@@ -19,7 +19,7 @@ export function createCropExportPlan(request: CropExportRequest): CropExportPlan
 
   const base = `${sourceStem}.crop`;
   const extension = output.format;
-  const sorted = [...request.segments].sort((a, b) => a.start - b.start || a.originalIndex - b.originalIndex);
+  const sorted = request.segments.toSorted((a, b) => a.start - b.start || a.originalIndex - b.originalIndex);
   const separate = output.outputMode === 'separate' && sorted.length > 1;
   const tasks: CropExportTask[] = sorted.map((segment, index) => ({
     start: segment.start,

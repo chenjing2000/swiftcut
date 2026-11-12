@@ -58,6 +58,11 @@ export function validateCropOutput(output: CropOutputSettings, crop: CropRect): 
   return issues;
 }
 
+function doTimeRangesOverlap(segments: readonly CropTimeSegment[]): boolean {
+  const ordered = segments.toSorted((a, b) => a.start - b.start);
+  return ordered.some((segment, index) => index > 0 && segment.start < ordered[index - 1]!.end);
+}
+
 /** The planner is pure: filesystem existence/overwrites are checked by Phase 3B. */
 export function validateCropExportRequest(request: CropExportRequest): CropValidationProblem[] {
   const problems: CropValidationProblem[] = [];
@@ -80,11 +85,13 @@ export function validateCropExportRequest(request: CropExportRequest): CropValid
     problems.push({ field: 'rotation', message: 'Unsupported source display orientation' });
   }
   const rotated = frame.rotation === 90 || frame.rotation === 270;
-  problems.push(...validateCropRect(config.rect, {
-    width: rotated ? frame.height : frame.width,
-    height: rotated ? frame.width : frame.height,
-  }));
-  problems.push(...validateCropOutput(config.output, config.rect));
+  problems.push(
+    ...validateCropRect(config.rect, {
+      width: rotated ? frame.height : frame.width,
+      height: rotated ? frame.width : frame.height,
+    }),
+    ...validateCropOutput(config.output, config.rect),
+  );
   if (!Number.isFinite(sourceDuration) || sourceDuration <= 0) {
     problems.push({ field: 'sourceDuration', message: 'Invalid source duration' });
   }
@@ -121,7 +128,3 @@ export function validateCropExportRequest(request: CropExportRequest): CropValid
   return problems;
 }
 
-function doTimeRangesOverlap(segments: readonly CropTimeSegment[]): boolean {
-  const ordered = [...segments].sort((a, b) => a.start - b.start);
-  return ordered.some((segment, index) => index > 0 && segment.start < ordered[index - 1]!.end);
-}
