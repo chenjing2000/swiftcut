@@ -2394,6 +2394,9 @@ function App() {
             ...(typeof details === 'string' && { details }),
             source: 'e2e',
           };
+          const e2eState = (window as Window & {
+            __swiftcutE2E?: { lastErrorAction?: string; lastConfirmationResult?: boolean };
+          }).__swiftcutE2E ??= {};
 
           switch (type) {
             case 'information':
@@ -2402,10 +2405,10 @@ function App() {
               enqueueNotification({ ...notification, type });
               break;
             case 'error':
-              await showErrorNotification(notification);
+              e2eState.lastErrorAction = await showErrorNotification(notification);
               break;
             case 'confirmation':
-              await requestConfirmation(notification);
+              e2eState.lastConfirmationResult = await requestConfirmation(notification);
               break;
             default:
               throw new Error('Unsupported E2E notification type');
