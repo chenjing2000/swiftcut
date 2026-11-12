@@ -3,7 +3,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 
-import type { CropAspectPreset, CropOutputMode, CropRect, CropTimeRange } from '../../../../common/videoCropTypes.js';
+import type { CropAspectPreset, CropOutputMode, CropRect, CropTimeRange, CropVideoConfig } from '../../../../common/videoCropTypes.js';
 import { validateCropRect } from '../../../../common/videoCropValidation.js';
 import { alignCropSize, cropPointToScreen, getCropDisplayTransform, getCropTargetAspect, getCropVisibleSize, sanitizeCropDigits, screenToCropPoint } from '../../videoCropGeometry';
 import type { CropFrameGeometry, CropViewport } from '../../videoCropGeometry';
@@ -19,6 +19,7 @@ interface Props {
   segments: readonly CropSourceSegment[];
   duration: number;
   onClose: () => void;
+  onExport: (config: CropVideoConfig) => Promise<void>;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   onPreviewChange: (rect: { left: number; top: number; width: number; height: number } | undefined) => void;
@@ -82,7 +83,7 @@ function CropNumericField({ label, value, onCommit, disabled = false }: {
   );
 }
 
-export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, duration, onClose, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
+export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, duration, onClose, onExport, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
   type Handle = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e';
   type Dimension = 'x' | 'y' | 'width' | 'height';
   const { t } = useTranslation();
@@ -98,6 +99,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [keepAudio, setKeepAudio] = useState(true);
   const [format, setFormat] = useState<'mp4' | 'mkv'>('mp4');
   const [quality, setQuality] = useState('high');
+  const [submitting, setSubmitting] = useState(false);
+  const [exportError, setExportError] = useState<string>();
   const [previewMode, setPreviewMode] = useState<'edit' | 'output'>('edit');
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [panelPosition, setPanelPosition] = useState(() => ({
@@ -308,6 +311,37 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   };
   const multiple = timeRange === 'selected' && segments.filter((segment) => segment.selected && !segment.initial && segment.end != null && segment.end > segment.start).length > 1;
 
+  const submitExport = async () => {
+    if (submitting || !valid || quality === 'custom') return;
+    setExportError(undefined);
+    setSubmitting(true);
+    try {
+      await onExport({
+        rect: { ...rect },
+        aspectPreset: ratio,
+        output: {
+          resize,
+          width: resize ? resizeWidth : rect.width,
+          height: resize ? resizeHeight : rect.height,
+          lockAspect: lockResizeAspect,
+          quality: quality === 'standard' ? 'standard' : 'high',
+          encoder: 'libx264',
+          crf: quality === 'standard' ? 23 : 18,
+          preset: 'medium',
+          pixelFormat: 'yuv420p',
+          format,
+          keepAudio,
+          timeRange,
+          outputMode,
+        },
+      });
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <>
       {previewMode === 'edit' && (
@@ -463,15 +497,16 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               </select>
             </label>
             <div className={styles['footer']}>
-              <span className={styles['phaseNote']}>{t('Export encoding is available in Phase 3')}</span>
+              <span className={styles['phaseNote']}>{t('Multi-segment export is available in Phase 3C')}</span>
               <button type="button" onClick={onClose}>{t('Cancel')}</button>
-              <button type="button" disabled title={t('Export encoding is available in Phase 3')}>{t('Export Video')}</button>
+              <button type="button" disabled={!valid || submitting || quality === 'custom' || multiple} onClick={() => { void submitExport(); }}>{t('Export Video')}</button>
             </div>
             <div className={styles['previewRow']}>
               <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
               <button type="button" aria-pressed={previewMode === 'output'} onClick={() => setPreviewMode('output')}>{t('Preview Output')}</button>
             </div>
             {!valid && <p>{t('Invalid crop region')}</p>}
+            {exportError && <p role="alert">{exportError}</p>}
           </div>
         </section>,
         document.getElementById('app-root') ?? document.body,

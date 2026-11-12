@@ -48,6 +48,9 @@ import Working from './components/Working';
 import OutputFormatSelect from './components/OutputFormatSelect';
 import AudioExtractionDialog from './components/AudioExtraction/AudioExtractionDialog';
 import VideoCropWorkspace from './components/VideoCrop/VideoCropWorkspace';
+import { createCropExportPlan } from './videoCropExportPlanner';
+import { resolveVideoCropSegments } from './videoCropSegments';
+import type { CropVideoConfig } from '../../common/videoCropTypes.js';
 import * as Dialog from './components/Dialog';
 
 import { runStartupCheck } from './mifi';
@@ -160,6 +163,8 @@ function App() {
   const [concatDialogOpen, setConcatDialogOpen] = useState(false);
   const [audioExtractionDialogOpen, setAudioExtractionDialogOpen] = useState(false);
   const [cropVideoForFile, setCropVideoForFile] = useState<string>();
+  const [cropExportJobId, setCropExportJobId] = useState<string>();
+  const [cropExportStatus, setCropExportStatus] = useState<Awaited<ReturnType<typeof mainApi.getCropExportStatus>>>();
   const cropVideoOpen = filePath != null && cropVideoForFile === filePath;
   const [cropPreviewRect, setCropPreviewRect] = useState<{ left: number; top: number; width: number; height: number }>();
   const [zoomUnrounded, setZoom] = useState(1);
@@ -458,6 +463,48 @@ function App() {
   // const getSafeCutTime = useCallback((cutTime, next) => ffmpeg.getSafeCutTime(neighbouringFrames, cutTime, next), [neighbouringFrames]);
 
   const outputDir = getOutDir(customOutDir, filePath);
+
+  const submitCropExport = useCallback(async (config: CropVideoConfig) => {
+    if (!filePath || !cropFrame || !fileDuration || !outputDir || activeVideoStream == null) {
+      throw new Error('No valid crop video is loaded');
+    }
+    if (cropExportStatus && !['success', 'failed', 'cancelled'].includes(cropExportStatus.state)) {
+      throw new Error('A crop video export is already running');
+    }
+    const selected = resolveVideoCropSegments({
+      segments: cutSegments,
+      inverseSegments: inverseCutSegments,
+      inverted: invertCutSegments,
+      duration: fileDuration,
+      timeRange: config.output.timeRange,
+    });
+    if (selected.length !== 1) throw new Error('Phase 3B supports only one time segment');
+    const plan = createCropExportPlan({
+      sourcePath: filePath,
+      outputDir,
+      frame: cropFrame,
+      videoStreamIndex: activeVideoStream.index,
+      ...(config.output.keepAudio && activeAudioStreams[0] != null && { audioStreamIndex: activeAudioStreams[0].index }),
+      sourceDuration: fileDuration,
+      config,
+      segments: selected,
+    });
+    const jobId = await mainApi.startCropExport(plan);
+    setCropExportJobId(jobId);
+    setCropExportStatus({ id: jobId, state: 'preparing', progress: 0 });
+  }, [filePath, cropFrame, fileDuration, outputDir, activeVideoStream, cropExportStatus, cutSegments, inverseCutSegments, invertCutSegments, activeAudioStreams]);
+
+  useEffect(() => {
+    if (cropExportJobId == null) return;
+    let active = true;
+    const update = async () => {
+      const result = await mainApi.getCropExportStatus(cropExportJobId);
+      if (active && result != null) setCropExportStatus(result);
+    };
+    void update();
+    const interval = setInterval(() => { void update(); }, 300);
+    return () => { active = false; clearInterval(interval); };
+  }, [cropExportJobId]);
 
   const increaseRotation = useCallback(() => {
     setRotation((r) => (r + 90) % 450);
@@ -2656,12 +2703,30 @@ function App() {
                         duration={fileDuration}
                         fullscreen={fullscreen}
                         onToggleFullscreen={toggleFullscreenVideo}
+                        onExport={submitCropExport}
                         onClose={() => {
                           setCropVideoForFile(undefined);
                           setCropPreviewRect(undefined);
                         }}
                         onPreviewChange={setCropPreviewRect}
                       />
+                    )}
+
+                    {cropExportStatus && !['success', 'failed', 'cancelled'].includes(cropExportStatus.state) && (
+                      <div style={{ position: 'fixed', right: 16, bottom: 24, zIndex: 300, width: 310, padding: 14, borderRadius: 10, border: '1px solid var(--gray-7)', background: 'var(--gray-2)', color: 'var(--gray-12)', boxShadow: '0 6px 22px #0005' }}>
+                        <strong>Exporting Cropped Video</strong>
+                        <div style={{ marginTop: 8 }}>{cropExportStatus.state}: {Math.round(cropExportStatus.progress * 100)}%</div>
+                        <progress style={{ width: '100%' }} value={cropExportStatus.progress} max={1} />
+                        <button type="button" style={{ marginTop: 8 }} onClick={() => { if (cropExportJobId) void mainApi.cancelCropExport(cropExportJobId); }}>Cancel Export</button>
+                      </div>
+                    )}
+                    {cropExportStatus && ['success', 'failed', 'cancelled'].includes(cropExportStatus.state) && (
+                      <div style={{ position: 'fixed', right: 16, bottom: 24, zIndex: 300, width: 310, padding: 14, borderRadius: 10, border: '1px solid var(--gray-7)', background: 'var(--gray-2)', color: 'var(--gray-12)', boxShadow: '0 6px 22px #0005' }}>
+                        <strong>{cropExportStatus.state === 'success' ? 'Crop export completed' : cropExportStatus.state === 'failed' ? 'Crop export failed' : 'Crop export cancelled'}</strong>
+                        {cropExportStatus.outputPath && <div style={{ overflowWrap: 'anywhere' }}>{cropExportStatus.outputPath}</div>}
+                        {cropExportStatus.error && <div role="alert">{cropExportStatus.error}</div>}
+                        <button type="button" style={{ marginTop: 8 }} onClick={() => { setCropExportJobId(undefined); setCropExportStatus(undefined); }}>Dismiss</button>
+                      </div>
                     )}
 
                     {bigWaveformEnabled && <BigWaveform waveforms={waveforms} relevantTime={relevantTime} playing={playing} fileDurationNonZero={fileDurationNonZero} zoom={zoomUnrounded} seekRel={seekRel} darkMode={darkMode} />}
