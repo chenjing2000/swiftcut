@@ -16,50 +16,45 @@ interface E2ENotificationInput {
   details?: string;
 }
 
-declare global {
-  interface Window {
-    swiftcutNotificationE2E?: { send: (payload: E2ENotificationInput) => void };
-  }
-}
-
 function TestHarness() {
   useEffect(() => {
-    window.swiftcutNotificationE2E = {
-      send({ type, title, message, details }) {
-        const notification = {
-          message,
-          ...(title != null && { title }),
-          ...(details != null && { details }),
-          source: 'notification-e2e',
-        };
-        switch (type) {
-          case 'information':
-          case 'success':
-          case 'warning': {
-            enqueueNotification({ ...notification, type });
-            break;
-          }
-          case 'error': {
-            void showErrorNotification(notification).then((action) => {
-              document.documentElement.dataset['e2eLastErrorAction'] = action;
-            });
-            break;
-          }
-          case 'confirmation': {
-            void requestConfirmation(notification).then((result) => {
-              document.documentElement.dataset['e2eLastConfirmationResult'] = String(result);
-            });
-            break;
-          }
-          default: {
-            throw new Error('Unsupported notification type');
-          }
+    async function handleNotification({ type, title, message, details }: E2ENotificationInput) {
+      const notification = {
+        message,
+        ...(title != null && { title }),
+        ...(details != null && { details }),
+        source: 'notification-e2e',
+      };
+      switch (type) {
+        case 'information':
+        case 'success':
+        case 'warning': {
+          enqueueNotification({ ...notification, type });
+          break;
         }
-      },
-    };
+        case 'error': {
+          document.documentElement.dataset['e2eLastErrorAction'] = await showErrorNotification(notification);
+          break;
+        }
+        case 'confirmation': {
+          document.documentElement.dataset['e2eLastConfirmationResult'] = String(await requestConfirmation(notification));
+          break;
+        }
+        default: {
+          throw new Error('Unsupported notification type');
+        }
+      }
+    }
+
+    function onTestNotification(event: Event) {
+      const { detail } = event as CustomEvent<E2ENotificationInput>;
+      handleNotification(detail).catch((error: unknown) => console.error('Notification E2E event failed', error));
+    }
+
+    document.addEventListener('swiftcut-e2e-notification', onTestNotification);
     document.documentElement.dataset['e2eActionsReady'] = 'true';
     return () => {
-      delete window.swiftcutNotificationE2E;
+      document.removeEventListener('swiftcut-e2e-notification', onTestNotification);
       delete document.documentElement.dataset['e2eActionsReady'];
     };
   }, []);
