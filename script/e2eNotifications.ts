@@ -282,6 +282,8 @@ async function testBlockingPriorityAndQueueOrder() {
     `Boolean(document.querySelector('[data-testid="notification-toast"]'))`,
     'active toast to remain visible while a blocking error is queued',
   );
+  const activeText = await evaluate<string>(`document.querySelector('[data-testid="notification-toast"] .message')?.textContent ?? ''`);
+  assert.ok(activeText.includes('must not be interrupted'), 'A queued blocking error must not interrupt the active toast');
   assert.equal(await evaluate<boolean>(`!document.querySelector('[data-testid="notification-modal"]')`), true);
 
   await waitForExpression(
@@ -336,6 +338,7 @@ async function testBlockingNotifications() {
   assert.equal(errorMetrics.messageFits, true, 'Long error message should wrap without horizontal overflow');
   assert.equal(errorMetrics.transitionDuration, '0.6s');
 
+  await evaluate(`document.querySelector('[data-testid="notification-copy-details"]').click()`);
   await evaluate(`document.querySelector('[data-testid="notification-modal"] details summary').click()`);
   const detailsMetrics = await evaluate<{ scrollHeight: number; clientHeight: number }>(`(() => {
     const details = document.querySelector('[data-testid="notification-modal"] .detailsText');
@@ -358,6 +361,11 @@ async function testBlockingNotifications() {
   await waitForExpression(
     `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
     'confirmation dialog for cancel action',
+  );
+  assert.equal(
+    await evaluate<number>(`document.querySelector('[data-testid="notification-modal"]').getBoundingClientRect().width`),
+    360,
+    'Confirmation dialog should be 360 CSS px wide',
   );
   await captureScreenshot('notification-confirmation-dialog.png');
   await evaluate(`document.querySelector('[data-testid="notification-secondary-action"]').click()`);
