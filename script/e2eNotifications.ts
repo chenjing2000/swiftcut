@@ -233,15 +233,23 @@ async function testDarkThemeStyles() {
 
   const colors = await evaluate<{ light: string; dark: string }>(`(() => {
     const root = document.querySelector('#app-root');
+    const themeWrapper = root.parentElement;
     const card = document.querySelector('[data-testid=notification-toast]');
+    const wasDark = themeWrapper.classList.contains('dark-theme');
+    themeWrapper.classList.remove('dark-theme');
     const light = getComputedStyle(card).backgroundColor;
-    root.classList.add('dark-theme');
+    themeWrapper.classList.add('dark-theme');
     const dark = getComputedStyle(card).backgroundColor;
-    root.classList.remove('dark-theme');
+    root.dataset.e2eRestoreDarkTheme = String(wasDark);
     return { light, dark };
   })()`);
   assert.notEqual(colors.light, colors.dark, 'Dark-theme CSS should change the toast background');
   await captureScreenshot('toast-dark-theme-style.png');
+  await evaluate(`(() => {
+    const root = document.querySelector('#app-root');
+    if (root.dataset.e2eRestoreDarkTheme === 'false') root.parentElement.classList.remove('dark-theme');
+    delete root.dataset.e2eRestoreDarkTheme;
+  })()`);
   await waitForExpression(
     `!document.querySelector('[data-testid=notification-toast]')`,
     'theme-check toast to auto-dismiss',
