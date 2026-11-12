@@ -100,13 +100,10 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [quality, setQuality] = useState('high');
   const [previewMode, setPreviewMode] = useState<'edit' | 'output'>('edit');
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const [panelPosition, setPanelPosition] = useState(() => {
-    const videoBounds = containerRef.current?.getBoundingClientRect();
-    return {
-      left: Math.max(8, (videoBounds?.right ?? window.innerWidth) - 396),
-      top: Math.max(8, (videoBounds?.top ?? 0) + 48),
-    };
-  });
+  const [panelPosition, setPanelPosition] = useState(() => ({
+    left: Math.max(8, window.innerWidth - 396),
+    top: 48,
+  }));
   const [focused, setFocused] = useState(false);
   const panelDragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | undefined>(undefined);
   const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
@@ -477,7 +474,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             {!valid && <p>{t('Invalid crop region')}</p>}
           </div>
         </section>,
-      document.getElementById('app-root') ?? document.body,
+        document.getElementById('app-root') ?? document.body,
       )}
     </>
   );
