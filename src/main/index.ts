@@ -56,7 +56,7 @@ remote.initialize();
 
 // GitHub-hosted Windows runners cannot provide a normal interactive desktop.
 // Use offscreen software rendering only for explicitly enabled desktop E2E tests.
-const e2eOffscreen = process.env['SWIFTCUT_E2E'] === '1';
+const e2eOffscreen = process.platform === 'win32' && process.env['SWIFTCUT_E2E'] === '1';
 if (e2eOffscreen) app.disableHardwareAcceleration();
 
 app.name = appName;
