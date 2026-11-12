@@ -73,8 +73,18 @@ export function screenToCropPoint(screen: CropPoint, frame: CropFrameGeometry, v
   const { width, height } = getCropVisibleSize(frame);
   const x = (screen.x - layout.drawnLeft) * width / layout.drawnWidth;
   const y = (screen.y - layout.drawnTop) * height / layout.drawnHeight;
-  if (x < 0 || y < 0 || x > width || y > height) return undefined;
-  return { x, y };
+
+  // Floating-point layout arithmetic can put an exact edge a tiny fraction
+  // outside the frame. Snap only values within numerical noise of an edge;
+  // do not clamp genuinely out-of-bounds pointer positions into the video.
+  const epsilon = 1e-9;
+  if (x < -epsilon || y < -epsilon || x > width + epsilon || y > height + epsilon) return undefined;
+  const snapEdge = (value: number, upper: number) => {
+    if (Math.abs(value) <= epsilon) return 0;
+    if (Math.abs(value - upper) <= epsilon) return upper;
+    return value;
+  };
+  return { x: snapEdge(x, width), y: snapEdge(y, height) };
 }
 
 export function cropPointToScreen(point: CropPoint, frame: CropFrameGeometry, viewport: CropViewport): CropPoint {

@@ -23,6 +23,14 @@ describe('crop pixel geometry', () => {
     expect(screenToCropPoint({ x: 0, y: 0 }, frame, { ...viewport, fit: 'fill' })).toEqual({ x: 0, y: 0 });
   });
 
+  it('snaps floating-point edge noise without accepting real out-of-bounds points', () => {
+    const viewport = { left: 0, top: 0, width: 500, height: 500, fit: 'fill' as const };
+    expect(screenToCropPoint({ x: 0, y: 0 }, frame, viewport)).toEqual({ x: 0, y: 0 });
+    expect(screenToCropPoint({ x: 500, y: 500 }, frame, viewport)).toEqual({ x: 1920, y: 1080 });
+    expect(screenToCropPoint({ x: -0.01, y: 0 }, frame, viewport)).toBeUndefined();
+    expect(screenToCropPoint({ x: 500.01, y: 500 }, frame, viewport)).toBeUndefined();
+  });
+
   it('maps rectangles through all quarter turns', () => {
     const crop = { x: 10, y: 20, width: 100, height: 200 };
     expect(visibleRectToFrameRect(crop, frame)).toEqual(crop);

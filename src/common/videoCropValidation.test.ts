@@ -5,7 +5,7 @@ import type { CropOutputSettings } from './videoCropTypes';
 describe('Crop Video validation', () => {
   it('rejects invalid or out-of-bounds crop regions', () => {
     expect(validateCropRect({ x: 0, y: 0, width: 1920, height: 1080 }, { width: 1920, height: 1080 })).toEqual([]);
-    expect(validateCropRect({ x: -1, y: 0, width: 5, height: 5 }, { width: 100, height: 100 })).length).toBeGreaterThan(0);
+    expect(validateCropRect({ x: -1, y: 0, width: 5, height: 5 }, { width: 100, height: 100 }).length).toBeGreaterThan(0);
     expect(validateCropRect({ x: 99, y: 0, width: 2, height: 5 }, { width: 100, height: 100 }).length).toBeGreaterThan(0);
     expect(validateCropRect({ x: 0, y: 0, width: 0, height: 5 }, { width: 100, height: 100 }).length).toBeGreaterThan(0);
   });
