@@ -1,0 +1,141 @@
+// eslint-disable-next-line import-js/no-extraneous-dependencies
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import type { CropExportPlan } from '../common/videoCropTypes.js';
+import { cancelCropExport, getCropExportStatus, startCropExport } from './videoCropExportService.js';
+
+type FfprobeMock = (args: readonly string[]) => Promise<{ stdout: Buffer }>;
+type FfmpegMock = (args: {
+  ffmpegArgs: string[];
+  duration?: number;
+  onProgress: (progress: number) => void;
+}) => { result: Promise<unknown>; cancel: () => void };
+type LoggerMock = (...args: unknown[]) => void;
+
+const mocks = vi.hoisted(() => ({
+  probe: vi.fn<FfprobeMock>(),
+  run: vi.fn<FfmpegMock>(),
+  logger: { error: vi.fn<LoggerMock>(), warn: vi.fn<LoggerMock>(), info: vi.fn<LoggerMock>() },
+}));
+
+vi.mock('./ffmpeg.js', () => ({
+  runFfprobe: mocks.probe,
+  runScopedFfmpeg: mocks.run,
+}));
+
+vi.mock('./logger.js', () => ({ default: mocks.logger }));
+
+let directory: string;
+let source: string;
+
+const makePlan = (): CropExportPlan => ({
+  sourcePath: source,
+  outputDir: directory,
+  frame: { width: 320, height: 240, rotation: 0, sarNum: 1, sarDen: 1 },
+  videoStreamIndex: 0,
+  audioStreamIndex: 1,
+  crop: { x: 10, y: 10, width: 100, height: 100 },
+  output: {
+    resize: false,
+    width: 100,
+    height: 100,
+    lockAspect: true,
+    quality: 'high',
+    encoder: 'libx264',
+    crf: 18,
+    preset: 'medium',
+    pixelFormat: 'yuv420p',
+    format: 'mp4',
+    keepAudio: true,
+    timeRange: 'selected',
+    outputMode: 'merge',
+  },
+  outputWidth: 100,
+  outputHeight: 100,
+  encodedWidth: 100,
+  encodedHeight: 100,
+  outputSarNum: 1,
+  outputSarDen: 1,
+  tasks: [{ start: 1, end: 3, originalIndex: 0, outputName: 'clip.crop.mp4' }],
+});
+
+async function expectState(id: string, state: string) {
+  await vi.waitFor(() => expect(getCropExportStatus(id)?.state).toBe(state));
+}
+
+describe('Crop Video single-segment service', () => {
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), 'swiftcut-crop-service-'));
+    source = join(directory, 'clip.mp4');
+    await writeFile(source, 'mock video source');
+    vi.clearAllMocks();
+    mocks.probe.mockImplementation(async () => ({
+      stdout: Buffer.from(JSON.stringify({
+        streams: [
+          { codec_type: 'video', codec_name: 'h264', width: 100, height: 100 },
+          { codec_type: 'audio', codec_name: 'aac' },
+        ],
+        format: { duration: '2' },
+      })),
+    }));
+    mocks.run.mockImplementation(({ ffmpegArgs, onProgress }) => {
+      writeFileSync(ffmpegArgs.at(-1)!, 'mock encoded video');
+      onProgress(0.5);
+      return { result: Promise.resolve(undefined), cancel: () => undefined };
+    });
+  });
+
+  afterEach(async () => {
+    await rm(directory, { force: true, recursive: true });
+  });
+
+  it('validates and commits a single encoded file without leaving task files', async () => {
+    const jobId = await startCropExport(makePlan());
+    await expectState(jobId, 'success');
+    const status = getCropExportStatus(jobId)!;
+    expect(status.progress).toBe(1);
+    expect(status.outputPath).toBe(join(directory, 'clip.crop.mp4'));
+    expect(await readFile(status.outputPath!)).toStrictEqual(Buffer.from('mock encoded video'));
+    expect(await readdir(join(directory, '.swiftcut-crop-tmp'))).toStrictEqual([]);
+  });
+
+  it('never overwrites a pre-existing output file', async () => {
+    await writeFile(join(directory, 'clip.crop.mp4'), 'original');
+    const jobId = await startCropExport(makePlan());
+    await expectState(jobId, 'success');
+    expect(await readFile(join(directory, 'clip.crop.mp4'), 'utf8')).toBe('original');
+    expect(getCropExportStatus(jobId)?.outputPath).toBe(join(directory, 'clip.crop_1.mp4'));
+  });
+
+  it('reports cancellation and does not commit a partial output', async () => {
+    mocks.run.mockImplementation(({ ffmpegArgs }) => {
+      writeFileSync(ffmpegArgs.at(-1)!, 'partial');
+      let rejectTask: (error: Error) => void = () => undefined;
+      const result = new Promise<unknown>((_resolve, reject) => { rejectTask = reject; });
+      return { result, cancel: () => rejectTask(new Error('aborted')) };
+    });
+    const jobId = await startCropExport(makePlan());
+    await vi.waitFor(() => expect(getCropExportStatus(jobId)?.state).toBe('encoding'));
+    cancelCropExport(jobId);
+    await expectState(jobId, 'cancelled');
+    expect(getCropExportStatus(jobId)?.outputPath).toBeUndefined();
+    await expect(readdir(directory)).resolves.not.toContain('clip.crop.mp4');
+  });
+
+  it('fails verification and never commits an invalid output', async () => {
+    mocks.probe.mockImplementation(async () => ({
+      stdout: Buffer.from(JSON.stringify({
+        streams: [{ codec_type: 'video', codec_name: 'h264', width: 10, height: 10 }],
+        format: { duration: '2' },
+      })),
+    }));
+    const jobId = await startCropExport(makePlan());
+    await expectState(jobId, 'failed');
+    expect(getCropExportStatus(jobId)?.error).toContain('verification failed');
+    await expect(readdir(directory)).resolves.not.toContain('clip.crop.mp4');
+  });
+});
