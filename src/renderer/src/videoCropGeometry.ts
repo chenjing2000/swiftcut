@@ -59,18 +59,33 @@ export function getCropDisplayTransform(frame: CropFrameGeometry, viewport: Crop
   const containScale = Math.min(sx, sy);
   let scaleX = containScale;
   let scaleY = containScale;
-  if (viewport.fit === 'cover') {
-    scaleX = Math.max(sx, sy);
-    scaleY = scaleX;
-  } else if (viewport.fit === 'fill') {
-    scaleX = sx;
-    scaleY = sy;
-  } else if (viewport.fit === 'none') {
-    scaleX = 1;
-    scaleY = 1;
-  } else if (viewport.fit === 'scale-down') {
-    scaleX = Math.min(1, containScale);
-    scaleY = scaleX;
+  switch (viewport.fit) {
+    case 'cover': {
+      scaleX = Math.max(sx, sy);
+      scaleY = scaleX;
+      break;
+    }
+    case 'fill': {
+      scaleX = sx;
+      scaleY = sy;
+      break;
+    }
+    case 'none': {
+      scaleX = 1;
+      scaleY = 1;
+      break;
+    }
+    case 'scale-down': {
+      scaleX = Math.min(1, containScale);
+      scaleY = scaleX;
+      break;
+    }
+    case 'contain': {
+      break;
+    }
+    default: {
+      throw new Error('Unsupported video fit');
+    }
   }
   const drawnWidth = displayWidth * scaleX;
   const drawnHeight = displayHeight * scaleY;
