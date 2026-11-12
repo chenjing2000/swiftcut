@@ -271,27 +271,35 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     <>
       {previewMode === 'edit' && (
         <div className={styles['overlay']}>
-        <div
-          ref={surfaceRef}
-          className={styles['surface']}
-          style={{
-            left: layout.drawnLeft,
-            top: layout.drawnTop,
-            width: layout.drawnWidth,
-            height: layout.drawnHeight,
-          }}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          role="presentation"
-        >
-          <div className={styles['selection']} data-crop-handle="move" style={{ ...displayRect, left: displayRect.left - layout.drawnLeft, top: displayRect.top - layout.drawnTop }}>
-            {handles.map((handle) => (
-              <span key={handle} data-crop-handle={handle} className={styles['handle']} style={handleStyles[handle]} />
-            ))}
+          <div
+            ref={surfaceRef}
+            className={styles['surface']}
+            style={{
+              left: layout.drawnLeft,
+              top: layout.drawnTop,
+              width: layout.drawnWidth,
+              height: layout.drawnHeight,
+            }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            role="presentation"
+          >
+            <div
+              className={styles['selection']}
+              data-crop-handle="move"
+              style={{
+                ...displayRect,
+                left: displayRect.left - layout.drawnLeft,
+                top: displayRect.top - layout.drawnTop,
+              }}
+            >
+              {handles.map((handle) => (
+                <span key={handle} data-crop-handle={handle} className={styles['handle']} style={handleStyles[handle]} />
+              ))}
+            </div>
           </div>
-        </div>
         </div>
       )}
       <section
