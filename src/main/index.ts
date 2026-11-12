@@ -36,7 +36,7 @@ import * as i18nCommon from './i18nCommon.js';
 import './i18n.js';
 import type { ApiActionRequest, Config } from '../common/types.js';
 import * as ffmpeg from './ffmpeg.js';
-import { startAudioExtraction, getAudioExtractionStatus, cancelAudioExtraction, cancelAllAudioExtractions } from './audioExtraction.js';
+import { startAudioExtraction, getAudioExtractionStatus, cancelAudioExtraction, resumeAudioExtraction, cancelAllAudioExtractions } from './audioExtraction.js';
 import * as compatPlayer from './compatPlayer.js';
 import { downloadMediaUrl } from './ffmpeg.js';
 import { hasDisabledNetworking, setDisableNetworking, shouldBlockNetworkUrl } from './networking.js';
@@ -53,7 +53,6 @@ app.commandLine.appendSwitch('enable-blink-features', 'AudioVideoTracks');
 app.commandLine.appendSwitch('disable-features', [app.commandLine.getSwitchValue('disable-features'), 'HardwareMediaKeyHandling', 'MediaSessionService'].filter(Boolean).join(','));
 
 remote.initialize();
-
 
 app.name = appName;
 
@@ -453,6 +452,7 @@ const remoteApi = {
   startAudioExtraction,
   getAudioExtractionStatus,
   cancelAudioExtraction,
+  resumeAudioExtraction,
   pathExists,
   downloadMediaUrl,
   fileTypeFromFile,

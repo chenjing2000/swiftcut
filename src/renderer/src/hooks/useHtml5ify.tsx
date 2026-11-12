@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { Html5ifyMode } from '../../../common/types';
 import { DirectoryAccessDeclinedError } from '../../errors';
-import getSwal from '../swal';
+import { showErrorNotification } from '../notifications/notificationStore';
 import Checkbox from '../components/Checkbox';
 import type { SetWorking } from './useLoading';
 import type { WithErrorHandling } from './useErrorHandling';
@@ -206,7 +206,13 @@ export default function useHtml5ify({ filePath, hasVideo, hasAudio, workingRef, 
           setTotalProgress();
         }
 
-        if (failedFiles.length > 0) getSwal().toast.fire({ title: `${i18n.t('Failed to convert files:')} ${failedFiles.join(' ')}`, timer: undefined, showConfirmButton: true });
+        if (failedFiles.length > 0) {
+          await showErrorNotification({
+            title: i18n.t('Error'),
+            message: i18n.t('Failed to convert files:') + failedFiles.join(' '),
+            source: 'batch-html5ify',
+          });
+        }
       }, i18n.t('Failed to batch convert to supported format'));
     } finally {
       setWorking(undefined);

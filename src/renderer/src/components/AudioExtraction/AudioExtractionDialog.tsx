@@ -1,7 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import mainApi from '../../mainApi';
+import { showErrorNotification } from '../../notifications/notificationStore';
 import * as Dialog from '../Dialog';
 import { DialogButton } from '../Button';
 import { dangerColor, primaryTextColor, saveColor, warningColor } from '../../colors';
@@ -90,29 +91,71 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
   const [job, setJob] = useState<AudioJobStatus>();
   const [isStarting, setIsStarting] = useState(false);
-  const [error, setError] = useState<string>();
 
-  const runningJobId = job?.state === 'running' ? job.id : undefined;
+  const pollingJobId = job && (job.state === 'running' || job.state === 'paused') ? job.id : undefined;
+  const handledPauseTaskRef = useRef<string | undefined>(undefined);
+  const pollingErrorShownRef = useRef(false);
 
   useEffect(() => {
-    if (runningJobId == null) return undefined;
+    if (pollingJobId == null) return undefined;
 
-    const timer = setInterval(() => {
-      mainApi.getAudioExtractionStatus(runningJobId).then((status) => {
-        if (status) setJob(status);
-        return status;
-      }).catch((err: unknown) => {
-        setError(String(err));
-      });
-    }, 400);
+    let disposed = false;
 
-    return () => clearInterval(timer);
-  }, [runningJobId]);
+    const pollStatus = async () => {
+      try {
+        const status = await mainApi.getAudioExtractionStatus(pollingJobId);
+        if (!status || disposed) return;
+        setJob(status);
+        pollingErrorShownRef.current = false;
+
+        if (status.state === 'paused') {
+          const failedTask = status.tasks.findLast((task) => task.state === 'failed' && task.error);
+          if (!failedTask) return;
+
+          const taskKey = `${pollingJobId}:${failedTask.segmentNumber}:${failedTask.trackNumber}:${failedTask.streamIndex}`;
+          if (handledPauseTaskRef.current === taskKey) return;
+          handledPauseTaskRef.current = taskKey;
+
+          const action = await showErrorNotification({
+            title: t('Audio extraction failed'),
+            message: t('Segment {{segment}} · Track {{track}} could not be extracted. The remaining tasks are paused.', {
+              segment: failedTask.segmentNumber,
+              track: failedTask.trackNumber,
+            }),
+            ...(failedTask.error && { details: failedTask.error }),
+            primaryActionLabel: t('Continue'),
+            secondaryActionLabel: t('Cancel remaining tasks'),
+            source: `audio-extraction:${taskKey}`,
+            focusPrimary: true,
+          });
+
+          if (disposed) return;
+          await (action === 'cancel' ? mainApi.cancelAudioExtraction(pollingJobId) : mainApi.resumeAudioExtraction(pollingJobId));
+        }
+      } catch (err) {
+        if (disposed || pollingErrorShownRef.current) return;
+        pollingErrorShownRef.current = true;
+        showErrorNotification({
+          title: t('Unable to read extraction status'),
+          message: err instanceof Error ? err.message : String(err),
+          ...(err instanceof Error && err.stack && { details: err.stack }),
+          source: `audio-extraction-status:${pollingJobId}`,
+        }).catch((notificationError: unknown) => console.error('Failed to show audio extraction status error', notificationError));
+      }
+    };
+
+    const timer = setInterval(() => { pollStatus().catch(console.error); }, 400);
+    pollStatus().catch(console.error);
+
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, [pollingJobId, t]);
 
   const startExtraction = async () => {
-    if (!filePath || selectedStreamIndexes.length === 0 || isStarting || job?.state === 'running') return;
+    if (!filePath || selectedStreamIndexes.length === 0 || isStarting || job?.state === 'running' || job?.state === 'paused') return;
     setIsStarting(true);
-    setError(undefined);
     setJob(undefined);
     try {
       const id = await mainApi.startAudioExtraction({
@@ -132,7 +175,12 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         outputPaths: [],
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      await showErrorNotification({
+        title: t('Unable to start audio extraction'),
+        message: err instanceof Error ? err.message : String(err),
+        ...(err instanceof Error && err.stack && { details: err.stack }),
+        source: 'audio-extraction-start',
+      });
     } finally {
       setIsStarting(false);
     }
@@ -157,7 +205,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const failedTaskCount = job?.tasks.filter((task) => task.state === 'failed').length ?? 0;
   const cancelledTaskCount = job?.tasks.filter((task) => task.state === 'cancelled').length ?? 0;
   const skippedTaskCount = job?.tasks.filter((task) => task.state === 'skipped').length ?? 0;
-  const isBusy = isStarting || job?.state === 'running';
+  const isBusy = isStarting || job?.state === 'running' || job?.state === 'paused';
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && isBusy) return;
     onOpenChange(nextOpen);
@@ -298,6 +346,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                     current: currentTaskNumber,
                     total: job.totalTasks,
                   })}
+                  {job.state === 'paused' && t('Extraction paused after an error. Confirm the message to continue or cancel the remaining tasks.')}
                   {job.state === 'success' && t('{{count}} output file(s) saved.', { count: job.outputPaths.length })}
                   {job.state === 'cancelled' && t('Extraction cancelled. {{count}} output file(s) saved.', { count: job.outputPaths.length })}
                   {job.state === 'failed' && t('Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.', {
@@ -328,7 +377,6 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 )}
               </section>
             )}
-            {error && <p role="alert" style={{ color: 'red' }}>{error}</p>}
           </div>
           <div style={{ flex: '0 0 auto' }}>
             <Dialog.ButtonRow>

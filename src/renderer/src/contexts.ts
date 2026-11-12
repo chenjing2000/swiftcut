@@ -5,7 +5,6 @@ import invariant from 'tiny-invariant';
 import type { UserSettingsRoot } from './hooks/useUserSettingsRoot';
 import type { ExportMode, KeyboardLayoutMap, SegmentColorIndex } from './types';
 import type useLoading from './hooks/useLoading';
-import type { GenericError } from './components/ErrorDialog';
 import type { ConfirmDialog, ShowGenericDialog } from './components/GenericDialog';
 
 
@@ -25,7 +24,7 @@ export interface SegColorsContextType {
   nextSegColorIndex: number,
 }
 
-export type HandleError = (error: GenericError) => void;
+export type HandleError = (error: { title?: string | undefined, err?: unknown | undefined }) => void | Promise<void>;
 
 export interface AppContextType {
   setWorking: ReturnType<typeof useLoading>['setWorking'],

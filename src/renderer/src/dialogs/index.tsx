@@ -14,6 +14,7 @@ import type { ParseTimecode } from '../types';
 import type { FindKeyframeMode } from '../ffmpeg';
 import { dangerColor, primaryColor, warningColor } from '../colors';
 import getSwal from '../swal';
+import { enqueueNotification, requestConfirmation, showErrorNotification } from '../notifications/notificationStore';
 import mainApi from '../mainApi';
 
 const { lstat, stat } = window.require('node:fs/promises');
@@ -155,43 +156,45 @@ export async function askForFileOpenAction(inputOptions: [OpenFileResponse, stri
 }
 
 export async function showDiskFull() {
-  await getSwal().Swal.fire({
-    icon: 'error',
-    text: i18n.t('The output location has no storage space remaining. Please free up some space and try again.'),
+  await showErrorNotification({
+    title: i18n.t('Error'),
+    message: i18n.t('The output location has no storage space remaining. Please free up some space and try again.'),
+    source: 'disk-full',
   });
 }
 
 export async function showMuxNotSupported() {
-  await getSwal().Swal.fire({
-    icon: 'error',
-    text: i18n.t('At least one codec is not supported by the selected output file format. Try another output format or try to disable one or more tracks.'),
+  await showErrorNotification({
+    title: i18n.t('Error'),
+    message: i18n.t('At least one codec is not supported by the selected output file format. Try another output format or try to disable one or more tracks.'),
+    source: 'unsupported-mux',
   });
 }
 
 export async function showOutputNotWritable() {
-  await getSwal().Swal.fire({
-    icon: 'error',
-    text: i18n.t('You are not allowed to write the output file. This probably means that the file already exists with the wrong permissions, or you don\'t have write permissions to the output folder.'),
+  await showErrorNotification({
+    title: i18n.t('Error'),
+    message: i18n.t('You are not allowed to write the output file. This probably means that the file already exists with the wrong permissions, or you don\'t have write permissions to the output folder.'),
+    source: 'output-not-writable',
   });
 }
 
-export async function showRefuseToOverwrite() {
-  await getSwal().Swal.fire({
-    icon: 'warning',
-    text: i18n.t('Output file already exists, refusing to overwrite. You can turn on overwriting in settings.'),
+export function showRefuseToOverwrite() {
+  enqueueNotification({
+    type: 'warning',
+    message: i18n.t('Output file already exists, refusing to overwrite. You can turn on overwriting in settings.'),
+    source: 'refuse-overwrite',
   });
 }
 
 export async function askForImportChapters() {
-  const { isConfirmed } = await getSwal().Swal.fire({
-    icon: 'question',
-    text: i18n.t('This file has embedded chapters. Do you want to import the chapters as cut-segments?'),
-    showCancelButton: true,
-    cancelButtonText: i18n.t('Ignore chapters'),
-    confirmButtonText: i18n.t('Import chapters'),
+  return requestConfirmation({
+    title: i18n.t('Please confirm'),
+    message: i18n.t('This file has embedded chapters. Do you want to import the chapters as cut-segments?'),
+    primaryActionLabel: i18n.t('Import chapters'),
+    secondaryActionLabel: i18n.t('Ignore chapters'),
+    source: 'import-chapters',
   });
-
-  return isConfirmed;
 }
 
 const maxSegments = 1000;
@@ -582,13 +585,14 @@ export async function deleteFiles({ paths, deleteIfTrashFails, signal }: { paths
   if (failedToTrashFiles.length === 0) return; // All good!
 
   if (!deleteIfTrashFails) {
-    const { value } = await getSwal().Swal.fire({
-      icon: 'warning',
-      text: i18n.t('Unable to move file to trash. Do you want to permanently delete it?'),
-      confirmButtonText: i18n.t('Permanently delete'),
-      showCancelButton: true,
+    const confirmed = await requestConfirmation({
+      title: i18n.t('Please confirm'),
+      message: i18n.t('Unable to move file to trash. Do you want to permanently delete it?'),
+      primaryActionLabel: i18n.t('Permanently delete'),
+      secondaryActionLabel: i18n.t('Cancel'),
+      source: 'permanent-delete-fallback',
     });
-    if (!value) return;
+    if (!confirmed) return;
   }
 
   await pMap(failedToTrashFiles, async (path) => unlinkWithRetry(path, { signal }), { concurrency: 5 });
@@ -598,14 +602,22 @@ export async function deleteFiles({ paths, deleteIfTrashFails, signal }: { paths
 export function toastError(err: unknown) {
   console.error('toastError', err);
   const text = err instanceof Error ? err.message : String(err);
-  const textTruncated = text.slice(0, 300);
-  getSwal().toast.fire({ icon: 'error', title: i18n.t('Error'), text: textTruncated });
+  return showErrorNotification({
+    title: i18n.t('Error'),
+    message: text.slice(0, 300),
+    ...(text.length > 300 && { details: text }),
+    source: 'renderer-error',
+  });
 }
 
 export function mustDisallowVob() {
   // Because Apple is being nazi about the ability to open "copy protected DVD files"
   if (isMasBuild) {
-    getSwal().toast.fire({ icon: 'error', text: 'Unfortunately .vob files are not supported in the App Store version of SwiftCut due to Apple restrictions' });
+    showErrorNotification({
+      title: i18n.t('Error'),
+      message: 'Unfortunately .vob files are not supported in the App Store version of SwiftCut due to Apple restrictions',
+      source: 'unsupported-vob',
+    }).catch((error: unknown) => console.error('Failed to show unsupported VOB notification', error));
     return true;
   }
   return false;

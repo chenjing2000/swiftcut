@@ -7,6 +7,7 @@ import { TextField } from '@radix-ui/themes';
 
 import * as Dialog from './Dialog';
 import * as AlertDialog from './AlertDialog';
+import { requestConfirmation } from '../notifications/notificationStore';
 import { DialogButton } from './Button';
 import { showItemInFolder } from '../util';
 import type { CleanupChoice, CleanupChoicesType } from '../dialogs';
@@ -87,53 +88,26 @@ export function useDialog() {
     setGenericDialog(undefined);
   }, []);
 
-  const confirmDialog = useCallback(({ title = t('Please confirm'), description, confirmButtonText = t('Confirm'), cancelButtonText = t('Cancel'), focusConfirm = false }: {
+  const confirmDialog = useCallback(({
+    title = t('Please confirm'),
+    description,
+    confirmButtonText = t('Confirm'),
+    cancelButtonText = t('Cancel'),
+    focusConfirm = false,
+  }: {
     title?: ReactNode,
     description?: string,
     confirmButtonText?: string,
     cancelButtonText?: string,
     focusConfirm?: boolean,
-  }) => new Promise<boolean>((resolve) => {
-    function ConfirmDialog() {
-      const { onOpenChange } = useGenericDialogContext();
-      const confirmRef = useRef<HTMLButtonElement>(null);
-
-      const handleConfirmClick = useCallback<MouseEventHandler<HTMLButtonElement>>((e) => {
-        e.preventDefault();
-        resolve(true);
-        onOpenChange(false);
-      }, [onOpenChange]);
-
-      const handleOpenAutoFocus = useCallback((e: Event) => {
-        if (focusConfirm && confirmRef.current) {
-          e.preventDefault();
-          confirmRef.current.focus();
-        }
-      }, []);
-
-      return (
-        <AlertDialog.Content aria-describedby={description} style={{ width: '40vw' }} onOpenAutoFocus={handleOpenAutoFocus}>
-          <AlertDialog.Title>{title}</AlertDialog.Title>
-
-          {description && <AlertDialog.Description>{description}</AlertDialog.Description>}
-
-          <Dialog.ButtonRow>
-            <AlertDialog.Cancel asChild>
-              <DialogButton>{cancelButtonText}</DialogButton>
-            </AlertDialog.Cancel>
-
-            <DialogButton primary onClick={handleConfirmClick} ref={confirmRef}>{confirmButtonText}</DialogButton>
-          </Dialog.ButtonRow>
-        </AlertDialog.Content>
-      );
-    }
-
-    showGenericDialog({
-      isAlert: true,
-      render: () => <ConfirmDialog />,
-      onClose: () => resolve(false),
-    });
-  }), [showGenericDialog, t]);
+  }) => requestConfirmation({
+    title,
+    message: description ?? '',
+    primaryActionLabel: confirmButtonText,
+    secondaryActionLabel: cancelButtonText,
+    focusPrimary: focusConfirm,
+    source: 'confirmation',
+  }), [t]);
 
   const openExportFinishedDialog = useCallback(async ({ filePath, children, width }: {
     filePath: string,

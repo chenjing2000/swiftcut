@@ -19,7 +19,8 @@ import Select from './components/Select';
 
 import SimpleModeButton from './components/SimpleModeButton';
 import { withBlur, mirrorTransform } from './util';
-import getSwal, { errorToast } from './swal';
+import { errorToast } from './swal';
+import { enqueueNotification } from './notifications/notificationStore';
 import { UserFacingError } from '../errors';
 import { getSegColor as getSegColorRaw } from './util/colors';
 import { useSegColors } from './contexts';
@@ -54,8 +55,9 @@ const InvertCutModeButton = memo(({ invertCutSegments, setInvertCutSegments }: {
   const onYinYangClick = useCallback(() => {
     setInvertCutSegments((v) => {
       const newVal = !v;
-      getSwal().toast.fire({
-        title: t(newVal ? 'When you export, selected segments on the timeline will be REMOVED - the surrounding areas will be KEPT' : 'When you export, selected segments on the timeline will be KEPT - the surrounding areas will be REMOVED.'),
+      enqueueNotification({
+        message: t(newVal ? 'When you export, selected segments on the timeline will be REMOVED - the surrounding areas will be KEPT' : 'When you export, selected segments on the timeline will be KEPT - the surrounding areas will be REMOVED.'),
+        source: 'invert-cut-mode',
       });
       return newVal;
     });

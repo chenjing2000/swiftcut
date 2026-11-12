@@ -6,28 +6,30 @@ import withReactContent from 'sweetalert2-react-content';
 import i18n from './i18n';
 import { emitter as animationsEmitter } from './animations';
 import { dialogButtonOrder } from './util';
+import { showErrorNotification } from './notifications/notificationStore';
 
 export const swalContainerWrapperId = 'swal2-container-wrapper';
 
 let Swal: SweetAlert2;
-let toast: SweetAlert2;
 let ReactSwal: SweetAlert2 & ReactSweetAlert;
 
 function initSwal(reducedMotion = false) {
   const commonSwalOptions: SweetAlertOptions = {
     target: `#${swalContainerWrapperId}`,
-    ...(reducedMotion && {
-      showClass: {
-        popup: '',
-        backdrop: '',
-        icon: '',
+    showClass: reducedMotion
+      ? { popup: '', backdrop: '', icon: '' }
+      : {
+        popup: 'swiftcut-swal-show',
+        backdrop: 'swiftcut-swal-backdrop-show',
+        icon: 'swiftcut-swal-icon-show',
       },
-      hideClass: {
-        popup: '',
-        backdrop: '',
-        icon: '',
+    hideClass: reducedMotion
+      ? { popup: '', backdrop: '', icon: '' }
+      : {
+        popup: 'swiftcut-swal-hide',
+        backdrop: 'swiftcut-swal-backdrop-hide',
+        icon: 'swiftcut-swal-icon-hide',
       },
-    }),
     reverseButtons: dialogButtonOrder === 'ltr',
   };
 
@@ -35,20 +37,6 @@ function initSwal(reducedMotion = false) {
     ...commonSwalOptions,
   });
 
-  toast = Swal.mixin({
-    ...commonSwalOptions,
-    toast: true,
-    width: '50vw',
-    position: 'top',
-    showConfirmButton: false,
-    showCloseButton: true,
-    timer: 5000,
-    timerProgressBar: true,
-    didOpen: (self) => {
-      self.addEventListener('mouseenter', Swal.stopTimer);
-      self.addEventListener('mouseleave', Swal.resumeTimer);
-    },
-  });
 
   ReactSwal = withReactContent(Swal);
 }
@@ -61,13 +49,12 @@ export default function getSwal() {
   return {
     Swal,
     ReactSwal,
-    toast,
   };
 }
 
-export const errorToast = (text: string) => toast.fire({
-  icon: 'error',
-  text,
+export const errorToast = (text: string) => showErrorNotification({
+  title: i18n.t('Error'),
+  message: text,
 });
 
 export const showPlaybackFailedMessage = () => errorToast(i18n.t('Unable to playback this file. Try to convert to supported format from the menu'));

@@ -1167,5 +1167,14 @@
   "{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).": "{{segments}} 个片段 × {{tracks}} 条音轨 = {{outputs}} 个输出文件。",
   "{{count}} output file(s) saved.": "已保存 {{count}} 个输出文件。",
   "Extraction cancelled. {{count}} output file(s) saved.": "提取已取消，已保存 {{count}} 个输出文件。",
-  "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.": "提取完成，但有 {{failed}} 个任务失败，成功保存 {{success}} 个输出文件。"
+  "Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.": "提取完成，但有 {{failed}} 个任务失败，成功保存 {{success}} 个输出文件。",
+  "Audio extraction failed": "音频提取失败",
+  "Segment {{segment}} · Track {{track}} could not be extracted. The remaining tasks are paused.": "片段 {{segment}} · 音轨 {{track}} 提取失败。其余任务已暂停。",
+  "Cancel remaining tasks": "取消剩余任务",
+  "Continue": "继续",
+  "Unable to read extraction status": "无法读取音频提取状态",
+  "Unable to start audio extraction": "无法启动音频提取",
+  "Extraction paused after an error. Confirm the message to continue or cancel the remaining tasks.": "发生错误后，音频提取已暂停。确认错误后可以继续，或取消剩余任务。",
+  "Show technical details": "显示技术详情",
+  "Copy details": "复制详情"
 }

@@ -14,7 +14,7 @@ import {
 } from './audioExtractionUtils.js';
 
 export type { AudioExtractionMode, Mp3Quality, AudioExtractionSegment } from './audioExtractionUtils.js';
-export type AudioJobState = 'running' | 'success' | 'failed' | 'cancelled';
+export type AudioJobState = 'running' | 'paused' | 'success' | 'failed' | 'cancelled';
 export type AudioExtractionTaskState = 'pending' | 'running' | 'success' | 'failed' | 'cancelled' | 'skipped';
 
 export interface AudioExtractionTaskStatus {
@@ -42,6 +42,7 @@ interface AudioJob {
   status: AudioJobStatus;
   cancel: (() => void) | undefined;
   cancelled: boolean;
+  resume: (() => void) | undefined;
 }
 
 const jobs = new Map<string, AudioJob>();
@@ -70,9 +71,21 @@ export function getAudioExtractionStatus(id: string): AudioJobStatus | undefined
 
 export function cancelAudioExtraction(id: string) {
   const job = jobs.get(id);
-  if (job?.status.state === 'running') {
+  if (job && (job.status.state === 'running' || job.status.state === 'paused')) {
     job.cancelled = true;
     job.cancel?.();
+    job.resume?.();
+    job.resume = undefined;
+  }
+}
+
+export function resumeAudioExtraction(id: string) {
+  const job = jobs.get(id);
+  if (job?.status.state === 'paused' && !job.cancelled) {
+    job.status.state = 'running';
+    const { resume } = job;
+    job.resume = undefined;
+    resume?.();
   }
 }
 
@@ -147,7 +160,7 @@ async function probe(path: string) {
 function pruneCompletedJobs() {
   const completedJobIds: string[] = [];
   for (const [id, job] of jobs) {
-    if (job.status.state !== 'running') completedJobIds.push(id);
+    if (job.status.state !== 'running' && job.status.state !== 'paused') completedJobIds.push(id);
   }
 
   const excessCount = Math.max(0, completedJobIds.length - MAX_RETAINED_COMPLETED_JOBS + 1);
@@ -234,7 +247,7 @@ export async function startAudioExtraction(args: {
     })),
     outputPaths: [],
   };
-  const job: AudioJob = { status, cancel: undefined, cancelled: false };
+  const job: AudioJob = { status, cancel: undefined, cancelled: false, resume: undefined };
   pruneCompletedJobs();
   jobs.set(id, job);
 
@@ -337,8 +350,17 @@ export async function startAudioExtraction(args: {
         }
         job.cancel = undefined;
         status.completedTasks = status.tasks.filter((item) => item.state !== 'pending' && item.state !== 'running').length;
-        if (!job.cancelled) status.progress = status.completedTasks / tasks.length;
+        status.progress = status.completedTasks / tasks.length;
       }
+
+      if (job.cancelled || taskStatus.state !== 'failed') continue;
+
+      status.state = 'paused';
+      await new Promise<void>((resolve) => {
+        job.resume = resolve;
+      });
+      job.resume = undefined;
+      if (!job.cancelled) status.state = 'running';
     }
 
     if (job.cancelled) {

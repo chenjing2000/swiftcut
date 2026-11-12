@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import {
   cancelAudioExtraction,
   getAudioExtractionStatus,
+  resumeAudioExtraction,
   startAudioExtraction,
 } from './audioExtraction.js';
 
@@ -247,12 +248,46 @@ describe('Audio extraction task service', () => {
     await expect(readFile(existingPath, 'utf8')).resolves.toBe('keep existing content');
   });
 
-  test('continues remaining tasks after one track fails', async () => {
+  test('pauses remaining tasks after one track fails until the user continues', async () => {
     const failedResult = Promise.reject(new Error('mock encoder failure'));
     // Mark the rejection as handled immediately; the service still observes the
     // original rejection when it awaits this promise.
     await failedResult.catch(() => undefined);
 
+    mocks.runScopedFfmpeg.mockImplementationOnce(({ ffmpegArgs }) => {
+      writeFileSync(ffmpegArgs.at(-1)!, Buffer.from('partial MP3 data'));
+      return {
+        result: failedResult,
+        cancel: vi.fn<() => void>(),
+      };
+    });
+
+    const id = await startAudioExtraction({
+      inputPath,
+      streamIndexes: [1, 2],
+      quality: '320k',
+    });
+
+    await waitForJob(id, 'paused');
+    expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(1);
+    const pausedStatus = getAudioExtractionStatus(id)!;
+    expect(pausedStatus.tasks.map((task) => task.state)).toStrictEqual(['failed', 'pending']);
+    expect(pausedStatus.tasks[0]!.error).toContain('mock encoder failure');
+    const filesWhilePaused = await readdir(testDirectory);
+    expect(filesWhilePaused.some((file) => file.endsWith('.tmp.mp3'))).toBe(false);
+
+    resumeAudioExtraction(id);
+    await waitForJob(id, 'failed');
+    const status = getAudioExtractionStatus(id)!;
+
+    expect(status.tasks.map((task) => task.state)).toStrictEqual(['failed', 'success']);
+    expect(status.outputPaths).toHaveLength(1);
+    expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(2);
+  });
+
+  test('cancels pending tasks when the user cancels while extraction is paused', async () => {
+    const failedResult = Promise.reject(new Error('mock encoder failure'));
+    await failedResult.catch(() => undefined);
     mocks.runScopedFfmpeg.mockReturnValueOnce({
       result: failedResult,
       cancel: vi.fn<() => void>(),
@@ -264,12 +299,16 @@ describe('Audio extraction task service', () => {
       quality: '320k',
     });
 
-    await waitForJob(id, 'failed');
-    const status = getAudioExtractionStatus(id)!;
+    await waitForJob(id, 'paused');
+    cancelAudioExtraction(id);
+    await waitForJob(id, 'cancelled');
 
-    expect(status.tasks.map((task) => task.state)).toStrictEqual(['failed', 'success']);
-    expect(status.outputPaths).toHaveLength(1);
-    expect(status.tasks[0]!.error).toContain('mock encoder failure');
+    const status = getAudioExtractionStatus(id)!;
+    expect(status.tasks.map((task) => task.state)).toStrictEqual(['failed', 'skipped']);
+    expect(status.outputPaths).toHaveLength(0);
+    expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(1);
+    const files = await readdir(testDirectory);
+    expect(files.some((file) => file.endsWith('.tmp.mp3'))).toBe(false);
   });
 
   test('cancels the active FFmpeg task and removes its temporary output', async () => {

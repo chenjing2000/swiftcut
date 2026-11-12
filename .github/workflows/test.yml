@@ -45,3 +45,37 @@ jobs:
         run: |
           yarn generate-licenses
           git reset --hard HEAD
+
+  notification-renderer-e2e:
+    name: Notification Chromium E2E (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-2022]
+
+    steps:
+      - run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v6
+
+      - run: corepack enable
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'yarn'
+
+      - run: yarn install --immutable
+
+      - name: Run notification UI in headless Chromium
+        run: node script/e2eNotifications.ts
+
+      - name: Upload notification screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notification-chromium-e2e-${{ matrix.os }}
+          path: artifacts/notification-e2e/
+          if-no-files-found: ignore

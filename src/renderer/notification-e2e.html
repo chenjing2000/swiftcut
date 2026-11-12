@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftCut notification UI E2E</title>
+    <script>
+      // Isolated browser harness: only the dependencies used while rendering
+      // the notification components are represented here.
+      window.process = { mas: false, env: {} };
+      window.electron = { writeClipboardText: async () => undefined };
+      window.require = (name) => {
+        if (name === '@electron/remote') {
+          return {
+            app: { getVersion: () => '3.70.2', getAppPath: () => '/' },
+            require: () => ({ isWindows: true, isMac: false }),
+          };
+        }
+        if (name === 'node:fs/promises') {
+          return { constants: { R_OK: 4, W_OK: 2 } };
+        }
+        if (name === 'node:path') {
+          return {
+            basename: (value) => value.split(/[\\/]/).at(-1),
+            dirname: (value) => value.split(/[\\/]/).slice(0, -1).join('/'),
+            extname: () => '',
+            isAbsolute: () => false,
+            join: (...parts) => parts.join('/'),
+            normalize: (value) => value,
+            parse: (value) => ({ name: value }),
+            resolve: (...parts) => parts.join('/'),
+            sep: '/',
+          };
+        }
+        if (name === 'electron') {
+          return { ipcRenderer: { invoke: async () => undefined, send: () => undefined } };
+        }
+        throw new Error('Unsupported E2E require: ' + name);
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/notificationE2EEntry.tsx"></script>
+  </body>
+</html>

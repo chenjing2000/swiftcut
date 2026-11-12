@@ -4,7 +4,6 @@ import { FaExclamationTriangle, FaInfoCircle, FaRegCheckCircle } from 'react-ico
 import i18n from 'i18next';
 import { useTranslation, Trans } from 'react-i18next';
 import { IoIosHelpCircle, IoIosSettings } from 'react-icons/io';
-import type { SweetAlertIcon } from 'sweetalert2';
 
 import ExportButton from './ExportButton';
 import ExportModeButton from './ExportModeButton';
@@ -15,7 +14,7 @@ import Switch from './Switch';
 
 import { primaryTextColor, warningColor } from '../colors';
 import { withBlur } from '../util';
-import getSwal from '../swal';
+import { enqueueNotification } from '../notifications/notificationStore';
 import { isMov as ffmpegIsMov } from '../util/streams';
 import useUserSettings from '../hooks/useUserSettings';
 import styles from './ExportConfirm.module.css';
@@ -266,7 +265,16 @@ function ExportConfirm({
     separate: t('Export each segment to a separate file'),
   })[effectiveExportMode], [effectiveExportMode, t]);
 
-  const showHelpText = useCallback(({ icon = 'info', timer = 10000, text }: { icon?: SweetAlertIcon, timer?: number, text: string }) => getSwal().toast.fire({ icon, timer, text }), []);
+  const showHelpText = useCallback(({ icon = 'info', text }: { icon?: 'info' | 'success' | 'warning', text: string }) => {
+    let type: 'information' | 'success' | 'warning' = 'information';
+    if (icon === 'warning') type = 'warning';
+    else if (icon === 'success') type = 'success';
+    enqueueNotification({
+      type,
+      message: text,
+      source: 'export-confirm-help',
+    });
+  }, []);
 
   const onPreserveChaptersPress = useCallback(() => {
     showHelpText({ text: i18n.t('Whether to preserve chapters from source file.') });

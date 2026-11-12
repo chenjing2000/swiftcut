@@ -56,4 +56,53 @@ $swal2-button-focus-box-shadow: 0 0 0 1px $swal2-background, 0 0 0 3px $swal2-ou
   pointer-events: auto;
 }
 
+.swiftcut-swal-show,
+.swiftcut-swal-icon-show {
+  animation: swiftcutFadeIn 600ms ease both;
+}
+
+.swiftcut-swal-hide,
+.swiftcut-swal-icon-hide {
+  animation: swiftcutFadeOut 600ms ease both;
+}
+
+.swiftcut-swal-backdrop-show {
+  animation: swiftcutBackdropIn 600ms ease both;
+}
+
+.swiftcut-swal-backdrop-hide {
+  animation: swiftcutBackdropOut 600ms ease both;
+}
+
+@keyframes swiftcutFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes swiftcutFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes swiftcutBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes swiftcutBackdropOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swiftcut-swal-show,
+  .swiftcut-swal-hide,
+  .swiftcut-swal-icon-show,
+  .swiftcut-swal-icon-hide,
+  .swiftcut-swal-backdrop-show,
+  .swiftcut-swal-backdrop-hide {
+    animation-duration: 0ms;
+  }
+}
+
 @import 'sweetalert2/src/sweetalert2.scss';

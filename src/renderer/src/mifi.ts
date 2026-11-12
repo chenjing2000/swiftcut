@@ -5,13 +5,13 @@ import { openSendReportDialog } from './reporting';
 import { isMasBuild } from './util';
 
 
-export async function runStartupCheck({ customFfPath, onError }: { customFfPath: string | undefined, onError: (error: { title: string, message: string }) => void }) {
+export async function runStartupCheck({ customFfPath, onError }: { customFfPath: string | undefined, onError: (error: { title: string, message: string }) => void | Promise<void> }) {
   try {
     return await runFfmpegStartupCheck();
   } catch (err) {
     if (err instanceof Error && !isMasBuild) {
       if ('code' in err && err.code === 'ENOENT') {
-        onError({
+        await onError({
           title: i18n.t('Fatal: FFmpeg executable not found'),
           message: [
             i18n.t('Make sure that the FFmpeg executable exists:'),
@@ -27,7 +27,7 @@ export async function runStartupCheck({ customFfPath, onError }: { customFfPath:
       }
 
       if ('code' in err && typeof err.code === 'string' && ['EPERM', 'EACCES', 'ENOENT'].includes(err.code)) {
-        onError({
+        await onError({
           title: i18n.t('Fatal: FFmpeg not accessible'),
           message: [
             i18n.t('Error code: {{errorCode}}. This could mean that anti-virus or something else is blocking the execution of FFmpeg. Make sure the following file exists and is executable:', { errorCode: err.code }),
