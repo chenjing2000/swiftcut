@@ -2382,8 +2382,7 @@ function App() {
             throw new Error('Invalid E2E notification payload');
           }
 
-          const payload = payloadRaw as Record<string, unknown>;
-          const { type, title, message, details } = payload;
+          const { type, title, message, details } = payloadRaw as Record<string, unknown>;
           if (typeof message !== 'string' || !['information', 'success', 'warning', 'error', 'confirmation'].includes(String(type))) {
             throw new Error('Invalid E2E notification type or message');
           }
@@ -2394,24 +2393,31 @@ function App() {
             ...(typeof details === 'string' && { details }),
             source: 'e2e',
           };
-          const e2eState = (window as Window & {
-            __swiftcutE2E?: { lastErrorAction?: string; lastConfirmationResult?: boolean };
-          }).__swiftcutE2E ??= {};
 
           switch (type) {
-            case 'information':
-            case 'success':
-            case 'warning':
-              enqueueNotification({ ...notification, type });
+            case 'information': {
+              enqueueNotification({ ...notification, type: 'information' });
               break;
-            case 'error':
-              e2eState.lastErrorAction = await showErrorNotification(notification);
+            }
+            case 'success': {
+              enqueueNotification({ ...notification, type: 'success' });
               break;
-            case 'confirmation':
-              e2eState.lastConfirmationResult = await requestConfirmation(notification);
+            }
+            case 'warning': {
+              enqueueNotification({ ...notification, type: 'warning' });
               break;
-            default:
+            }
+            case 'error': {
+              document.documentElement.dataset['e2eLastErrorAction'] = await showErrorNotification(notification);
+              break;
+            }
+            case 'confirmation': {
+              document.documentElement.dataset['e2eLastConfirmationResult'] = String(await requestConfirmation(notification));
+              break;
+            }
+            default: {
               throw new Error('Unsupported E2E notification type');
+            }
           }
         },
       ]] as const
