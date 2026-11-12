@@ -46,11 +46,10 @@ jobs:
           yarn generate-licenses
           git reset --hard HEAD
 
-  notification-desktop-e2e:
-    name: Notification desktop E2E (${{ matrix.os }})
+  notification-renderer-e2e:
+    name: Notification Chromium E2E (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-    continue-on-error: ${{ matrix.os == 'windows-2022' }}
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -70,31 +69,13 @@ jobs:
 
       - run: yarn install --immutable
 
-      # Dependency install scripts are disabled by .yarnrc.yml.
-      - run: yarn run install-electron --no
-
-      - name: Download Linux FFmpeg binaries
-        if: runner.os == 'Linux'
-        run: yarn download-ffmpeg-linux-x64
-
-      - name: Download Windows FFmpeg binaries
-        if: runner.os == 'Windows'
-        run: yarn download-ffmpeg-win32-x64
-
-      - run: yarn build
-
-      - name: Run notification desktop E2E tests (Linux Xvfb)
-        if: runner.os == 'Linux'
-        run: xvfb-run -a node script/e2eNotifications.ts
-
-      - name: Run notification desktop E2E tests (Windows offscreen)
-        if: runner.os == 'Windows'
+      - name: Run notification UI in headless Chromium
         run: node script/e2eNotifications.ts
 
       - name: Upload notification screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: notification-desktop-e2e-screenshots-${{ matrix.os }}
+          name: notification-chromium-e2e-${{ matrix.os }}
           path: artifacts/notification-e2e/
           if-no-files-found: ignore
