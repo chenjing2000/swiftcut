@@ -11,18 +11,6 @@ const debuggingPort = 19222;
 const baseUrl = `http://127.0.0.1:${httpPort}`;
 const artifactDirectory = join('artifacts', 'notification-e2e');
 
-type CdpResponse = {
-  id?: number;
-  result?: Record<string, unknown>;
-  error?: { message: string };
-};
-
-type CdpTarget = {
-  type: string;
-  url: string;
-  webSocketDebuggerUrl: string;
-};
-
 const pending = new Map<number, {
   resolve: (value: Record<string, unknown>) => void;
   reject: (error: Error) => void;
@@ -30,9 +18,15 @@ const pending = new Map<number, {
 
 let nextMessageId = 0;
 let socket: WebSocket | undefined;
-let shuttingDown = false;
+let appProcessExit: { exitCode: number | null; error?: unknown } | undefined;
 
 function connectToCdp(url: string) {
+  interface CdpResponse {
+    id?: number;
+    result?: Record<string, unknown>;
+    error?: { message: string };
+  }
+
   return new Promise<WebSocket>((resolve, reject) => {
     const ws = new WebSocket(url);
     ws.addEventListener('open', () => resolve(ws), { once: true });
@@ -54,31 +48,32 @@ function connectToCdp(url: string) {
 }
 
 function cdp(method: string, params: Record<string, unknown> = {}) {
-  assert.ok(socket);
-  const id = nextMessageId += 1;
+  const ws = socket;
+  assert.ok(ws);
+  nextMessageId += 1;
+  const id = nextMessageId;
   return new Promise<Record<string, unknown>>((resolve, reject) => {
     pending.set(id, { resolve, reject });
-    socket!.send(JSON.stringify({ id, method, params }));
+    ws.send(JSON.stringify({ id, method, params }));
   });
 }
 
 async function evaluate<T>(expression: string): Promise<T> {
-  const response = await cdp('Runtime.evaluate', {
+  const { exceptionDetails, result } = await cdp('Runtime.evaluate', {
     expression,
     awaitPromise: true,
     returnByValue: true,
   });
-  const exceptionDetails = response['exceptionDetails'];
   if (exceptionDetails) throw new Error(`Renderer evaluation failed: ${JSON.stringify(exceptionDetails)}`);
-  const result = response['result'] as { value?: T } | undefined;
-  return result?.value as T;
+  const evaluated = result as { value?: T } | undefined;
+  return evaluated?.value as T;
 }
 
 async function waitFor<T>(callback: () => Promise<T | undefined | false>, description: string, timeoutMs = 15000): Promise<T> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const value = await callback();
-    if (value !== undefined && value !== false) return value as T;
+    if (value !== undefined && value !== false) return value;
     await delay(100);
   }
   throw new Error(`Timed out waiting for ${description}`);
@@ -105,14 +100,13 @@ async function postNotification(payload: {
 }
 
 async function captureScreenshot(name: string) {
-  const response = await cdp('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-  const data = response['data'];
+  const { data } = await cdp('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   assert.equal(typeof data, 'string');
   await writeFile(join(artifactDirectory, name), Buffer.from(data as string, 'base64'));
 }
 
 async function waitForToast(type: string) {
-  const selector = '[data-testid="notification-toast"]';
+  const selector = '[data-testid=notification-toast]';
   await waitForExpression(
     `(() => { const el = document.querySelector('${selector}'); return el?.dataset.type === ${JSON.stringify(type)} && el.dataset.phase === 'visible'; })()`,
     `${type} toast to become visible`,
@@ -128,7 +122,7 @@ async function getToastMetrics() {
     messageFits: boolean;
     iconColor: string;
   }>(`(() => {
-    const card = document.querySelector('[data-testid="notification-toast"]');
+    const card = document.querySelector('[data-testid=notification-toast]');
     if (!card) return null;
     const message = card.querySelector('.message');
     const icon = card.querySelector('svg[data-type]');
@@ -163,7 +157,7 @@ async function testTransientNotification(type: 'information' | 'success' | 'warn
 
   await captureScreenshot(`toast-${type}.png`);
   await waitForExpression(
-    `!document.querySelector('[data-testid="notification-toast"]')`,
+    `!document.querySelector('[data-testid=notification-toast]')`,
     `${type} toast to auto-dismiss after its visible interval`,
     8000,
   );
@@ -187,7 +181,7 @@ async function testHoverPauseAndNarrowViewport() {
   await waitForToast('information');
 
   const metrics = await evaluate<{ width: number; maxWidth: string }>(`(() => {
-    const card = document.querySelector('[data-testid="notification-toast"]');
+    const card = document.querySelector('[data-testid=notification-toast]');
     if (!card) return null;
     return { width: card.getBoundingClientRect().width, maxWidth: getComputedStyle(card).maxWidth };
   })()`);
@@ -196,7 +190,7 @@ async function testHoverPauseAndNarrowViewport() {
   await captureScreenshot('toast-narrow-viewport.png');
 
   const rect = await evaluate<{ x: number; y: number; width: number; height: number }>(`(() => {
-    const card = document.querySelector('[data-testid="notification-toast"]');
+    const card = document.querySelector('[data-testid=notification-toast]');
     const r = card.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   })()`);
@@ -208,18 +202,18 @@ async function testHoverPauseAndNarrowViewport() {
 
   await delay(5500);
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid="notification-toast"]'))`,
+    `Boolean(document.querySelector('[data-testid=notification-toast]'))`,
     'toast to remain visible while hovered',
   );
 
   await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 });
   await delay(4500);
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid="notification-toast"]'))`,
+    `Boolean(document.querySelector('[data-testid=notification-toast]'))`,
     'toast to remain visible for its remaining hold time after hover',
   );
   await waitForExpression(
-    `!document.querySelector('[data-testid="notification-toast"]')`,
+    `!document.querySelector('[data-testid=notification-toast]')`,
     'toast to dismiss after the remaining hold time',
     2000,
   );
@@ -239,7 +233,7 @@ async function testDarkThemeStyles() {
 
   const colors = await evaluate<{ light: string; dark: string }>(`(() => {
     const root = document.querySelector('#app-root');
-    const card = document.querySelector('[data-testid="notification-toast"]');
+    const card = document.querySelector('[data-testid=notification-toast]');
     const light = getComputedStyle(card).backgroundColor;
     root.classList.add('dark-theme');
     const dark = getComputedStyle(card).backgroundColor;
@@ -249,7 +243,7 @@ async function testDarkThemeStyles() {
   assert.notEqual(colors.light, colors.dark, 'Dark-theme CSS should change the toast background');
   await captureScreenshot('toast-dark-theme-style.png');
   await waitForExpression(
-    `!document.querySelector('[data-testid="notification-toast"]')`,
+    `!document.querySelector('[data-testid=notification-toast]')`,
     'theme-check toast to auto-dismiss',
     8000,
   );
@@ -279,27 +273,27 @@ async function testBlockingPriorityAndQueueOrder() {
   });
 
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid="notification-toast"]'))`,
+    `Boolean(document.querySelector('[data-testid=notification-toast]'))`,
     'active toast to remain visible while a blocking error is queued',
   );
-  const activeText = await evaluate<string>(`document.querySelector('[data-testid="notification-toast"] .message')?.textContent ?? ''`);
+  const activeText = await evaluate<string>(`document.querySelector('[data-testid=notification-toast] .message')?.textContent ?? ''`);
   assert.ok(activeText.includes('must not be interrupted'), 'A queued blocking error must not interrupt the active toast');
-  assert.equal(await evaluate<boolean>(`!document.querySelector('[data-testid="notification-modal"]')`), true);
+  assert.equal(await evaluate<boolean>(`!document.querySelector('[data-testid=notification-modal]')`), true);
 
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
+    `Boolean(document.querySelector('[data-testid=notification-modal]'))`,
     'blocking error to become active after the current toast',
     10000,
   );
-  await evaluate(`document.querySelector('[data-testid="notification-primary-action"]').click()`);
+  await evaluate(`document.querySelector('[data-testid=notification-primary-action]').click()`);
   assert.equal((await errorRequest).status, 200);
   assert.equal(await evaluate<string>(`window.__swiftcutE2E?.lastErrorAction`), 'acknowledge');
 
   await waitForToast('success');
-  const queuedText = await evaluate<string>(`document.querySelector('[data-testid="notification-toast"] .message')?.textContent ?? ''`);
+  const queuedText = await evaluate<string>(`document.querySelector('[data-testid=notification-toast] .message')?.textContent ?? ''`);
   assert.ok(queuedText.includes('wait until the blocking error is acknowledged'));
   await waitForExpression(
-    `!document.querySelector('[data-testid="notification-toast"]')`,
+    `!document.querySelector('[data-testid=notification-toast]')`,
     'queued notification to finish',
     8000,
   );
@@ -317,7 +311,7 @@ async function testBlockingNotifications() {
   });
 
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
+    `Boolean(document.querySelector('[data-testid=notification-modal]'))`,
     'error notification dialog',
   );
 
@@ -326,7 +320,7 @@ async function testBlockingNotifications() {
     messageFits: boolean;
     transitionDuration: string;
   }>(`(() => {
-    const modal = document.querySelector('[data-testid="notification-modal"]');
+    const modal = document.querySelector('[data-testid=notification-modal]');
     const message = modal.querySelector('.message');
     return {
       width: modal.getBoundingClientRect().width,
@@ -338,20 +332,20 @@ async function testBlockingNotifications() {
   assert.equal(errorMetrics.messageFits, true, 'Long error message should wrap without horizontal overflow');
   assert.equal(errorMetrics.transitionDuration, '0.6s');
 
-  await evaluate(`document.querySelector('[data-testid="notification-copy-details"]').click()`);
-  await evaluate(`document.querySelector('[data-testid="notification-modal"] details summary').click()`);
+  await evaluate(`document.querySelector('[data-testid=notification-copy-details]').click()`);
+  await evaluate(`document.querySelector('[data-testid=notification-modal] details summary').click()`);
   const detailsMetrics = await evaluate<{ scrollHeight: number; clientHeight: number }>(`(() => {
-    const details = document.querySelector('[data-testid="notification-modal"] .detailsText');
+    const details = document.querySelector('[data-testid=notification-modal] .detailsText');
     return { scrollHeight: details.scrollHeight, clientHeight: details.clientHeight };
   })()`);
   assert.ok(detailsMetrics.scrollHeight > detailsMetrics.clientHeight, 'Long technical details should be scrollable');
 
   await captureScreenshot('notification-error-dialog.png');
-  await evaluate(`document.querySelector('[data-testid="notification-primary-action"]').click()`);
+  await evaluate(`document.querySelector('[data-testid=notification-primary-action]').click()`);
   const errorResponse = await errorRequest;
   assert.equal(errorResponse.status, 200);
   assert.equal(await evaluate<string>(`window.__swiftcutE2E?.lastErrorAction`), 'acknowledge');
-  await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'error dialog to close');
+  await waitForExpression(`!document.querySelector('[data-testid=notification-modal]')`, 'error dialog to close');
 
   const cancelRequest = postNotification({
     type: 'confirmation',
@@ -359,19 +353,19 @@ async function testBlockingNotifications() {
     message: 'Choose Cancel to resolve this confirmation as false.',
   });
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
+    `Boolean(document.querySelector('[data-testid=notification-modal]'))`,
     'confirmation dialog for cancel action',
   );
   assert.equal(
-    await evaluate<number>(`document.querySelector('[data-testid="notification-modal"]').getBoundingClientRect().width`),
+    await evaluate<number>(`document.querySelector('[data-testid=notification-modal]').getBoundingClientRect().width`),
     360,
     'Confirmation dialog should be 360 CSS px wide',
   );
   await captureScreenshot('notification-confirmation-dialog.png');
-  await evaluate(`document.querySelector('[data-testid="notification-secondary-action"]').click()`);
+  await evaluate(`document.querySelector('[data-testid=notification-secondary-action]').click()`);
   assert.equal((await cancelRequest).status, 200);
   assert.equal(await evaluate<boolean>(`window.__swiftcutE2E?.lastConfirmationResult`), false);
-  await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'cancelled confirmation to close');
+  await waitForExpression(`!document.querySelector('[data-testid=notification-modal]')`, 'cancelled confirmation to close');
 
   const confirmRequest = postNotification({
     type: 'confirmation',
@@ -379,20 +373,20 @@ async function testBlockingNotifications() {
     message: 'Choose Confirm to resolve this confirmation as true.',
   });
   await waitForExpression(
-    `Boolean(document.querySelector('[data-testid="notification-modal"]'))`,
+    `Boolean(document.querySelector('[data-testid=notification-modal]'))`,
     'confirmation dialog for confirm action',
   );
-  await evaluate(`document.querySelector('[data-testid="notification-primary-action"]').click()`);
+  await evaluate(`document.querySelector('[data-testid=notification-primary-action]').click()`);
   assert.equal((await confirmRequest).status, 200);
   assert.equal(await evaluate<boolean>(`window.__swiftcutE2E?.lastConfirmationResult`), true);
-  await waitForExpression(`!document.querySelector('[data-testid="notification-modal"]')`, 'confirmed dialog to close');
+  await waitForExpression(`!document.querySelector('[data-testid=notification-modal]')`, 'confirmed dialog to close');
 
   console.log('PASS error and confirmation dialogs');
 }
 
 const appProcess = execa('yarn', [
   'electron',
-  '--remote-debugging-port=' + debuggingPort,
+  `--remote-debugging-port=${debuggingPort}`,
   '.',
   '--http-api',
   String(httpPort),
@@ -401,14 +395,20 @@ const appProcess = execa('yarn', [
   windowsHide: true,
   forceKillAfterDelay: 10000,
 });
-appProcess.catch((error: unknown) => {
-  if (!shuttingDown) console.error('SwiftCut process exited unexpectedly', error);
-});
+const appProcessMonitor = (async () => {
+  try {
+    const result = await appProcess;
+    appProcessExit = { exitCode: result.exitCode };
+  } catch (error) {
+    appProcessExit = { exitCode: null, error };
+  }
+})();
 
 try {
   await mkdir(artifactDirectory, { recursive: true });
 
   await waitFor(async () => {
+    if (appProcessExit) throw new Error(`SwiftCut exited before HTTP API startup: ${JSON.stringify(appProcessExit)}`);
     try {
       const response = await fetch(baseUrl);
       return response.ok || undefined;
@@ -418,10 +418,11 @@ try {
   }, 'SwiftCut HTTP API to start', 60000);
 
   const targets = await waitFor(async () => {
+    if (appProcessExit) throw new Error(`SwiftCut exited before DevTools became available: ${JSON.stringify(appProcessExit)}`);
     try {
       const response = await fetch(`http://127.0.0.1:${debuggingPort}/json/list`);
       if (!response.ok) return undefined;
-      const items = await response.json() as CdpTarget[];
+      const items = await response.json() as { type: string; url: string; webSocketDebuggerUrl: string }[];
       return items.find((item) => item.type === 'page' && item.webSocketDebuggerUrl);
     } catch {
       return undefined;
@@ -449,7 +450,6 @@ try {
   }
   throw error;
 } finally {
-  shuttingDown = true;
   socket?.close();
   try {
     await fetch(`${baseUrl}/api/action/quit`, { method: 'POST' });
@@ -457,7 +457,7 @@ try {
     // The app may not have reached the HTTP API startup stage.
   }
   try {
-    await appProcess;
+    await appProcessMonitor;
   } catch {
     // Preserve the original E2E failure if the app had to be terminated.
   }
