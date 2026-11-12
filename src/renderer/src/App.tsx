@@ -2493,6 +2493,7 @@ function App() {
 
     ipcActions.forEach(([key, action]) => ipcRenderer.on(key, action));
     ipcRenderer.on('apiAction', tryApiAction);
+    if (process.env['SWIFTCUT_E2E'] === '1') document.documentElement.dataset['e2eActionsReady'] = 'true';
 
     return () => {
       ipcActions.forEach(([key, action]) => ipcRenderer.off(key, action));
