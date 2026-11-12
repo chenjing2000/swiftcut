@@ -83,8 +83,6 @@ const defaultKeyBindings: KeyBinding[] = [
   { keys: 'ControlLeft+ShiftLeft+KeyZ', action: 'redo' },
   { keys: 'MetaLeft+ShiftLeft+KeyZ', action: 'redo' },
 
-  { keys: 'KeyF', action: 'toggleFullscreenVideo' },
-
   { keys: 'Enter', action: 'labelCurrentSegment' },
 
   { keys: 'KeyE', action: 'export' },

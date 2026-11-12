@@ -1,6 +1,7 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createPortal } from 'react-dom';
 
 import type { CropAspectPreset, CropOutputMode, CropRect, CropTimeRange } from '../../../../common/videoCropTypes.js';
 import { validateCropRect } from '../../../../common/videoCropValidation.js';
@@ -18,6 +19,8 @@ interface Props {
   segments: readonly CropSourceSegment[];
   duration: number;
   onClose: () => void;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
   onPreviewChange: (rect: { left: number; top: number; width: number; height: number } | undefined) => void;
 }
 
@@ -79,7 +82,7 @@ function CropNumericField({ label, value, onCommit, disabled = false }: {
   );
 }
 
-export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, duration, onClose, onPreviewChange }: Props) {
+export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, duration, onClose, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
   type Handle = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e';
   type Dimension = 'x' | 'y' | 'width' | 'height';
   const { t } = useTranslation();
@@ -97,12 +100,43 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [quality, setQuality] = useState('high');
   const [previewMode, setPreviewMode] = useState<'edit' | 'output'>('edit');
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const [panelPosition, setPanelPosition] = useState({ right: 16, top: 48 });
+  const [panelPosition, setPanelPosition] = useState(() => {
+    const videoBounds = containerRef.current?.getBoundingClientRect();
+    return { left: (videoBounds?.right ?? window.innerWidth) - 396, top: (videoBounds?.top ?? 0) + 48 };
+  });
   const [focused, setFocused] = useState(false);
-  const panelDragRef = useRef<{ x: number; y: number; top: number; right: number } | undefined>(undefined);
+  const panelDragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | undefined>(undefined);
   const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
+
+  const clampPanel = useCallback((left: number, top: number) => {
+    const root = document.getElementById('app-root');
+    const bounds = root?.getBoundingClientRect() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+    const width = panelRef.current?.offsetWidth ?? 380;
+    const height = panelRef.current?.offsetHeight ?? 250;
+    const margin = 8;
+    return {
+      left: clamp(left, bounds.left + margin, Math.max(bounds.left + margin, bounds.right - width - margin)),
+      top: clamp(top, bounds.top + margin, Math.max(bounds.top + margin, bounds.bottom - height - margin)),
+    };
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setPanelPosition((previous) => clampPanel(previous.left, previous.top));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [clampPanel]);
+
+  const stopPanelDrag = useCallback((pointerId?: number, revert = false) => {
+    const drag = panelDragRef.current;
+    if (!drag || (pointerId != null && drag.pointerId !== pointerId)) return;
+    panelDragRef.current = undefined;
+    const heading = headingRef.current;
+    if (heading?.hasPointerCapture(drag.pointerId)) heading.releasePointerCapture(drag.pointerId);
+    if (revert) setPanelPosition(clampPanel(drag.left, drag.top));
+  }, [clampPanel]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -168,7 +202,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || previewMode !== 'edit') return;
+    if (event.button !== 0 || event.detail > 1 || previewMode !== 'edit') return;
     const point = getPoint(event);
     if (!point) return;
     const handle = (event.target as HTMLElement).dataset['cropHandle'] as Handle | undefined;
@@ -230,8 +264,15 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
+      if (panelDragRef.current && event.key === 'Escape') {
+        stopPanelDrag(undefined, true);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement) return;
       if (event.key === 'Escape') {
+        if (fullscreen) return; // Let Chromium exit the native video fullscreen.
         if (pointerDragRef.current) pointerDragRef.current = undefined;
         else onClose();
         event.preventDefault();
@@ -252,7 +293,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     };
     document.addEventListener('keydown', keydown, { capture: true });
     return () => document.removeEventListener('keydown', keydown, { capture: true });
-  }, [bounds.height, bounds.width, focused, onClose]);
+  }, [bounds.height, bounds.width, focused, fullscreen, onClose, stopPanelDrag]);
 
   const handles: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
   const handleStyles: Record<string, CSSProperties> = {
@@ -284,6 +325,13 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
+            onDoubleClick={(event) => {
+              const target = event.target as HTMLElement;
+              if (target.dataset['cropHandle'] && target.dataset['cropHandle'] !== 'move') return;
+              pointerDragRef.current = undefined;
+              onToggleFullscreen();
+              event.stopPropagation();
+            }}
             role="presentation"
           >
             <div
@@ -302,34 +350,47 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           </div>
         </div>
       )}
+      {createPortal(
       <section
         ref={panelRef}
-        aria-label={t('Crop Video')}
+        aria-label={t('Crop Video Settings')}
         className={styles['panel']}
-        style={{ top: panelPosition.top, right: panelPosition.right }}
+        style={{ left: panelPosition.left, top: panelPosition.top, visibility: fullscreen ? 'hidden' : undefined, pointerEvents: fullscreen ? 'none' : undefined }}
         onPointerDown={() => setFocused(false)}
       >
         <div
+          ref={headingRef}
           className={styles['heading']}
           onPointerDown={(event) => {
-            if (event.button !== 0) return;
-            panelDragRef.current = { x: event.clientX, y: event.clientY, top: panelPosition.top, right: panelPosition.right };
+            if (event.button !== 0 || event.target !== event.currentTarget && (event.target as HTMLElement).closest('button')) return;
+            panelDragRef.current = {
+              pointerId: event.pointerId,
+              x: event.clientX,
+              y: event.clientY,
+              left: panelPosition.left,
+              top: panelPosition.top,
+            };
             event.currentTarget.setPointerCapture(event.pointerId);
+            event.preventDefault();
           }}
           onPointerMove={(event) => {
             const drag = panelDragRef.current;
-            if (!drag) return;
-            const panelWidth = panelRef.current?.offsetWidth ?? 380;
-            const panelHeight = panelRef.current?.offsetHeight ?? 200;
-            setPanelPosition({
-              top: clamp(drag.top + event.clientY - drag.y, 0, Math.max(0, size.height - panelHeight)),
-              right: clamp(drag.right - (event.clientX - drag.x), 0, Math.max(0, size.width - panelWidth)),
-            });
+            if (!drag || drag.pointerId !== event.pointerId) return;
+            if ((event.buttons & 1) === 0) {
+              stopPanelDrag(event.pointerId);
+              return;
+            }
+            setPanelPosition(clampPanel(
+              drag.left + event.clientX - drag.x,
+              drag.top + event.clientY - drag.y,
+            ));
           }}
-          onPointerUp={() => { panelDragRef.current = undefined; }}
+          onPointerUp={(event) => stopPanelDrag(event.pointerId)}
+          onPointerCancel={(event) => stopPanelDrag(event.pointerId)}
+          onLostPointerCapture={(event) => stopPanelDrag(event.pointerId)}
           role="presentation"
         >
-          <strong>{t('Crop Video')}</strong>
+          <strong>{t('Crop Video Settings')}</strong>
           <button type="button" aria-label={t('Close')} onPointerDown={(event) => event.stopPropagation()} onClick={onClose}>×</button>
         </div>
         <div className={styles['contents']}>
@@ -412,7 +473,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           </div>
           {!valid && <p>{t('Invalid crop region')}</p>}
         </div>
-      </section>
+      </section>,
+      document.getElementById('app-root') ?? document.body)}
     </>
   );
 }

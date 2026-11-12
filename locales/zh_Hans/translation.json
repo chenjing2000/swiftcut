@@ -1201,5 +1201,6 @@
   "Preview Output (coming soon)": "输出预览（即将实现）",
   "Invalid crop region": "裁剪区域无效",
   "Edit Selection": "编辑选区",
-  "Preview Output": "预览输出"
+  "Preview Output": "预览输出",
+  "Crop Video Settings": "视频裁剪设置"
 }

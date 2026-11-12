@@ -2372,8 +2372,6 @@ function App() {
     e.target.blur();
   }, []);
 
-  const onVideoClick = useCallback(() => togglePlay(), [togglePlay]);
-
   const tryExportEdlFile = useCallback(async (type: EdlExportType) => {
     if (!checkFileOpened() || selectedSegments.length === 0) return;
     await withErrorHandling(async () => {
@@ -2638,7 +2636,6 @@ function App() {
                         onDurationChange={onDurationChange}
                         onTimeUpdate={onTimeUpdate}
                         onError={onVideoError}
-                        onClick={onVideoClick}
                         onDoubleClick={toggleFullscreenVideo}
                         onFocusCapture={onVideoFocus}
                         onSeeked={onSeeked}
@@ -2657,6 +2654,8 @@ function App() {
                         videoFit={videoFit}
                         segments={cutSegments}
                         duration={fileDuration}
+                        fullscreen={fullscreen}
+                        onToggleFullscreen={toggleFullscreenVideo}
                         onClose={() => {
                           setCropVideoForFile(undefined);
                           setCropPreviewRect(undefined);
