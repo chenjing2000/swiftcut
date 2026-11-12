@@ -159,7 +159,8 @@ function App() {
   const [streamsSelectorShown, setStreamsSelectorShown] = useState(false);
   const [concatDialogOpen, setConcatDialogOpen] = useState(false);
   const [audioExtractionDialogOpen, setAudioExtractionDialogOpen] = useState(false);
-  const [cropVideoOpen, setCropVideoOpen] = useState(false);
+  const [cropVideoForFile, setCropVideoForFile] = useState<string>();
+  const cropVideoOpen = filePath != null && cropVideoForFile === filePath;
   const [cropPreviewRect, setCropPreviewRect] = useState<{ left: number; top: number; width: number; height: number }>();
   const [zoomUnrounded, setZoom] = useState(1);
   const [shortestFlag, setShortestFlag] = useState(false);
@@ -356,25 +357,22 @@ function App() {
     const sarNum = sarNumRaw && Number.isFinite(sarNumRaw) ? sarNumRaw : 1;
     const sarDen = sarDenRaw && Number.isFinite(sarDenRaw) ? sarDenRaw : 1;
     const degrees = (((effectiveRotation ?? 0) % 360) + 360) % 360;
-    if (degrees !== 0 && degrees !== 90 && degrees !== 180 && degrees !== 270) return undefined;
+    const resolvedRotation = ([0, 90, 180, 270] as const).find((angle) => angle === degrees);
+    if (resolvedRotation == null) return undefined;
     return {
       width: activeVideoStream.width,
       height: activeVideoStream.height,
       sarNum,
       sarDen,
-      rotation: degrees as 0 | 90 | 180 | 270,
+      rotation: resolvedRotation,
     };
   }, [activeVideoStream, effectiveRotation]);
 
   const openCropVideo = useCallback(() => {
     if (filePath == null || !cropFrame || !isDurationValid(fileDuration)) return;
     pause();
-    setCropVideoOpen(true);
+    setCropVideoForFile(filePath);
   }, [cropFrame, fileDuration, filePath, pause]);
-
-  useEffect(() => {
-    setCropVideoOpen(false);
-  }, [filePath]);
 
 
   const zoomAbs = useCallback((fn: (v: number) => number) => setZoom((z) => Math.min(Math.max(fn(z), 1), zoomMax)), []);
@@ -2660,7 +2658,7 @@ function App() {
                         segments={cutSegments}
                         duration={fileDuration}
                         onClose={() => {
-                          setCropVideoOpen(false);
+                          setCropVideoForFile(undefined);
                           setCropPreviewRect(undefined);
                         }}
                         onPreviewChange={setCropPreviewRect}

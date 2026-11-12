@@ -1,5 +1,5 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { CropAspectPreset, CropOutputMode, CropRect, CropTimeRange } from '../../../../common/videoCropTypes.js';
@@ -10,9 +10,6 @@ import { getDefaultCropTimeRange } from '../../videoCropSegments';
 import type { CropSourceSegment } from '../../videoCropSegments';
 
 import styles from './VideoCropWorkspace.module.css';
-
-type Handle = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e';
-type Dimension = 'x' | 'y' | 'width' | 'height';
 
 interface Props {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -45,47 +42,46 @@ function CropNumericField({ label, value, onCommit, disabled = false }: {
   onCommit: (value: number) => void;
   disabled?: boolean;
 }) {
-  const [draft, setDraft] = useState(String(value));
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    if (!editing) setDraft(String(value));
-  }, [editing, value]);
-
+  const id = useId();
+  // Undefined means display the latest committed value without a syncing effect.
+  const [draft, setDraft] = useState<string>();
   const commit = () => {
-    setEditing(false);
     const next = Number(draft);
     if (draft && Number.isSafeInteger(next)) onCommit(next);
-    else setDraft(String(value));
+    setDraft(undefined);
   };
 
   return (
-    <label className={styles.numberField}>
-      <span>{label}</span>
+    <div className={styles['numberField']}>
+      <label htmlFor={id}>{label}</label>
       <input
+        id={id}
         type="text"
         disabled={disabled}
         inputMode="numeric"
         pattern="[0-9]*"
         aria-label={label}
-        value={draft}
-        onFocus={() => setEditing(true)}
+        value={draft ?? String(value)}
+        onFocus={() => setDraft(String(value))}
         onChange={(event) => setDraft(sanitizeCropDigits(event.target.value))}
         onBlur={commit}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') event.currentTarget.blur();
-          if (event.key === 'Escape') {
-            setDraft(String(value));
+          if (event.key === 'Enter') {
+            event.currentTarget.blur();
+          } else if (event.key === 'Escape') {
+            setDraft(undefined);
             event.currentTarget.blur();
             event.stopPropagation();
           }
         }}
       />
-    </label>
+    </div>
   );
 }
 
 export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, duration, onClose, onPreviewChange }: Props) {
+  type Handle = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e';
+  type Dimension = 'x' | 'y' | 'width' | 'height';
   const { t } = useTranslation();
   const fullRect = useMemo(() => makeFullRect(frame), [frame]);
   const [rect, setRect] = useState<CropRect>(fullRect);
@@ -103,8 +99,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [panelPosition, setPanelPosition] = useState({ right: 16, top: 48 });
   const [focused, setFocused] = useState(false);
-  const panelDrag = useRef<{ x: number; y: number; top: number; right: number } | undefined>(undefined);
-  const pointerDrag = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
+  const panelDragRef = useRef<{ x: number; y: number; top: number; right: number } | undefined>(undefined);
+  const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -117,12 +113,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     return () => observer.disconnect();
   }, [containerRef]);
 
-  useEffect(() => {
-    setRect(fullRect);
-    setResizeWidth(fullRect.width);
-    setResizeHeight(fullRect.height);
-  }, [fullRect]);
-
   const viewport = useMemo<CropViewport>(() => ({
     left: 0, top: 0, width: Math.max(1, size.width), height: Math.max(1, size.height), fit: videoFit,
   }), [size, videoFit]);
@@ -132,8 +122,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const displayRect = useMemo(() => {
     const a = cropPointToScreen({ x: rect.x, y: rect.y }, frame, viewport);
     const b = cropPointToScreen({ x: rect.x + rect.width, y: rect.y + rect.height }, frame, viewport);
-    return { left: a.x - layout.drawnLeft, top: a.y - layout.drawnTop, width: b.x - a.x, height: b.y - a.y };
-  }, [rect, frame, viewport, layout.drawnLeft, layout.drawnTop]);
+    return { left: a.x, top: a.y, width: b.x - a.x, height: b.y - a.y };
+  }, [rect, frame, viewport]);
 
   useEffect(() => {
     onPreviewChange(previewMode === 'output' ? displayRect : undefined);
@@ -181,9 +171,9 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     if (event.button !== 0 || previewMode !== 'edit') return;
     const point = getPoint(event);
     if (!point) return;
-    const handle = (event.target as HTMLElement).dataset.cropHandle as Handle | undefined;
+    const handle = (event.target as HTMLElement).dataset['cropHandle'] as Handle | undefined;
     const mode: Handle = handle ?? 'draw';
-    pointerDrag.current = { x: Math.round(point.x), y: Math.round(point.y), rect, mode };
+    pointerDragRef.current = { x: Math.round(point.x), y: Math.round(point.y), rect, mode };
     surfaceRef.current?.setPointerCapture(event.pointerId);
     setFocused(true);
     event.preventDefault();
@@ -191,7 +181,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = pointerDrag.current;
+    const drag = pointerDragRef.current;
     if (!drag) return;
     const point = getPoint(event);
     if (!point) return;
@@ -200,7 +190,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     const dx = x - drag.x;
     const dy = y - drag.y;
     let next = drag.rect;
-    const mode = drag.mode;
+    const { mode } = drag;
     if (mode === 'draw') {
       next = { x: Math.min(drag.x, x), y: Math.min(drag.y, y), width: Math.abs(dx), height: Math.abs(dy) };
     } else if (mode === 'move') {
@@ -234,7 +224,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   };
 
   const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    pointerDrag.current = undefined;
+    pointerDragRef.current = undefined;
     if (surfaceRef.current?.hasPointerCapture(event.pointerId)) surfaceRef.current.releasePointerCapture(event.pointerId);
   };
 
@@ -242,7 +232,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     const keydown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement) return;
       if (event.key === 'Escape') {
-        if (pointerDrag.current) pointerDrag.current = undefined;
+        if (pointerDragRef.current) pointerDragRef.current = undefined;
         else onClose();
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -250,8 +240,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       }
       if (!focused || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
       const delta = event.shiftKey ? 10 : 1;
-      const dx = event.key === 'ArrowLeft' ? -delta : event.key === 'ArrowRight' ? delta : 0;
-      const dy = event.key === 'ArrowUp' ? -delta : event.key === 'ArrowDown' ? delta : 0;
+      const dx = event.key === 'ArrowLeft' ? -delta : (event.key === 'ArrowRight' ? delta : 0);
+      const dy = event.key === 'ArrowUp' ? -delta : (event.key === 'ArrowDown' ? delta : 0);
       setRect((previous) => ({
         ...previous,
         x: clamp(previous.x + dx, 0, bounds.width - previous.width),
@@ -260,27 +250,35 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       event.preventDefault();
       event.stopImmediatePropagation();
     };
-    document.addEventListener('keydown', keydown, true);
-    return () => document.removeEventListener('keydown', keydown, true);
+    document.addEventListener('keydown', keydown, { capture: true });
+    return () => document.removeEventListener('keydown', keydown, { capture: true });
   }, [bounds.height, bounds.width, focused, onClose]);
 
   const handles: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
   const handleStyles: Record<string, CSSProperties> = {
-    nw: { left: 0, top: 0 }, n: { left: '50%', top: 0 }, ne: { left: '100%', top: 0 },
-    e: { left: '100%', top: '50%' }, se: { left: '100%', top: '100%' }, s: { left: '50%', top: '100%' },
-    sw: { left: 0, top: '100%' }, w: { left: 0, top: '50%' },
+    nw: { left: 0, top: 0 },
+    n: { left: '50%', top: 0 },
+    ne: { left: '100%', top: 0 },
+    e: { left: '100%', top: '50%' },
+    se: { left: '100%', top: '100%' },
+    s: { left: '50%', top: '100%' },
+    sw: { left: 0, top: '100%' },
+    w: { left: 0, top: '50%' },
   };
   const multiple = timeRange === 'selected' && segments.filter((segment) => segment.selected && !segment.initial && segment.end != null && segment.end > segment.start).length > 1;
 
   return (
     <>
-      {previewMode === 'edit' && <div className={styles.overlay}>
+      {previewMode === 'edit' && (
+        <div className={styles['overlay']}>
         <div
           ref={surfaceRef}
-          className={styles.surface}
+          className={styles['surface']}
           style={{
-            left: layout.drawnLeft, top: layout.drawnTop,
-            width: layout.drawnWidth, height: layout.drawnHeight,
+            left: layout.drawnLeft,
+            top: layout.drawnTop,
+            width: layout.drawnWidth,
+            height: layout.drawnHeight,
           }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -288,29 +286,30 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           onPointerCancel={onPointerUp}
           role="presentation"
         >
-          <div className={styles.selection} data-crop-handle="move" style={displayRect}>
+          <div className={styles['selection']} data-crop-handle="move" style={{ ...displayRect, left: displayRect.left - layout.drawnLeft, top: displayRect.top - layout.drawnTop }}>
             {handles.map((handle) => (
-              <span key={handle} data-crop-handle={handle} className={styles.handle} style={handleStyles[handle]} />
+              <span key={handle} data-crop-handle={handle} className={styles['handle']} style={handleStyles[handle]} />
             ))}
           </div>
         </div>
-      </div>}
+        </div>
+      )}
       <section
         ref={panelRef}
         aria-label={t('Crop Video')}
-        className={styles.panel}
+        className={styles['panel']}
         style={{ top: panelPosition.top, right: panelPosition.right }}
         onPointerDown={() => setFocused(false)}
       >
         <div
-          className={styles.heading}
+          className={styles['heading']}
           onPointerDown={(event) => {
             if (event.button !== 0) return;
-            panelDrag.current = { x: event.clientX, y: event.clientY, top: panelPosition.top, right: panelPosition.right };
+            panelDragRef.current = { x: event.clientX, y: event.clientY, top: panelPosition.top, right: panelPosition.right };
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={(event) => {
-            const drag = panelDrag.current;
+            const drag = panelDragRef.current;
             if (!drag) return;
             const panelWidth = panelRef.current?.offsetWidth ?? 380;
             const panelHeight = panelRef.current?.offsetHeight ?? 200;
@@ -319,25 +318,28 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               right: clamp(drag.right - (event.clientX - drag.x), 0, Math.max(0, size.width - panelWidth)),
             });
           }}
-          onPointerUp={() => { panelDrag.current = undefined; }}
+          onPointerUp={() => { panelDragRef.current = undefined; }}
           role="presentation"
         >
           <strong>{t('Crop Video')}</strong>
           <button type="button" aria-label={t('Close')} onPointerDown={(event) => event.stopPropagation()} onClick={onClose}>×</button>
         </div>
-        <div className={styles.contents}>
-          <div className={styles.sectionTitle}>
+        <div className={styles['contents']}>
+          <div className={styles['sectionTitle']}>
             <strong>{t('Crop Region')}</strong>
             <button type="button" onClick={() => { setRect(fullRect); if (!resize) { setResizeWidth(fullRect.width); setResizeHeight(fullRect.height); } }}>{t('Reset')}</button>
           </div>
-          <div className={styles.coordinateGrid}>
+          <div className={styles['coordinateGrid']}>
             <CropNumericField label="X" value={rect.x} onCommit={(value) => updateDimension('x', value)} />
             <CropNumericField label="Y" value={rect.y} onCommit={(value) => updateDimension('y', value)} />
             <CropNumericField label="W" value={rect.width} onCommit={(value) => updateDimension('width', value)} />
             <CropNumericField label="H" value={rect.height} onCommit={(value) => updateDimension('height', value)} />
           </div>
-          <label className={styles.row}><span>{t('Aspect ratio')}</span>
-            <select value={ratio} onChange={(event) => {
+          <label className={styles['row']} htmlFor="crop-aspect-ratio"><span>{t('Aspect ratio')}</span>
+            <select
+              id="crop-aspect-ratio"
+              value={ratio}
+              onChange={(event) => {
               const preset = event.target.value as CropAspectPreset;
               const aspect = getCropTargetAspect(preset, frame);
               setRatio(preset);
@@ -353,18 +355,19 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
                   // Keep the last valid integer crop while the ratio cannot fit.
                 }
               }
-            }}>
+              }}
+            >
               {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
             </select>
           </label>
           <strong>{t('Output Size')}</strong>
-          <label className={styles.radio}><input type="radio" checked={!resize} onChange={() => setResize(false)} />{t('Original crop size')}</label>
-          <div className={styles.resizeRow}>
-            <label className={styles.radio}><input type="radio" checked={resize} onChange={() => setResize(true)} />{t('Resize to:')}</label>
+          <label className={styles['radio']} htmlFor="crop-original-size"><input id="crop-original-size" name="crop-output-size" type="radio" checked={!resize onChange={() => setResize(false)} />{t('Original crop size')}</label>
+          <div className={styles['resizeRow']}>
+            <label className={styles['radio']} htmlFor="crop-resize"><input id="crop-resize" name="crop-output-size" type="radio" checked={resize onChange={() => setResize(true)} />{t('Resize to:')}</label>
             <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
             <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
           </div>
-          {resize && <label className={styles.checkbox}><input type="checkbox" checked={lockResizeAspect} onChange={(event) => setLockResizeAspect(event.target.checked)} />{t('Lock aspect ratio')}</label>}
+          {resize && <label className={styles['checkbox']} htmlFor="crop-resize-lock"><input id="crop-resize-lock" type="checkbox" checked={lockResizeAspect} onChange={(event) => setLockResizeAspect(event.target.checked)} />{t('Lock aspect ratio')}</label>}
           <strong>{t('Video Quality')}</strong>
           <select value={quality} onChange={(event) => setQuality(event.target.value)}>
             <option value="high">{t('High quality')} · H.264 CRF 18</option>
@@ -372,30 +375,30 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             <option value="custom">{t('Custom (Phase 3)')}</option>
           </select>
           <strong>{t('Export')}</strong>
-          <label className={styles.row}><span>{t('Time range')}</span>
-            <select value={timeRange} onChange={(event) => setTimeRange(event.target.value as CropTimeRange)}>
+          <label className={styles['row']} htmlFor="crop-time-range"><span>{t('Time range')}</span>
+            <select id="crop-time-range" value={timeRange} onChange={(event) => setTimeRange(event.target.value as CropTimeRange)}>
               <option value="selected">{t('Selected segments')}</option>
               <option value="entire">{t('Entire video')}</option>
             </select>
           </label>
-          <label className={styles.row}><span>{t('Output mode')}</span>
-            <select value={outputMode} disabled={!multiple} onChange={(event) => setOutputMode(event.target.value as CropOutputMode)}>
+          <label className={styles['row']} htmlFor="crop-output-mode"><span>{t('Output mode')}</span>
+            <select id="crop-output-mode" value={outputMode} disabled={!multiple} onChange={(event) => setOutputMode(event.target.value as CropOutputMode)}>
               <option value="merge">{t('Merge into one file')}</option>
               <option value="separate">{t('Export separately')}</option>
             </select>
           </label>
-          <label className={styles.checkbox}><input type="checkbox" checked={keepAudio} onChange={(event) => setKeepAudio(event.target.checked)} />{t('Keep Audio')}</label>
-          <label className={styles.row}><span>{t('Output format')}</span>
-            <select value={format} onChange={(event) => setFormat(event.target.value as 'mp4' | 'mkv')}>
+          <label className={styles['checkbox']} htmlFor="crop-keep-audio"><input id="crop-keep-audio" type="checkbox" checked={keepAudio} onChange={(event) => setKeepAudio(event.target.checked)} />{t('Keep Audio')}</label>
+          <label className={styles['row']} htmlFor="crop-format"><span>{t('Output format')}</span>
+            <select id="crop-format" value={format} onChange={(event) => setFormat(event.target.value as 'mp4' | 'mkv')}>
               <option value="mp4">MP4</option><option value="mkv">MKV</option>
             </select>
           </label>
-          <div className={styles.footer}>
-            <span className={styles.phaseNote}>{t('Export encoding is available in Phase 3')}</span>
+          <div className={styles['footer']}>
+            <span className={styles['phaseNote']}>{t('Export encoding is available in Phase 3')}</span>
             <button type="button" onClick={onClose}>{t('Cancel')}</button>
             <button type="button" disabled title={t('Export encoding is available in Phase 3')}>{t('Export Video')}</button>
           </div>
-          <div className={styles.previewRow}>
+          <div className={styles['previewRow']}>
             <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
             <button type="button" aria-pressed={previewMode === 'output'} onClick={() => setPreviewMode('output')}>{t('Preview Output')}</button>
           </div>

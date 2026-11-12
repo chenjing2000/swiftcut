@@ -14,7 +14,7 @@ export interface CropViewport {
   top: number;
   width: number;
   height: number;
-  fit: 'contain' | 'cover' | 'fill';
+  fit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
 }
 
 export interface CropPoint { x: number; y: number }
@@ -56,8 +56,22 @@ export function getCropDisplayTransform(frame: CropFrameGeometry, viewport: Crop
   const displayHeight = visible.height;
   const sx = viewport.width / displayWidth;
   const sy = viewport.height / displayHeight;
-  const scaleX = viewport.fit === 'fill' ? sx : (viewport.fit === 'cover' ? Math.max(sx, sy) : Math.min(sx, sy));
-  const scaleY = viewport.fit === 'fill' ? sy : scaleX;
+  const containScale = Math.min(sx, sy);
+  let scaleX = containScale;
+  let scaleY = containScale;
+  if (viewport.fit === 'cover') {
+    scaleX = Math.max(sx, sy);
+    scaleY = scaleX;
+  } else if (viewport.fit === 'fill') {
+    scaleX = sx;
+    scaleY = sy;
+  } else if (viewport.fit === 'none') {
+    scaleX = 1;
+    scaleY = 1;
+  } else if (viewport.fit === 'scale-down') {
+    scaleX = Math.min(1, containScale);
+    scaleY = scaleX;
+  }
   const drawnWidth = displayWidth * scaleX;
   const drawnHeight = displayHeight * scaleY;
   return {

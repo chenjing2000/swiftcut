@@ -31,6 +31,21 @@ describe('crop pixel geometry', () => {
     expect(screenToCropPoint({ x: 500.01, y: 500 }, frame, viewport)).toBeUndefined();
   });
 
+  it('respects CSS object-fit none and scale-down', () => {
+    const viewport = { left: 0, top: 0, width: 800, height: 600, fit: 'none' as const };
+    const none = getCropDisplayTransform(frame, viewport);
+    expect(none.drawnWidth).toBe(1920);
+    expect(none.drawnHeight).toBe(1080);
+    expect(none.drawnLeft).toBe(-560);
+    const reduced = getCropDisplayTransform(frame, { ...viewport, fit: 'scale-down' });
+    expect(reduced.drawnWidth).toBe(800);
+    expect(reduced.drawnHeight).toBe(450);
+    const smallFrame = { ...frame, width: 200, height: 100 };
+    const unscaled = getCropDisplayTransform(smallFrame, { ...viewport, fit: 'scale-down' });
+    expect(unscaled.drawnWidth).toBe(200);
+    expect(unscaled.drawnHeight).toBe(100);
+  });
+
   it('maps rectangles through all quarter turns', () => {
     const crop = { x: 10, y: 20, width: 100, height: 200 };
     expect(visibleRectToFrameRect(crop, frame)).toStrictEqual(crop);
