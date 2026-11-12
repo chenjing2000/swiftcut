@@ -434,6 +434,10 @@ try {
   socket = await connectToCdp(targets.webSocketDebuggerUrl);
   await cdp('Page.enable');
   await cdp('Runtime.enable');
+  await waitForExpression(
+    'document.documentElement.dataset.e2eActionsReady === "true"',
+    'renderer E2E action listener to become ready',
+  );
 
   await testTransientNotification('information');
   await testTransientNotification('success');
