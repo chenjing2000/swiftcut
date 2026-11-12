@@ -2373,7 +2373,7 @@ function App() {
       }
     }
 
-    const e2eActions = process.env.SWIFTCUT_E2E === '1'
+    const e2eActions = process.env['SWIFTCUT_E2E'] === '1'
       ? [[
         '__e2eNotification',
         async (...argsRaw: unknown[]) => {
