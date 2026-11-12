@@ -20,6 +20,11 @@ jobs:
           cache: yarn
       - run: yarn install --immutable
       - run: yarn test --run
+      - uses: AnimMouse/setup-ffmpeg@v1
+      - name: Real FFmpeg crop smoke test
+        run: yarn test --run src/main/videoCropFfmpegIntegration.test.ts
+        env:
+          SWIFTCUT_CROP_FFMPEG_TEST: '1'
       - run: yarn tsc
       - run: yarn lint
       - run: yarn build
