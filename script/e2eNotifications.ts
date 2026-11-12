@@ -48,9 +48,18 @@ function connectToCdp(url: string) {
       reject(new Error('Failed to connect to Electron DevTools Protocol'));
     }, { once: true });
     ws.addEventListener('message', (event) => {
-      const message = JSON.parse(String(event.data)) as CdpResponse;
-      if (message.id == null) return;
-      logStage(`DevTools response received: ${message.id}${message.error ? ' error' : ''}`);
+      const message = JSON.parse(String(event.data)) as CdpResponse & {
+        method?: string;
+        params?: Record<string, unknown>;
+      };
+      if (message.id == null) {
+        if (message.method === 'Runtime.exceptionThrown') {
+          console.error('[notification-e2e] Renderer exception:', JSON.stringify(message.params));
+        } else if (message.method === 'Runtime.consoleAPICalled' && message.params?.['type'] === 'error') {
+          console.error('[notification-e2e] Renderer console error:', JSON.stringify(message.params));
+        }
+        return;
+      }
       const request = pending.get(message.id);
       if (!request) return;
       pending.delete(message.id);
@@ -490,6 +499,8 @@ try {
   const probe = await cdp('Runtime.evaluate', { expression: '1 + 1', returnByValue: true, awaitPromise: false });
   logStage(`Renderer JavaScript probe: ${JSON.stringify(probe)}`);
   logStage('Waiting for renderer E2E action listener');
+  const initialDom = await evaluate<string>('document.body?.innerText?.slice(0, 600) ?? "(empty)"');
+  logStage(`Initial document text: ${initialDom}`);
   await waitForExpression(
     'document.documentElement.dataset.e2eActionsReady === "true"',
     'renderer E2E action listener to become ready',
