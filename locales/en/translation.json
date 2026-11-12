@@ -987,5 +987,7 @@
   "Export encoding is available in Phase 3": "Export encoding is available in Phase 3",
   "Output preview is not implemented yet; the crop selection remains unchanged.": "Output preview is not implemented yet; the crop selection remains unchanged.",
   "Preview Output (coming soon)": "Preview Output (coming soon)",
-  "Invalid crop region": "Invalid crop region"
+  "Invalid crop region": "Invalid crop region",
+  "Edit Selection": "Edit Selection",
+  "Preview Output": "Preview Output"
 }

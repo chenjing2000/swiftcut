@@ -160,6 +160,7 @@ function App() {
   const [concatDialogOpen, setConcatDialogOpen] = useState(false);
   const [audioExtractionDialogOpen, setAudioExtractionDialogOpen] = useState(false);
   const [cropVideoOpen, setCropVideoOpen] = useState(false);
+  const [cropPreviewRect, setCropPreviewRect] = useState<{ left: number; top: number; width: number; height: number }>();
   const [zoomUnrounded, setZoom] = useState(1);
   const [shortestFlag, setShortestFlag] = useState(false);
   const [zoomWindowStartTime, setZoomWindowStartTime] = useState(0);
@@ -2559,6 +2560,16 @@ function App() {
 
   // throw new Error('Test error boundary');
 
+  const cropPreviewStyle = useMemo<CSSProperties | undefined>(() => {
+    const view = videoContainerRef.current;
+    if (!cropVideoOpen || !cropPreviewRect || !view || cropPreviewRect.width <= 0 || cropPreviewRect.height <= 0) return undefined;
+    const scale = Math.min(view.clientWidth / cropPreviewRect.width, view.clientHeight / cropPreviewRect.height);
+    return {
+      transformOrigin: 'top left',
+      transform: `translate(${((view.clientWidth - (cropPreviewRect.width * scale)) / 2) - (cropPreviewRect.left * scale)}px, ${((view.clientHeight - (cropPreviewRect.height * scale)) / 2) - (cropPreviewRect.top * scale)}px) scale(${scale})`,
+    };
+  }, [cropPreviewRect, cropVideoOpen, videoContainerRef]);
+
   const baseColorStyle = useMemo(() => ({ color: 'var(--gray-12)', background: 'var(--gray-1)', colorScheme: darkMode ? 'only dark' : 'only light' }), [darkMode]);
 
   const rootClass = useMemo(() => [
@@ -2614,7 +2625,7 @@ function App() {
                   <div style={{ position: 'relative', flexGrow: 1, overflow: 'hidden' }} ref={videoContainerRef}>
                     {!isFileOpened && <NoFileLoaded currentCutSeg={currentCutSeg} onClick={openFilesDialog} keyBindingByAction={keyBindingByAction} />}
 
-                    <div className="no-user-select" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, visibility: !isFileOpened || !hasVideo || bigWaveformEnabled ? 'hidden' : undefined }} onWheel={onTimelineWheel}>
+                    <div className="no-user-select" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, visibility: !isFileOpened || !hasVideo || bigWaveformEnabled ? 'hidden' : undefined, ...cropPreviewStyle }} onWheel={onTimelineWheel}>
                       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                       <video
                         className={styles['video']}
@@ -2647,7 +2658,11 @@ function App() {
                         videoFit={videoFit}
                         segments={cutSegments}
                         duration={fileDuration}
-                        onClose={() => setCropVideoOpen(false)}
+                        onClose={() => {
+                          setCropVideoOpen(false);
+                          setCropPreviewRect(undefined);
+                        }}
+                        onPreviewChange={setCropPreviewRect}
                       />
                     )}
 

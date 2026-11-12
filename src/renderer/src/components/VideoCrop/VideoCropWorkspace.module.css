@@ -26,3 +26,6 @@
 .footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--gray-6); }
 .footer button { white-space: nowrap; }
 .phaseNote { font-size: 10px; color: var(--gray-11); margin-right: auto; }
+.previewRow { display: flex; gap: 4px; }
+.previewRow button { flex: 1; border: 1px solid var(--gray-7); border-radius: 5px; padding: 5px; }
+.previewRow button[aria-pressed="true"] { background: var(--accent-5); border-color: var(--accent-9); }

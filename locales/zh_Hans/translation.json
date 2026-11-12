@@ -1199,5 +1199,7 @@
   "Export encoding is available in Phase 3": "视频编码导出将在第三阶段实现",
   "Output preview is not implemented yet; the crop selection remains unchanged.": "输出预览尚未实现，裁剪选区保持不变。",
   "Preview Output (coming soon)": "输出预览（即将实现）",
-  "Invalid crop region": "裁剪区域无效"
+  "Invalid crop region": "裁剪区域无效",
+  "Edit Selection": "编辑选区",
+  "Preview Output": "预览输出"
 }

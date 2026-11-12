@@ -21,6 +21,7 @@ interface Props {
   segments: readonly CropSourceSegment[];
   duration: number;
   onClose: () => void;
+  onPreviewChange: (rect: { left: number; top: number; width: number; height: number } | undefined) => void;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -82,7 +83,7 @@ function CropNumericField({ label, value, onCommit }: {
   );
 }
 
-export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, duration, onClose }: Props) {
+export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, duration, onClose, onPreviewChange }: Props) {
   const { t } = useTranslation();
   const fullRect = useMemo(() => makeFullRect(frame), [frame]);
   const [rect, setRect] = useState<CropRect>(fullRect);
@@ -131,6 +132,11 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     const b = cropPointToScreen({ x: rect.x + rect.width, y: rect.y + rect.height }, frame, viewport);
     return { left: a.x - layout.drawnLeft, top: a.y - layout.drawnTop, width: b.x - a.x, height: b.y - a.y };
   }, [rect, frame, viewport, layout.drawnLeft, layout.drawnTop]);
+
+  useEffect(() => {
+    onPreviewChange(previewMode === 'output' ? displayRect : undefined);
+    return () => onPreviewChange(undefined);
+  }, [displayRect, onPreviewChange, previewMode]);
 
   const changeRect = useCallback((next: CropRect, dimension: Dimension) => {
     let candidate = next;
@@ -254,7 +260,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
 
   return (
     <>
-      <div className={styles.overlay}>
+      {previewMode === 'edit' && <div className={styles.overlay}>
         <div
           ref={surfaceRef}
           className={styles.surface}
@@ -274,7 +280,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             ))}
           </div>
         </div>
-      </div>
+      </div>}
       <section
         ref={panelRef}
         aria-label={t('Crop Video')}
@@ -359,8 +365,10 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             <button type="button" onClick={onClose}>{t('Cancel')}</button>
             <button type="button" disabled title={t('Export encoding is available in Phase 3')}>{t('Export Video')}</button>
           </div>
-          {previewMode === 'output' && <p>{t('Output preview is not implemented yet; the crop selection remains unchanged.')}</p>}
-          <button type="button" disabled onClick={() => setPreviewMode('output')}>{t('Preview Output (coming soon)')}</button>
+          <div className={styles.previewRow}>
+            <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
+            <button type="button" aria-pressed={previewMode === 'output'} onClick={() => setPreviewMode('output')}>{t('Preview Output')}</button>
+          </div>
           {!valid && <p>{t('Invalid crop region')}</p>}
         </div>
       </section>
