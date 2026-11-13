@@ -9,7 +9,9 @@
 .handle[data-crop-handle="ne"], .handle[data-crop-handle="sw"] { cursor: nesw-resize; }
 .contents { display: flex; flex-direction: column; gap: 10px; }
 .contents select, .contents input[type="text"] { background: var(--gray-2); color: var(--gray-12); border: 1px solid var(--gray-7); border-radius: 5px; padding: 5px; min-width: 0; }
-.contents select { width: 190px; max-width: 55%; }
+.contents select { width: 160px; max-width: 100%; }
+.contents > select { align-self: flex-end; }
+.qualityRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sectionTitle, .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sectionTitle button { font-size: 12px; }
 .coordinateGrid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 4px; row-gap: 8px; }
