@@ -32,9 +32,10 @@ export const Content = forwardRef<HTMLDivElement, Dialog.DialogContentProps>(({ 
 
 export const Description = withClass(Dialog.Description, styles['DialogDescription']!);
 
-export function Title({ className, ...props }: Dialog.DialogTitleProps) {
-  return <Dialog.Title {...props} data-dialog-drag-handle className={[styles['DialogTitle'], className].filter(Boolean).join(' ')} />;
-}
+export const Title = forwardRef<HTMLHeadingElement, Dialog.DialogTitleProps>(({ className, ...props }, ref) => (
+  <Dialog.Title ref={ref} {...props} data-dialog-drag-handle className={[styles['DialogTitle'], className].filter(Boolean).join(' ')} />
+));
+Title.displayName = 'DialogTitle';
 
 export const Portal = (props: Dialog.DialogPortalProps) => <Dialog.Portal container={document.getElementById('app-root')} {...props} />;
 
