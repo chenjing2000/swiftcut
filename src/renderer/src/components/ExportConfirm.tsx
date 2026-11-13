@@ -3,9 +3,10 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import { FaExclamationTriangle, FaFolderOpen, FaInfoCircle, FaRegCheckCircle } from 'react-icons/fa';
 import i18n from 'i18next';
 import { useTranslation, Trans } from 'react-i18next';
-import { IoIosHelpCircle, IoIosSettings } from 'react-icons/io';
+import { IoIosHelpCircle } from 'react-icons/io';
 
 import ExportButton from './ExportButton';
+import AutoExportToggler from './AutoExportToggler';
 import ExportModeButton from './ExportModeButton';
 import HighlightedText from './HighlightedText';
 import Select from './Select';
@@ -113,6 +114,10 @@ function ExportConfirm({
   visible,
   onClosePress,
   onExportConfirm,
+  onCleanupPreferences,
+  onChangeOutputFps,
+  onIncreaseRotation,
+  outputRotation,
   outFormat,
   renderOutFmt,
   outputDir,
@@ -130,7 +135,6 @@ function ExportConfirm({
   isEncoding,
   encBitrate,
   setEncBitrate,
-  toggleSettings,
   outputPlaybackRate,
   lossyMode,
   neighbouringKeyFrames,
@@ -142,6 +146,10 @@ function ExportConfirm({
   visible: boolean,
   onClosePress: () => void,
   onExportConfirm: () => void,
+  onCleanupPreferences: () => Promise<unknown>,
+  onChangeOutputFps: () => void,
+  onIncreaseRotation: () => void,
+  outputRotation: number,
   outFormat: string | undefined,
   renderOutFmt: (style: CSSProperties) => ReactNode,
   outputDir: string | undefined,
@@ -159,7 +167,6 @@ function ExportConfirm({
   isEncoding: boolean,
   encBitrate: number | undefined,
   setEncBitrate: Dispatch<SetStateAction<number | undefined>>,
-  toggleSettings: () => void,
   outputPlaybackRate: number,
   lossyMode: LossyMode | undefined,
   neighbouringKeyFrames: Frame[],
@@ -167,7 +174,7 @@ function ExportConfirm({
 }) {
   const { t } = useTranslation();
 
-  const { keyframeCut, toggleKeyframeCut, preserveMovData, setPreserveMovData, preserveMetadata, setPreserveMetadata, preserveChapters, setPreserveChapters, movFastStart, setMovFastStart, avoidNegativeTs, setAvoidNegativeTs, segmentsToChapters, setSegmentsToChapters, preserveMetadataOnMerge, setPreserveMetadataOnMerge, enableSmartCut, setEnableSmartCut, effectiveExportMode, ffmpegExperimental, setFfmpegExperimental, cutFromAdjustmentFrames, setCutFromAdjustmentFrames, cutToAdjustmentFrames, setCutToAdjustmentFrames, simpleMode, keyframesEnabled } = useUserSettings();
+  const { keyframeCut, toggleKeyframeCut, preserveMovData, setPreserveMovData, preserveMetadata, setPreserveMetadata, preserveChapters, setPreserveChapters, movFastStart, setMovFastStart, avoidNegativeTs, setAvoidNegativeTs, segmentsToChapters, setSegmentsToChapters, preserveMetadataOnMerge, setPreserveMetadataOnMerge, enableSmartCut, setEnableSmartCut, effectiveExportMode, ffmpegExperimental, setFfmpegExperimental, cutFromAdjustmentFrames, setCutFromAdjustmentFrames, cutToAdjustmentFrames, setCutToAdjustmentFrames, simpleMode, keyframesEnabled, treatInputFileModifiedTimeAsStart, setTreatInputFileModifiedTimeAsStart, treatOutputFileModifiedTimeAsStart, setTreatOutputFileModifiedTimeAsStart } = useUserSettings();
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -650,12 +657,44 @@ function ExportConfirm({
               </AnimatedTr>
 
               <AnimatedTr>
+                <td>{t('Change FPS')}</td>
+                <td><button type="button" onClick={onChangeOutputFps}>{outputPlaybackRate.toFixed(3)}x</button></td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Set output rotation. Current: ')}</td>
+                <td><button type="button" onClick={onIncreaseRotation}>{outputRotation}°</button></td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Set file modification date/time of output files to:')}</td>
                 <td>
-                  {t('More settings')}
+                  <Select value={typeof treatOutputFileModifiedTimeAsStart === 'boolean' ? String(treatOutputFileModifiedTimeAsStart) : 'disabled'} onChange={(event) => setTreatOutputFileModifiedTimeAsStart(event.target.value === 'disabled' ? null : event.target.value === 'true')}>
+                    <option value="disabled">{t('Current time')}</option>
+                    <option value="true">{t('Source file\'s time plus segment start cut time')}</option>
+                    <option value="false">{t('Source file\'s time minus segment end cut time')}</option>
+                  </Select>
                 </td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Treat source file modification date/time as:')}</td>
                 <td>
-                  <IoIosSettings size={24} role="button" onClick={toggleSettings} style={{ marginLeft: 5 }} />
+                  <Select disabled={treatOutputFileModifiedTimeAsStart == null} value={String(treatInputFileModifiedTimeAsStart)} onChange={(event) => setTreatInputFileModifiedTimeAsStart(event.target.value === 'true')}>
+                    <option value="true">{t('Start of video')}</option>
+                    <option value="false">{t('End of video')}</option>
+                  </Select>
                 </td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Extract unprocessable tracks to separate files or discard them?')}</td>
+                <td><AutoExportToggler /></td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Cleanup files after export?')}</td>
+                <td><button type="button" onClick={() => { onCleanupPreferences().catch(console.error); }}>{t('Change preferences')}</button></td>
                 <td />
               </AnimatedTr>
             </>
