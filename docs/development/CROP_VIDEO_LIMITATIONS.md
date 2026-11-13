@@ -22,7 +22,7 @@ Status: Phase 3D-D3 documentation, `feature/crop-video` branch (2026-11-13).
 ## Not implemented / intentionally constrained
 
 - **This is not lossless cropping.** Pixel cropping requires a new H.264 encode. The original lossless cut/export remains a separate feature.
-- The **Custom** quality option is visible as a disabled/unavailable choice; it is not implemented for export. The type definitions mention additional encoders, presets and pixel formats but current request validation intentionally accepts only the reviewed `libx264` / `medium` / `yuv420p` combination.
+- The **Custom** quality option remains visible but is explicitly disabled; it is not implemented for export. The type definitions mention additional encoders, presets and pixel formats but current request validation intentionally accepts only the reviewed `libx264` / `medium` / `yuv420p` combination.
 - Hardware H.264 acceleration, HEVC/H.265 crop output and general-purpose codec/profile selection are not part of the current crop workflow.
 - Only the selected primary audio stream is used when audio is kept. Multi-audio-track preservation, subtitle-track inclusion and chapters are not part of the crop export pipeline.
 - The crop feature supports **metadata-compatible display orientation**, not a user-controlled rotate-video tool. The tested rotations are 0°, 90°, 180° and 270°.

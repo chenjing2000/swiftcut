@@ -476,7 +476,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             <select value={quality} onChange={(event) => setQuality(event.target.value)}>
               <option value="high">{t('High quality')} · H.264 CRF 18</option>
               <option value="standard">{t('Standard')} · H.264 CRF 23</option>
-              <option value="custom">{t('Custom (Phase 3)')}</option>
+              <option value="custom" disabled>{t('Custom (Phase 3)')}</option>
             </select>
             <strong>{t('Export')}</strong>
             <label className={styles['row']} htmlFor="crop-time-range"><span>{t('Time range')}</span>
