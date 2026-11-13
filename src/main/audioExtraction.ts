@@ -416,8 +416,7 @@ export async function startAudioExtraction(args: {
                 if (rollbackError?.status === 'rejected') {
                   throw new Error('Cannot rollback incomplete merged audio output batch', { cause: error });
                 }
-                if (getErrorCode(error) !== 'EEXIST') throw error;
-                if (attempt === 9999) throw error;
+                if (getErrorCode(error) !== 'EEXIST' || attempt === 9999) throw error;
               }
             }
           }

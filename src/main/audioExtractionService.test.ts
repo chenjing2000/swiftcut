@@ -180,7 +180,7 @@ describe('Audio extraction task service', () => {
     expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(6);
     expect(mocks.runScopedFfmpeg.mock.calls[4]![0].ffmpegArgs).toContain('concat');
     expect(mocks.runScopedFfmpeg.mock.calls[5]![0].ffmpegArgs).toContain('concat');
-    expect((await readdir(outputDir)).toSorted()).toStrictEqual([
+    expect((await readdir(outputDir)).toSorted((a, b) => a.localeCompare(b))).toStrictEqual([
       'lecture_segments_merge_track_01.m4a',
       'lecture_segments_merge_track_02.ac3',
     ]);
@@ -194,10 +194,10 @@ describe('Audio extraction task service', () => {
   });
 
   test('refuses to publish merged audio if a segment fails and the user resumes', async () => {
-    mocks.runScopedFfmpeg.mockImplementationOnce(() => ({
+    mocks.runScopedFfmpeg.mockReturnValueOnce({
       result: Promise.reject(new Error('segment encode failed')),
       cancel: vi.fn<() => void>(),
-    }));
+    });
     const id = await startAudioExtraction({
       inputPath,
       streamIndexes: [1],
