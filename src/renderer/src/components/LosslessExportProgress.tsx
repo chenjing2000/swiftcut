@@ -17,7 +17,8 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
   const active = state === 'running' || state === 'cancelling';
   const stateLabels = { running: 'Exporting', cancelling: 'Cancelling export', cancelled: 'Cancelled', success: 'Export finished' } as const;
   const stateLabel = stateLabels[state];
-  const displayState = state === 'success' ? 'success' : state === 'cancelled' ? 'cancelled' : undefined;
+  const displayStates = { running: undefined, cancelling: undefined, cancelled: 'cancelled', success: 'success' } as const;
+  const displayState = displayStates[state];
   const percent = progress == null ? undefined : Math.round(Math.max(0, Math.min(1, progress)) * 100);
   return (
     <aside className={styles['panel']} role="status" aria-live="polite" aria-label={t('Export Video Settings')}>
