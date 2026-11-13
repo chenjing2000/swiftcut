@@ -24,14 +24,24 @@
   cursor: move;
 }
 .heading strong { font-size: 14px; }
-.heading button {
-  border: 0;
+.heading > button {
+  box-sizing: border-box;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: transparent;
   color: inherit;
   font-size: 18px;
+  line-height: 1;
   padding: 0;
   cursor: pointer;
 }
+.heading > button:hover { background: var(--gray-4); }
+.heading > button:focus-visible { outline: 2px solid var(--accent-9); outline-offset: 1px; }
 .contents {
   min-height: 0;
   overflow-y: auto;
