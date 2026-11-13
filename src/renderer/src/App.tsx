@@ -99,7 +99,7 @@ import { errorToast, showPlaybackFailedMessage } from './swal';
 import { adjustRate } from './util/rate-calculator';
 import { askExtractFramesAsImages } from './dialogs/extractFrames';
 import type { CleanupChoicesType, OpenFileResponse } from './dialogs';
-import { askForOutDir, askForImportChapters, askForFileOpenAction, showDiskFull, showExportFailedDialog, showConcatFailedDialog, openYouTubeChaptersDialog, showRefuseToOverwrite, showOpenDialog, showMuxNotSupported, promptDownloadMediaUrl, showOutputNotWritable, deleteFiles, mustDisallowVob, toastError } from './dialogs';
+import { askForOutDir, askForPlaybackRate, askForImportChapters, askForFileOpenAction, showDiskFull, showExportFailedDialog, showConcatFailedDialog, openYouTubeChaptersDialog, showRefuseToOverwrite, showOpenDialog, showMuxNotSupported, promptDownloadMediaUrl, showOutputNotWritable, deleteFiles, mustDisallowVob, toastError } from './dialogs';
 import { openSendReportDialog } from './reporting';
 import { sortSegments, convertSegmentsToChaptersWithGaps, hasAnySegmentOverlap, isDurationValid, getPlaybackAction, getSegmentTags, filterNonMarkers, isInitialSegment } from './segments';
 import type { GenerateMergedOutFileNamesParams, GeneratedOutFileNames } from './util/outputNameTemplate';
@@ -1154,6 +1154,10 @@ function App() {
     const selected = await askForOutDir(losslessDirectory);
     if (selected && filePath) setLosslessCustomDirectory({ source: filePath, value: selected });
   }, [losslessDirectory, filePath]);
+  const changeLosslessOutputFps = useCallback(async () => {
+    const rate = await askForPlaybackRate({ detectedFps, outputPlaybackRate });
+    if (rate != null) setOutputPlaybackRate(rate);
+  }, [detectedFps, outputPlaybackRate, setOutputPlaybackRate]);
 
   const onExportConfirm = useCallback(async () => {
     invariant(filePath != null && outputDir != null);
@@ -2894,7 +2898,7 @@ function App() {
 
                 {/* Dialogs */}
 
-                <ExportConfirm areWeCutting={areWeCutting} segmentsOrInverse={segmentsOrInverse} segmentsToExport={segmentsToExport} willMerge={willMerge} visible={exportConfirmOpen} onClosePress={closeExportConfirm} onExportConfirm={onExportConfirm} renderOutFmt={renderOutFmt} outputDir={losslessDirectory} onOutputDirChange={(value) => { if (filePath) setLosslessCustomDirectory({ source: filePath, value }); }} onChooseOutputDir={() => { chooseLosslessDirectory().catch(console.error); }} outputFilename={losslessFilename} onOutputFilenameChange={(value) => { if (filePath) setLosslessCustomFilename({ source: filePath, value }); }} numStreamsTotal={numStreamsTotal} numStreamsToCopy={numStreamsToCopy} onShowStreamsSelectorClick={handleShowStreamsSelectorClick} outFormat={fileFormat} mainCopiedThumbnailStreams={mainCopiedThumbnailStreams} hvc1NeededStreams={hvc1NeededStreams} needSmartCut={needSmartCut} isEncoding={isEncoding} encBitrate={encBitrate} setEncBitrate={setEncBitrate} toggleSettings={toggleSettings} outputPlaybackRate={outputPlaybackRate} lossyMode={lossyMode} neighbouringKeyFrames={neighbouringKeyFrames} findNearestKeyFrameTime={findNearestKeyFrameTime} />
+                <ExportConfirm areWeCutting={areWeCutting} segmentsOrInverse={segmentsOrInverse} segmentsToExport={segmentsToExport} willMerge={willMerge} visible={exportConfirmOpen} onClosePress={closeExportConfirm} onExportConfirm={onExportConfirm} renderOutFmt={renderOutFmt} outputDir={losslessDirectory} onOutputDirChange={(value) => { if (filePath) setLosslessCustomDirectory({ source: filePath, value }); }} onChooseOutputDir={() => { chooseLosslessDirectory().catch(console.error); }} outputFilename={losslessFilename} onOutputFilenameChange={(value) => { if (filePath) setLosslessCustomFilename({ source: filePath, value }); }} numStreamsTotal={numStreamsTotal} numStreamsToCopy={numStreamsToCopy} onShowStreamsSelectorClick={handleShowStreamsSelectorClick} outFormat={fileFormat} mainCopiedThumbnailStreams={mainCopiedThumbnailStreams} hvc1NeededStreams={hvc1NeededStreams} needSmartCut={needSmartCut} isEncoding={isEncoding} encBitrate={encBitrate} setEncBitrate={setEncBitrate} onCleanupPreferences={askForCleanupChoices} onChangeOutputFps={() => { changeLosslessOutputFps().catch(console.error); }} onIncreaseRotation={increaseRotation} outputRotation={isRotationSet ? effectiveRotation : 0} outputPlaybackRate={outputPlaybackRate} lossyMode={lossyMode} neighbouringKeyFrames={neighbouringKeyFrames} findNearestKeyFrameTime={findNearestKeyFrameTime} />
 
                 <Dialog.Root open={streamsSelectorShown} onOpenChange={setStreamsSelectorShown}>
                   <Dialog.Portal>
@@ -2964,7 +2968,6 @@ function App() {
                       <Settings
                         onTunerRequested={onTunerRequested}
                         onKeyboardShortcutsDialogRequested={toggleKeyboardShortcuts}
-                        askForCleanupChoices={askForCleanupChoices}
                         toggleStoreProjectInWorkingDir={toggleStoreProjectInWorkingDir}
                         showAdvancedSettings={showAdvancedSettings}
                         setShowAdvancedSettings={setShowAdvancedSettings}
