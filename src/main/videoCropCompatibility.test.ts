@@ -171,7 +171,7 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       ], { maxBuffer: 1024 * 1024, timeout: 60_000 });
       const expected = rgbFrame(rotated); // FFmpeg's display-matrix autorotation is the reference.
       const actual = rgbFrame(upright);
-      expect(actual.length).toBe(expected.length);
+      expect(actual).toHaveLength(expected.length);
       let difference = 0;
       for (let i = 0; i < actual.length; i += 1) difference += Math.abs(actual[i]! - expected[i]!);
       expect(difference / actual.length).toBeLessThan(15);
