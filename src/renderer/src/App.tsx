@@ -1180,6 +1180,7 @@ function App() {
   const onExportConfirm = useCallback(async () => {
     invariant(filePath != null && outputDir != null);
     let temporaryLosslessDir: string | undefined;
+    let exportSucceeded = false;
     emitEvent({ eventName: 'export-start', path: filePath });
 
     if (numStreamsToCopy === 0) {
@@ -1333,8 +1334,9 @@ function App() {
       const exportedPaths = willMerge && mergedOutFilePath != null ? [mergedOutFilePath] : committedPaths;
       invariant(exportedPaths.length > 0);
       if (!losslessCancelRequestedRef.current) {
-        setLosslessExportPaths(exportedPaths);
+        setLosslessExportPaths(committedPaths);
         setLosslessExportState('success');
+        exportSucceeded = true;
       }
 
       setExportCount((c) => c + 1);
@@ -1378,6 +1380,7 @@ function App() {
     } finally {
       if (temporaryLosslessDir != null) await rm(temporaryLosslessDir, { recursive: true, force: true }).catch(console.error);
       if (losslessCancelRequestedRef.current) setLosslessExportState('cancelled');
+      else if (!exportSucceeded) setLosslessExportState(undefined);
       setWorking(undefined);
       setProgress(undefined);
     }
