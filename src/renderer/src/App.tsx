@@ -48,6 +48,7 @@ import Working from './components/Working';
 import OutputFormatSelect from './components/OutputFormatSelect';
 import AudioExtractionDialog from './components/AudioExtraction/AudioExtractionDialog';
 import VideoCropWorkspace from './components/VideoCrop/VideoCropWorkspace';
+import CropExportProgress from './components/VideoCrop/CropExportProgress';
 import { createCropExportPlan } from './videoCropExportPlanner';
 import { resolveVideoCropSegments } from './videoCropSegments';
 import type { CropVideoConfig } from '../../common/videoCropTypes.js';
@@ -2713,23 +2714,18 @@ function App() {
                       />
                     )}
 
-                    {cropExportStatus && !['success', 'partial_success', 'failed', 'cancelled'].includes(cropExportStatus.state) && (
-                      <div style={{ position: 'fixed', right: 16, bottom: 24, zIndex: 300, width: 310, padding: 14, borderRadius: 10, border: '1px solid var(--gray-7)', background: 'var(--gray-2)', color: 'var(--gray-12)', boxShadow: '0 6px 22px #0005' }}>
-                        <strong>Exporting Cropped Video</strong>
-                        <div style={{ marginTop: 8 }}>{cropExportStatus.state}: {Math.round(cropExportStatus.progress * 100)}% ({cropExportStatus.completedSegments ?? 0}/{cropExportStatus.totalSegments ?? 1})</div>
-                        <progress style={{ width: '100%' }} value={cropExportStatus.progress} max={1} />
-                        <button type="button" style={{ marginTop: 8 }} onClick={() => { if (cropExportJobId) mainApi.cancelCropExport(cropExportJobId).catch(console.error); }}>Cancel Export</button>
-                      </div>
-                    )}
-                    {cropExportStatus && ['success', 'partial_success', 'failed', 'cancelled'].includes(cropExportStatus.state) && (
-                      <div style={{ position: 'fixed', right: 16, bottom: 24, zIndex: 300, width: 310, padding: 14, borderRadius: 10, border: '1px solid var(--gray-7)', background: 'var(--gray-2)', color: 'var(--gray-12)', boxShadow: '0 6px 22px #0005' }}>
-                        <strong>{({ success: 'Crop export completed', partial_success: 'Crop export partially completed', failed: 'Crop export failed', cancelled: 'Crop export cancelled' } as Record<string, string>)[cropExportStatus.state]}</strong>
-                        {cropExportStatus.outputPaths?.map((path) => <div key={path} style={{ overflowWrap: 'anywhere' }}>{path}</div>)}
-                        {cropExportStatus.state === 'partial_success' && <div role="status">{cropExportStatus.outputPaths?.length ?? 0} file(s) saved. Completed files were preserved.</div>}
-                        {cropExportStatus.error && <div role="alert">{cropExportStatus.error}</div>}
-                        {cropExportStatus.cleanupWarning && <div role="alert">Temporary files could not be fully cleaned: {cropExportStatus.cleanupWarning}</div>}
-                        <button type="button" style={{ marginTop: 8 }} onClick={() => { setCropExportJobId(undefined); setCropExportStatus(undefined); }}>Dismiss</button>
-                      </div>
+                    {cropExportStatus && (
+                      <CropExportProgress
+                        key={cropExportStatus.id}
+                        status={cropExportStatus}
+                        onCancel={async () => {
+                          if (cropExportJobId) await mainApi.cancelCropExport(cropExportJobId);
+                        }}
+                        onDismiss={() => {
+                          setCropExportJobId(undefined);
+                          setCropExportStatus(undefined);
+                        }}
+                      />
                     )}
 
                     {bigWaveformEnabled && <BigWaveform waveforms={waveforms} relevantTime={relevantTime} playing={playing} fileDurationNonZero={fileDurationNonZero} zoom={zoomUnrounded} seekRel={seekRel} darkMode={darkMode} />}

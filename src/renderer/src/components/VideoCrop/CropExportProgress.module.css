@@ -1,0 +1,94 @@
+.panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 300;
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 32px));
+  min-width: min(300px, calc(100vw - 32px));
+  max-width: 420px;
+  max-height: min(65vh, 440px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--gray-7);
+  border-radius: 12px;
+  background: var(--color-panel-solid, var(--gray-2));
+  color: var(--gray-12);
+  box-shadow: 0 7px 28px rgb(0 0 0 / 32%);
+  font-size: 13px;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--gray-6);
+}
+
+.heading strong { font-size: 14px; }
+
+.status {
+  color: var(--gray-11);
+  font-size: 11px;
+  text-align: right;
+}
+
+.status[data-state="success"] { color: var(--green-10); }
+.status[data-state="failed"] { color: var(--red-10); }
+.status[data-state="partial_success"] { color: var(--amber-10); }
+.status[data-state="cancelled"] { color: var(--gray-11); }
+
+.contents {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contents p { margin: 0; }
+
+.progressText {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--gray-11);
+  font-size: 12px;
+}
+
+.progress { width: 100%; accent-color: var(--accent-9); }
+
+.outputs { min-width: 0; }
+
+.outputHeading {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.paths {
+  margin: 0;
+  padding: 0 0 0 16px;
+  max-height: 145px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+
+.paths li + li { margin-top: 5px; }
+
+.error { color: var(--red-11); overflow-wrap: anywhere; }
+.warning { color: var(--amber-11); overflow-wrap: anywhere; }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions button {
+  padding: 6px 12px;
+  border-radius: 6px;
+}
