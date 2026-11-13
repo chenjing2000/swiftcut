@@ -121,3 +121,13 @@
 		transition-duration: 0ms;
 	}
 }
+
+/* Consistent centered dialog sizing and typography; explicit widths may expand to 640px. */
+.DialogContent {
+  width: 400px;
+  min-width: min(320px, calc(100vw - 16px));
+  max-width: min(640px, calc(100vw - 16px));
+  font-size: 13px;
+}
+.DialogContent :is(button, input, select, textarea) { font-size: inherit; }
+.DialogTitle { font-size: 14px; cursor: move; user-select: none; touch-action: none; }

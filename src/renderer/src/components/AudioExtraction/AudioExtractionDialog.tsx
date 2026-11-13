@@ -219,7 +219,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+    <Dialog.Root modal={false} open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         {/* This settings panel uses the same unobscured floating presentation as Crop Video. */}
         <Dialog.Content

@@ -5,16 +5,33 @@ import styles from './Dialog.module.css';
 import { withClass } from './util';
 import CloseButtonRaw from './CloseButton';
 import { dialogButtonOrder } from '../util';
+import useCenteredDialogDrag from './useCenteredDialogDrag';
 
 export * from '@radix-ui/react-dialog';
 
 export const Overlay = withClass(Dialog.Overlay, styles['DialogOverlay']!);
 
-export const Content = withClass(Dialog.Content, styles['DialogContent']!);
+export function Content({ className, style, ...props }: Dialog.DialogContentProps) {
+  const { offset, onPointerDown, onPointerMove, onPointerUp } = useCenteredDialogDrag();
+  return (
+    <Dialog.Content
+      {...props}
+      className={[styles['DialogContent'], className].filter(Boolean).join(' ')}
+      style={{ ...style, left: `calc(50% + ${offset.x}px)`, top: `calc(50% + ${offset.y}px)` }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onLostPointerCapture={onPointerUp}
+    />
+  );
+}
 
 export const Description = withClass(Dialog.Description, styles['DialogDescription']!);
 
-export const Title = withClass(Dialog.Title, styles['DialogTitle']!);
+export function Title({ className, ...props }: Dialog.DialogTitleProps) {
+  return <Dialog.Title {...props} data-dialog-drag-handle className={[styles['DialogTitle'], className].filter(Boolean).join(' ')} />;
+}
 
 export const Portal = (props: Dialog.DialogPortalProps) => <Dialog.Portal container={document.getElementById('app-root')} {...props} />;
 
