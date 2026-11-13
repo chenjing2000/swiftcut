@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import styles from './ExportSheet.module.css';
@@ -28,6 +28,17 @@ function ExportSheet({
   const panelRef = useRef<HTMLDivElement>(null);
   const { position, headingRef, onPointerDown, onPointerMove, onPointerUp } = useOutputPanelDrag(panelRef);
 
+  useEffect(() => {
+    if (!visible) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !panelRef.current?.contains(event.target as Node)) return;
+      event.stopPropagation();
+      onClosePress();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [visible, onClosePress]);
+
   if (!visible) return null;
 
   return (
@@ -37,12 +48,6 @@ function ExportSheet({
       role="dialog"
       aria-modal="false"
       aria-label={title}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.stopPropagation();
-          onClosePress();
-        }
-      }}
       style={{
         width,
         top: position.top,
