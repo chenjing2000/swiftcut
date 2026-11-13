@@ -1,7 +1,7 @@
 import { join } from './path';
 
 const { link, stat, unlink } = window.require('node:fs/promises');
-import { assertOutputFilename, findAvailableBatchNames } from '../../common/mediaWorkspace.js';
+import { assertOutputFilename, findAvailableBatchNames } from '../../../common/mediaWorkspace.js';
 
 function getErrorCode(error: unknown): unknown {
   return typeof error === 'object' && error != null && 'code' in error ? error.code : undefined;
