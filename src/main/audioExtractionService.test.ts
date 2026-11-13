@@ -131,7 +131,7 @@ describe('Audio extraction task service', () => {
 
 
   test('creates the workspace Audio directory only when extracting and keeps a batch collision suffix', async () => {
-    expect(await readdir(testDirectory)).toStrictEqual(['lecture.mp4']);
+    await expect(readdir(testDirectory)).resolves.toStrictEqual(['lecture.mp4']);
 
     const params = {
       inputPath,
@@ -152,7 +152,7 @@ describe('Audio extraction task service', () => {
       join(outputDir, 'lecture_segment_01 (1).mp3'),
       join(outputDir, 'lecture_segment_02 (1).mp3'),
     ]);
-    expect(await readdir(outputDir)).toHaveLength(4);
+    await expect(readdir(outputDir)).resolves.toHaveLength(4);
     await expect(readFile(join(outputDir, 'lecture_segment_01.mp3'), 'utf8')).resolves.toBe('mock MP3 data');
   });
 
