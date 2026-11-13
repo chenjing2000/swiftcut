@@ -148,19 +148,25 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
     && task.start < plan.tasks[index - 1]!.end)) {
     throw new Error('Overlapping crop segments cannot be merged');
   }
+  const source = await stat(plan.sourcePath);
+  if (!source.isFile()) throw new Error('Crop source must be a local file');
+  const sourceMetadata = await probeJson(plan.sourcePath);
+  const sourceDuration = Number(sourceMetadata.format?.duration);
+  if (!Number.isFinite(sourceDuration) || sourceDuration <= 0) throw new Error('Cannot determine crop source duration');
   const requestProblems = validateCropExportRequest({
     sourcePath: plan.sourcePath,
     outputDir: plan.outputDir,
     frame: plan.frame,
     videoStreamIndex: plan.videoStreamIndex,
     ...(plan.audioStreamIndex != null && { audioStreamIndex: plan.audioStreamIndex }),
-    sourceDuration: Math.max(...plan.tasks.map((task) => task.end)),
+    // The source duration is probed by the main process, not inferred from untrusted tasks.
+    sourceDuration,
     segments: plan.tasks.map(({ start, end, originalIndex }) => ({ start, end, originalIndex })),
     config: { rect: plan.crop, aspectPreset: 'free', output: plan.output },
   });
-  if (requestProblems.some(({ field }) => field !== 'segments')) throw new Error('Invalid crop export plan');
-  const source = await stat(plan.sourcePath);
-  if (!source.isFile()) throw new Error('Crop source must be a local file');
+  if (requestProblems.length > 0) {
+    throw new Error(`Invalid crop export plan: ${requestProblems.map(({ message }) => message).join('; ')}`);
+  }
 
   await mkdir(plan.outputDir, { recursive: true });
   const id = randomUUID();
@@ -270,9 +276,11 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
       } catch (error) {
         job.status.cleanupWarning = error instanceof Error ? error.message : String(error);
         logger.warn('Failed to clean crop export temporary directory', error);
-        if (!job.status.interruption) {
+        // A completed final output remains a success, with a separate warning.
+        // Only cleanup without a committed output can make an otherwise successful task fail.
+        if (!job.status.interruption && (job.status.outputPaths?.length ?? 0) === 0) {
           job.status.interruption = 'failed';
-          job.status.error = 'Crop export finished, but temporary file cleanup failed';
+          job.status.error = 'Crop export temporary file cleanup failed';
         }
       }
       const committed = job.status.outputPaths?.length ?? 0;
