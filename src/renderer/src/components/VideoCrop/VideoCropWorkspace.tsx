@@ -429,12 +429,13 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
             </div>
             {resize && <label className={styles['checkbox']} htmlFor="crop-resize-lock"><input id="crop-resize-lock" type="checkbox" checked={lockResizeAspect} onChange={(event) => setLockResizeAspect(event.target.checked)} />{t('Lock aspect ratio')}</label>}
-            <strong>{t('Video Quality')}</strong>
-            <select value={quality} onChange={(event) => setQuality(event.target.value)}>
-              <option value="high">{t('High quality')} · H.264 CRF 18</option>
-              <option value="standard">{t('Standard')} · H.264 CRF 23</option>
-              <option value="custom" disabled>{t('Custom (Phase 3)')}</option>
-            </select>
+            <label className={styles['qualityRow']} htmlFor="crop-quality"><strong>{t('Video Quality')}</strong>
+              <select id="crop-quality" value={quality} onChange={(event) => setQuality(event.target.value)}>
+                <option value="high">{t('High quality')} · H.264 CRF 18</option>
+                <option value="standard">{t('Standard')} · H.264 CRF 23</option>
+                <option value="custom" disabled>{t('Custom (Phase 3)')}</option>
+              </select>
+            </label>
             <strong>{t('Export')}</strong>
             <label className={styles['row']} htmlFor="crop-time-range"><span>{t('Time range')}</span>
               <select id="crop-time-range" value={timeRange} onChange={(event) => setTimeRange(event.target.value as CropTimeRange)}>
