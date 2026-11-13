@@ -194,8 +194,10 @@ describe('Audio extraction task service', () => {
   });
 
   test('refuses to publish merged audio if a segment fails and the user resumes', async () => {
+    const failedResult = Promise.reject(new Error('segment encode failed'));
+    await failedResult.catch(() => undefined);
     mocks.runScopedFfmpeg.mockReturnValueOnce({
-      result: Promise.reject(new Error('segment encode failed')),
+      result: failedResult,
       cancel: vi.fn<() => void>(),
     });
     const id = await startAudioExtraction({
