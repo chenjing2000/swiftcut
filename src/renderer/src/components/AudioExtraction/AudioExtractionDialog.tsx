@@ -33,7 +33,7 @@ const formatTime = (seconds: number) => {
 
 export default function AudioExtractionDialog({ open, onOpenChange, filePath, streams, segments, formatName }: AudioExtractionDialogProps) {
   const { t } = useTranslation();
-  const titleRef = useRef<HTMLHeadingElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const [trackSelection, setTrackSelection] = useState<{ source: string | undefined; indexes: number[] }>();
   // The long-lived job presenter survives source changes. A new source gets
   // its own default track without resetting the currently running job.
@@ -104,13 +104,15 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             data-output-panel="audio"
             onOpenAutoFocus={(event) => {
               event.preventDefault();
-              titleRef.current?.focus();
+              cancelRef.current?.focus();
             }}
             onEscapeKeyDown={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
             <div data-dialog-drag-handle className={chrome['heading']}>
-              <Dialog.Title ref={titleRef} tabIndex={-1} style={{ margin: 0, padding: 0, border: 0, fontSize: '14px', fontWeight: 700 }}>{t('Extract Audio Settings')}</Dialog.Title>
+              <Dialog.Title asChild>
+                <h2 className={chrome['title']}>{t('Extract Audio Settings')}</h2>
+              </Dialog.Title>
               <button
                 type="button"
                 aria-label={t('Close')}
@@ -201,6 +203,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             </div>
             <div className={chrome['footer']}>
               <button
+                ref={cancelRef}
                 type="button"
                 className={actionStyles['action']}
                 onClick={() => handleOpenChange(false)}
