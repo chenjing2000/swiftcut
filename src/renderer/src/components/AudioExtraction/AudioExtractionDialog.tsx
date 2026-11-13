@@ -12,7 +12,7 @@ import type { SegmentToExport } from '../../types';
 import type { AudioExtractionMode, Mp3Quality } from '../../../../main/audioExtraction';
 import AudioExtractionProgress from './AudioExtractionProgress';
 import useAudioExtractionJob from './useAudioExtractionJob';
-import { activateOutputPanel, isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
+import { isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
 
 interface AudioExtractionDialogProps {
   open: boolean;
@@ -76,7 +76,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
       if (event.key !== 'Escape' || !isActiveOutputPanel('audio')) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      handleOpenChange(false);
+      onOpenChange(false);
     };
     document.addEventListener('keydown', onKeyDown, { capture: true });
     return () => document.removeEventListener('keydown', onKeyDown, { capture: true });
@@ -101,8 +101,6 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             style={{ left: 'max(8px, calc(100% - 396px))', top: '48px', transform: 'none' }}
             aria-describedby={undefined}
             data-output-panel="audio"
-            onPointerDownCapture={() => activateOutputPanel('audio')}
-            onFocusCapture={() => activateOutputPanel('audio')}
             onEscapeKeyDown={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
