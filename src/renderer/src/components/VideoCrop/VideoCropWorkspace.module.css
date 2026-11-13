@@ -8,7 +8,7 @@
 .handle[data-crop-handle="ne"], .handle[data-crop-handle="sw"] { cursor: nesw-resize; }
 .panel { position: fixed; z-index: 200; width: min(380px, calc(100vw - 16px)); max-height: calc(100vh - 16px); display: flex; flex-direction: column; color: var(--gray-12); background: var(--color-panel-solid, var(--gray-2)); border: 1px solid var(--gray-7); border-radius: 10px; box-shadow: 0 7px 28px rgb(0 0 0 / 32%); pointer-events: auto; font-size: 13px; }
 .heading { user-select: none; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--gray-6); cursor: move; touch-action: none; }
-.heading button { cursor: pointer; font-size: 18px; }
+.heading button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; padding: 0; }
 .contents { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
 .contents select, .contents input[type="text"] { background: var(--gray-2); color: var(--gray-12); border: 1px solid var(--gray-7); border-radius: 5px; padding: 5px; min-width: 0; }
 .contents select { width: 190px; max-width: 55%; }

@@ -7,7 +7,7 @@ export default function useCenteredDialogDrag() {
   const dragRef = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | undefined>(undefined);
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !(event.target as HTMLElement).closest('[data-dialog-drag-handle]')) return;
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button') || !(event.target as HTMLElement).closest('[data-dialog-drag-handle]')) return;
     dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, offsetX: offset.x, offsetY: offset.y };
     event.currentTarget.setPointerCapture(event.pointerId);
   }, [offset]);

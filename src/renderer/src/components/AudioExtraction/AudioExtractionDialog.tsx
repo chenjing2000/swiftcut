@@ -187,7 +187,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   };
 
   const cancelExtraction = async () => {
-    if (job?.state === 'running') await mainApi.cancelAudioExtraction(job.id);
+    if (job?.state === 'running' || job?.state === 'paused') await mainApi.cancelAudioExtraction(job.id);
   };
 
   const isMp4 = useMemo(() => {
@@ -236,12 +236,33 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            padding: 0,
           }}
           aria-describedby={undefined}
           onInteractOutside={(event) => event.preventDefault()}
         >
-          <div style={{ flex: '0 0 auto' }}>
-            <Dialog.Title>{t('Extract Audio Settings')}</Dialog.Title>
+          <div
+            data-dialog-drag-handle
+            style={{
+              flex: '0 0 auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 12px',
+              borderBottom: '1px solid var(--gray-6)',
+              userSelect: 'none',
+              touchAction: 'none',
+              cursor: 'move',
+            }}
+          >
+            <Dialog.Title style={{ margin: 0, padding: 0, border: 0, fontSize: '14px', fontWeight: 700 }}>{t('Extract Audio Settings')}</Dialog.Title>
+            <button
+              type="button"
+              aria-label={t('Close')}
+              disabled={isBusy}
+              onClick={() => handleOpenChange(false)}
+              style={{ border: 0, background: 'transparent', color: 'inherit', fontSize: '18px', cursor: isBusy ? 'not-allowed' : 'pointer', padding: 0 }}
+            >×</button>
           </div>
           <div
             style={{
@@ -249,8 +270,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               minHeight: 0,
               overflowY: 'auto',
               overscrollBehavior: 'contain',
-              paddingRight: '.35em',
-              marginRight: '-.35em',
+              padding: '12px',
             }}
           >
             <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
@@ -385,14 +405,16 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               </section>
             )}
           </div>
-          <div style={{ flex: '0 0 auto' }}>
-            <Dialog.ButtonRow>
-              {job?.state === 'running' && <DialogButton onClick={cancelExtraction}>{t('Cancel extraction')}</DialogButton>}
-              <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract')}</DialogButton>
-              <DialogButton disabled={isBusy} onClick={() => handleOpenChange(false)}>{t('Cancel')}</DialogButton>
-            </Dialog.ButtonRow>
+          <div style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '10px 12px', borderTop: '1px solid var(--gray-6)' }}>
+            <DialogButton
+              disabled={isStarting}
+              onClick={() => {
+                if (job?.state === 'running' || job?.state === 'paused') cancelExtraction().catch(console.error);
+                else handleOpenChange(false);
+              }}
+            >{t('Cancel')}</DialogButton>
+            <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract')}</DialogButton>
           </div>
-          <Dialog.CloseButton />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
