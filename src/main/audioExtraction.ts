@@ -238,215 +238,215 @@ export async function startAudioExtraction(args: {
     const availableNames = mergeRequested ? [] : await findAvailableBatchNames(requestedNames, async (name) => exists(join(outputDir, name)));
     const staged: { task: (typeof tasks)[number]; path: string }[] = [];
     try {
-    for (const [taskIndex, task] of tasks.entries()) {
-      const taskStatus = status.tasks[taskIndex]!;
-      if (job.cancelled) {
-        taskStatus.state = 'skipped';
-        continue;
-      }
-
-      taskStatus.state = 'running';
-      let tempPath: string | undefined;
-
-      try {
-        const outputPath = join(outputDir, mergeRequested ? requestedNames[taskIndex]! : availableNames[taskIndex]!);
-        // Cancellation may arrive while the output path is being prepared. In
-        // that case no FFmpeg process has started, so this task was skipped.
+      for (const [taskIndex, task] of tasks.entries()) {
+        const taskStatus = status.tasks[taskIndex]!;
         if (job.cancelled) {
           taskStatus.state = 'skipped';
           continue;
         }
-        await mkdir(outputDir, { recursive: true });
-        if (job.cancelled) {
-          taskStatus.state = 'skipped';
-          continue;
-        }
-        tempPath = join(dirname(outputPath), `.${basename(outputPath)}.${randomUUID()}.tmp.${task.outputExtension}`);
-        const segment: AudioExtractionSegment = {
-          start: task.start,
-          ...(task.end != null && { end: task.end }),
-        };
-        const ffmpegArgs = mode === 'original'
-          ? buildOriginalAudioFfmpegArgs({
-            inputPath,
-            streamIndex: task.streamIndex,
-            outputFormat: task.originalOutputFormat!,
-            outputPath: tempPath,
-            segment,
-          })
-          : buildMp3FfmpegArgs({
-            inputPath,
-            streamIndex: task.streamIndex,
-            quality,
-            outputPath: tempPath,
-            segment,
-          });
-        const taskDuration = task.end != null ? task.end - task.start : undefined;
-        const runner = runScopedFfmpeg({
-          ffmpegArgs,
-          ...(taskDuration != null && taskDuration > 0 && { duration: taskDuration }),
-          onProgress: (value) => {
-            taskStatus.progress = Math.max(0, Math.min(1, value));
-            status.progress = ((taskIndex + taskStatus.progress) / tasks.length) * (mergeRequested ? 0.85 : 1);
-          },
-        });
-        job.cancel = runner.cancel;
-        if (job.cancelled) runner.cancel();
-        await runner.result;
 
-        if (job.cancelled) throw new Error('Extraction cancelled');
+        taskStatus.state = 'running';
+        let tempPath: string | undefined;
 
-        const verified = await probe(tempPath);
-        const tempStat = await stat(tempPath);
-        const outputAudioStreams = verified.streams?.filter((stream) => stream.codec_type === 'audio') ?? [];
-        const expectedCodecName = mode === 'original' ? task.codecName : 'mp3';
-        if (
-          tempStat.size === 0
-          || outputAudioStreams.length !== 1
-          || outputAudioStreams[0]?.codec_name !== expectedCodecName
-        ) {
-          throw new Error(mode === 'original' ? 'Original audio stream validation failed' : 'Output MP3 validation failed');
-        }
-        if (job.cancelled) throw new Error('Extraction cancelled');
-
-        if (mergeRequested) {
-          staged.push({ task, path: tempPath });
-          tempPath = undefined;
-          taskStatus.progress = 1;
-          taskStatus.state = 'success';
-        } else {
-          const finalPath = await commitWithoutOverwrite(tempPath, outputPath);
-          tempPath = undefined;
-          taskStatus.outputPath = finalPath;
-          taskStatus.progress = 1;
-          taskStatus.state = 'success';
-          status.outputPaths.push(finalPath);
-        }
-      } catch (error) {
-        if (job.cancelled) {
-          // Aborting FFmpeg is an expected cancellation path, not an error.
-          taskStatus.state = 'cancelled';
-          delete taskStatus.error;
-        } else {
-          taskStatus.state = 'failed';
-          taskStatus.error = getErrorMessage(error);
-          logger.error('Audio extraction task failed', taskStatus.error);
-        }
-      } finally {
-        if (tempPath) {
-          await unlink(tempPath).catch((error: unknown) => {
-            if (getErrorCode(error) !== 'ENOENT') logger.warn('Failed to remove temporary audio file', tempPath, error);
-          });
-        }
-        job.cancel = undefined;
-        status.completedTasks = status.tasks.filter((item) => item.state !== 'pending' && item.state !== 'running').length;
-        status.progress = (status.completedTasks / tasks.length) * (mergeRequested ? 0.85 : 1);
-      }
-
-      if (job.cancelled || taskStatus.state !== 'failed') continue;
-
-      status.state = 'paused';
-      await new Promise<void>((resolve) => {
-        job.resume = resolve;
-      });
-      job.resume = undefined;
-      if (!job.cancelled) status.state = 'running';
-    }
-
-    if (mergeRequested && !job.cancelled && status.tasks.every((task) => task.state === 'success')) {
-      const mergedTemps: { path: string; name: string }[] = [];
-      const concatLists: string[] = [];
-      try {
-        for (const [trackIndex, streamIndex] of selectedStreamIndexes.entries()) {
-          if (job.cancelled) break;
-          const pieces = staged.filter(({ task }) => task.streamIndex === streamIndex)
-            .toSorted((a, b) => a.task.segmentNumber - b.task.segmentNumber);
-          if (pieces.length !== segments.length) throw new Error('Audio merge is missing an extracted segment');
-          const first = pieces[0]!.task;
-          const extension = first.outputExtension;
-          const muxer = mode === 'original' ? first.originalOutputFormat!.muxer : 'mp3';
-          const trackSuffix = selectedStreamIndexes.length > 1 ? `_track_${String(trackIndex + 1).padStart(2, '0')}` : '';
-          const name = `${sourceStem}_segments_merge${trackSuffix}.${extension}`;
-          const listPath = join(outputDir, `.${randomUUID()}.ffconcat`);
-          concatLists.push(listPath);
-          await writeFile(listPath, buildCropConcatList(pieces.map(({ path }) => path)), 'utf8');
-          const mergedTemp = join(outputDir, `.${randomUUID()}.tmp.${extension}`);
-          mergedTemps.push({ path: mergedTemp, name });
+        try {
+          const outputPath = join(outputDir, mergeRequested ? requestedNames[taskIndex]! : availableNames[taskIndex]!);
+          // Cancellation may arrive while the output path is being prepared. In
+          // that case no FFmpeg process has started, so this task was skipped.
+          if (job.cancelled) {
+            taskStatus.state = 'skipped';
+            continue;
+          }
+          await mkdir(outputDir, { recursive: true });
+          if (job.cancelled) {
+            taskStatus.state = 'skipped';
+            continue;
+          }
+          tempPath = join(dirname(outputPath), `.${basename(outputPath)}.${randomUUID()}.tmp.${task.outputExtension}`);
+          const segment: AudioExtractionSegment = {
+            start: task.start,
+            ...(task.end != null && { end: task.end }),
+          };
+          const ffmpegArgs = mode === 'original'
+            ? buildOriginalAudioFfmpegArgs({
+              inputPath,
+              streamIndex: task.streamIndex,
+              outputFormat: task.originalOutputFormat!,
+              outputPath: tempPath,
+              segment,
+            })
+            : buildMp3FfmpegArgs({
+              inputPath,
+              streamIndex: task.streamIndex,
+              quality,
+              outputPath: tempPath,
+              segment,
+            });
+          const taskDuration = task.end != null ? task.end - task.start : undefined;
           const runner = runScopedFfmpeg({
-            ffmpegArgs: ['-hide_banner', '-nostdin', '-n', '-f', 'concat', '-safe', '0', '-i', listPath,
-              '-map', '0:a:0', '-c:a', 'copy', '-f', muxer, mergedTemp],
-            duration: segments.reduce((sum, seg) => sum + (seg.end ?? seg.start) - seg.start, 0),
+            ffmpegArgs,
+            ...(taskDuration != null && taskDuration > 0 && { duration: taskDuration }),
             onProgress: (value) => {
-              status.progress = 0.85 + ((trackIndex + Math.max(0, Math.min(1, value))) / selectedStreamIndexes.length) * 0.14;
+              taskStatus.progress = Math.max(0, Math.min(1, value));
+              status.progress = ((taskIndex + taskStatus.progress) / tasks.length) * (mergeRequested ? 0.85 : 1);
             },
           });
           job.cancel = runner.cancel;
           if (job.cancelled) runner.cancel();
           await runner.result;
-          job.cancel = undefined;
-          if (job.cancelled) break;
-          const verified = await probe(mergedTemp);
-          const mergedStat = await stat(mergedTemp);
-          const outputStreams = verified.streams?.filter((stream) => stream.codec_type === 'audio') ?? [];
-          if (mergedStat.size === 0 || outputStreams.length !== 1
-            || outputStreams[0]?.codec_name !== (mode === 'original' ? first.codecName : 'mp3')) {
-            throw new Error('Merged audio output validation failed');
+
+          if (job.cancelled) throw new Error('Extraction cancelled');
+
+          const verified = await probe(tempPath);
+          const tempStat = await stat(tempPath);
+          const outputAudioStreams = verified.streams?.filter((stream) => stream.codec_type === 'audio') ?? [];
+          const expectedCodecName = mode === 'original' ? task.codecName : 'mp3';
+          if (
+            tempStat.size === 0
+            || outputAudioStreams.length !== 1
+            || outputAudioStreams[0]?.codec_name !== expectedCodecName
+          ) {
+            throw new Error(mode === 'original' ? 'Original audio stream validation failed' : 'Output MP3 validation failed');
           }
+          if (job.cancelled) throw new Error('Extraction cancelled');
+
+          if (mergeRequested) {
+            staged.push({ task, path: tempPath });
+            tempPath = undefined;
+            taskStatus.progress = 1;
+            taskStatus.state = 'success';
+          } else {
+            const finalPath = await commitWithoutOverwrite(tempPath, outputPath);
+            tempPath = undefined;
+            taskStatus.outputPath = finalPath;
+            taskStatus.progress = 1;
+            taskStatus.state = 'success';
+            status.outputPaths.push(finalPath);
+          }
+        } catch (error) {
+          if (job.cancelled) {
+            // Aborting FFmpeg is an expected cancellation path, not an error.
+            taskStatus.state = 'cancelled';
+            delete taskStatus.error;
+          } else {
+            taskStatus.state = 'failed';
+            taskStatus.error = getErrorMessage(error);
+            logger.error('Audio extraction task failed', taskStatus.error);
+          }
+        } finally {
+          if (tempPath) {
+            await unlink(tempPath).catch((error: unknown) => {
+              if (getErrorCode(error) !== 'ENOENT') logger.warn('Failed to remove temporary audio file', tempPath, error);
+            });
+          }
+          job.cancel = undefined;
+          status.completedTasks = status.tasks.filter((item) => item.state !== 'pending' && item.state !== 'running').length;
+          status.progress = (status.completedTasks / tasks.length) * (mergeRequested ? 0.85 : 1);
         }
 
-        if (!job.cancelled) {
-          // Commit the complete multi-track batch with a common collision index.
-          job.finalizing = true;
-          const names = mergedTemps.map(({ name }) => name);
-          for (let attempt = 0; attempt < 10000; attempt += 1) {
-            const candidates = await findAvailableBatchNames(names, async (name) => exists(join(outputDir, name)));
-            const created: string[] = [];
-            try {
-              for (const [index, item] of mergedTemps.entries()) {
-                const target = join(outputDir, candidates[index]!);
-                await link(item.path, target);
-                created.push(target);
-              }
-              status.outputPaths.push(...created);
-              status.progress = 1;
-              break;
-            } catch (error) {
-              const rollback = await Promise.allSettled(created.map((path) => unlink(path)));
-              const rollbackError = rollback.find((result) => result.status === 'rejected');
-              if (rollbackError?.status === 'rejected') {
-                throw new Error('Cannot rollback incomplete merged audio output batch', { cause: error });
-              }
-              if (getErrorCode(error) !== 'EEXIST') throw error;
-              if (attempt === 9999) throw error;
+        if (job.cancelled || taskStatus.state !== 'failed') continue;
+
+        status.state = 'paused';
+        await new Promise<void>((resolve) => {
+          job.resume = resolve;
+        });
+        job.resume = undefined;
+        if (!job.cancelled) status.state = 'running';
+      }
+
+      if (mergeRequested && !job.cancelled && status.tasks.every((task) => task.state === 'success')) {
+        const mergedTemps: { path: string; name: string }[] = [];
+        const concatLists: string[] = [];
+        try {
+          for (const [trackIndex, streamIndex] of selectedStreamIndexes.entries()) {
+            if (job.cancelled) break;
+            const pieces = staged.filter(({ task }) => task.streamIndex === streamIndex)
+              .toSorted((a, b) => a.task.segmentNumber - b.task.segmentNumber);
+            if (pieces.length !== segments.length) throw new Error('Audio merge is missing an extracted segment');
+            const first = pieces[0]!.task;
+            const extension = first.outputExtension;
+            const muxer = mode === 'original' ? first.originalOutputFormat!.muxer : 'mp3';
+            const trackSuffix = selectedStreamIndexes.length > 1 ? `_track_${String(trackIndex + 1).padStart(2, '0')}` : '';
+            const name = `${sourceStem}_segments_merge${trackSuffix}.${extension}`;
+            const listPath = join(outputDir, `.${randomUUID()}.ffconcat`);
+            concatLists.push(listPath);
+            await writeFile(listPath, buildCropConcatList(pieces.map(({ path }) => path)), 'utf8');
+            const mergedTemp = join(outputDir, `.${randomUUID()}.tmp.${extension}`);
+            mergedTemps.push({ path: mergedTemp, name });
+            const runner = runScopedFfmpeg({
+              ffmpegArgs: ['-hide_banner', '-nostdin', '-n', '-f', 'concat', '-safe', '0', '-i', listPath,
+                '-map', '0:a:0', '-c:a', 'copy', '-f', muxer, mergedTemp],
+              duration: segments.reduce((sum, seg) => sum + (seg.end ?? seg.start) - seg.start, 0),
+              onProgress: (value) => {
+                status.progress = 0.85 + ((trackIndex + Math.max(0, Math.min(1, value))) / selectedStreamIndexes.length) * 0.14;
+              },
+            });
+            job.cancel = runner.cancel;
+            if (job.cancelled) runner.cancel();
+            await runner.result;
+            job.cancel = undefined;
+            if (job.cancelled) break;
+            const verified = await probe(mergedTemp);
+            const mergedStat = await stat(mergedTemp);
+            const outputStreams = verified.streams?.filter((stream) => stream.codec_type === 'audio') ?? [];
+            if (mergedStat.size === 0 || outputStreams.length !== 1
+              || outputStreams[0]?.codec_name !== (mode === 'original' ? first.codecName : 'mp3')) {
+              throw new Error('Merged audio output validation failed');
             }
           }
+
+          if (!job.cancelled) {
+            // Commit the complete multi-track batch with a common collision index.
+            job.finalizing = true;
+            const names = mergedTemps.map(({ name }) => name);
+            for (let attempt = 0; attempt < 10000; attempt += 1) {
+              const candidates = await findAvailableBatchNames(names, async (name) => exists(join(outputDir, name)));
+              const created: string[] = [];
+              try {
+                for (const [index, item] of mergedTemps.entries()) {
+                  const target = join(outputDir, candidates[index]!);
+                  await link(item.path, target);
+                  created.push(target);
+                }
+                status.outputPaths.push(...created);
+                status.progress = 1;
+                break;
+              } catch (error) {
+                const rollback = await Promise.allSettled(created.map((path) => unlink(path)));
+                const rollbackError = rollback.find((result) => result.status === 'rejected');
+                if (rollbackError?.status === 'rejected') {
+                  throw new Error('Cannot rollback incomplete merged audio output batch', { cause: error });
+                }
+                if (getErrorCode(error) !== 'EEXIST') throw error;
+                if (attempt === 9999) throw error;
+              }
+            }
+          }
+        } catch (error) {
+          status.error = getErrorMessage(error);
+          logger.error('Failed to merge audio segments', error);
+        } finally {
+          job.cancel = undefined;
+          await Promise.allSettled([...mergedTemps.map(({ path }) => unlink(path)), ...concatLists.map((path) => unlink(path))]);
         }
-      } catch (error) {
-        status.error = getErrorMessage(error);
-        logger.error('Failed to merge audio segments', error);
-      } finally {
-        job.cancel = undefined;
-        await Promise.allSettled([...mergedTemps.map(({ path }) => unlink(path)), ...concatLists.map((path) => unlink(path))]);
       }
-    }
 
-    if (job.cancelled) {
-      for (const taskStatus of status.tasks) {
-        if (taskStatus.state === 'pending') taskStatus.state = 'skipped';
+      if (job.cancelled) {
+        for (const taskStatus of status.tasks) {
+          if (taskStatus.state === 'pending') taskStatus.state = 'skipped';
+        }
       }
-    }
 
-    const failedCount = status.tasks.filter((task) => task.state === 'failed').length;
-    status.completedTasks = status.tasks.filter((task) => task.state !== 'pending' && task.state !== 'running').length;
-    if (!mergeRequested) status.progress = status.completedTasks / tasks.length;
-    if (job.cancelled) {
-      status.state = 'cancelled';
-    } else if (failedCount > 0 || status.error || (mergeRequested && status.outputPaths.length === 0)) {
-      status.state = 'failed';
-    } else {
-      status.state = 'success';
-    }
-    if (failedCount > 0) status.error = `${failedCount} of ${tasks.length} extraction task(s) failed`;
+      const failedCount = status.tasks.filter((task) => task.state === 'failed').length;
+      status.completedTasks = status.tasks.filter((task) => task.state !== 'pending' && task.state !== 'running').length;
+      if (!mergeRequested) status.progress = status.completedTasks / tasks.length;
+      if (job.cancelled) {
+        status.state = 'cancelled';
+      } else if (failedCount > 0 || status.error || (mergeRequested && status.outputPaths.length === 0)) {
+        status.state = 'failed';
+      } else {
+        status.state = 'success';
+      }
+      if (failedCount > 0) status.error = `${failedCount} of ${tasks.length} extraction task(s) failed`;
     } finally {
       await Promise.allSettled(staged.map(({ path }) => unlink(path)));
     }
