@@ -287,7 +287,7 @@ export async function startAudioExtraction(args: {
           ...(taskDuration != null && taskDuration > 0 && { duration: taskDuration }),
           onProgress: (value) => {
             taskStatus.progress = Math.max(0, Math.min(1, value));
-            status.progress = (taskIndex + taskStatus.progress) / tasks.length;
+            status.progress = ((taskIndex + taskStatus.progress) / tasks.length) * (mergeRequested ? 0.85 : 1);
           },
         });
         job.cancel = runner.cancel;
@@ -340,7 +340,7 @@ export async function startAudioExtraction(args: {
         }
         job.cancel = undefined;
         status.completedTasks = status.tasks.filter((item) => item.state !== 'pending' && item.state !== 'running').length;
-        status.progress = status.completedTasks / tasks.length;
+        status.progress = (status.completedTasks / tasks.length) * (mergeRequested ? 0.85 : 1);
       }
 
       if (job.cancelled || taskStatus.state !== 'failed') continue;
@@ -376,7 +376,9 @@ export async function startAudioExtraction(args: {
             ffmpegArgs: ['-hide_banner', '-nostdin', '-n', '-f', 'concat', '-safe', '0', '-i', listPath,
               '-map', '0:a:0', '-c:a', 'copy', '-f', muxer, mergedTemp],
             duration: segments.reduce((sum, seg) => sum + (seg.end ?? seg.start) - seg.start, 0),
-            onProgress: () => {},
+            onProgress: (value) => {
+              status.progress = 0.85 + ((trackIndex + Math.max(0, Math.min(1, value))) / selectedStreamIndexes.length) * 0.14;
+            },
           });
           job.cancel = runner.cancel;
           if (job.cancelled) runner.cancel();
@@ -406,6 +408,7 @@ export async function startAudioExtraction(args: {
                 created.push(target);
               }
               status.outputPaths.push(...created);
+              status.progress = 1;
               break;
             } catch (error) {
               const rollback = await Promise.allSettled(created.map((path) => unlink(path)));
@@ -435,7 +438,7 @@ export async function startAudioExtraction(args: {
 
     const failedCount = status.tasks.filter((task) => task.state === 'failed').length;
     status.completedTasks = status.tasks.filter((task) => task.state !== 'pending' && task.state !== 'running').length;
-    status.progress = status.completedTasks / tasks.length;
+    if (!mergeRequested) status.progress = status.completedTasks / tasks.length;
     if (job.cancelled) {
       status.state = 'cancelled';
     } else if (failedCount > 0 || status.error || (mergeRequested && status.outputPaths.length === 0)) {

@@ -156,6 +156,63 @@ describe('Audio extraction task service', () => {
     await expect(readFile(join(outputDir, 'lecture_segment_01.mp3'), 'utf8')).resolves.toBe('mock MP3 data');
   });
 
+  test('supports 128 kbps MP3 extraction', async () => {
+    const id = await startAudioExtraction({ inputPath, streamIndexes: [1], quality: '128k' });
+    await waitForJob(id, 'success');
+    expect(mocks.runScopedFfmpeg.mock.calls[0]![0].ffmpegArgs).toContain('128k');
+  });
+
+  test('merges selected segments per track without publishing intermediate segments', async () => {
+    const outputDir = join(testDirectory, 'lecture', 'Audio');
+    const config = {
+      inputPath,
+      streamIndexes: [1, 2],
+      outputMode: 'merge' as const,
+      mode: 'original' as const,
+      segments: [{ start: 1, end: 3 }, { start: 4, end: 7 }],
+    };
+    const first = await startAudioExtraction(config);
+    await waitForJob(first, 'success');
+    expect(getAudioExtractionStatus(first)?.outputPaths).toStrictEqual([
+      join(outputDir, 'lecture_segments_merge_track_01.m4a'),
+      join(outputDir, 'lecture_segments_merge_track_02.ac3'),
+    ]);
+    expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(6);
+    expect(mocks.runScopedFfmpeg.mock.calls[4]![0].ffmpegArgs).toContain('concat');
+    expect(mocks.runScopedFfmpeg.mock.calls[5]![0].ffmpegArgs).toContain('concat');
+    expect((await readdir(outputDir)).toSorted()).toStrictEqual([
+      'lecture_segments_merge_track_01.m4a',
+      'lecture_segments_merge_track_02.ac3',
+    ]);
+
+    const second = await startAudioExtraction(config);
+    await waitForJob(second, 'success');
+    expect(getAudioExtractionStatus(second)?.outputPaths).toStrictEqual([
+      join(outputDir, 'lecture_segments_merge_track_01 (1).m4a'),
+      join(outputDir, 'lecture_segments_merge_track_02 (1).ac3'),
+    ]);
+  });
+
+  test('refuses to publish merged audio if a segment fails and the user resumes', async () => {
+    mocks.runScopedFfmpeg.mockImplementationOnce(() => ({
+      result: Promise.reject(new Error('segment encode failed')),
+      cancel: vi.fn<() => void>(),
+    }));
+    const id = await startAudioExtraction({
+      inputPath,
+      streamIndexes: [1],
+      mode: 'mp3',
+      outputMode: 'merge',
+      segments: [{ start: 1, end: 3 }, { start: 4, end: 7 }],
+    });
+    await waitForJob(id, 'paused');
+    resumeAudioExtraction(id);
+    await waitForJob(id, 'failed');
+    expect(getAudioExtractionStatus(id)?.outputPaths).toStrictEqual([]);
+    const files = await readdir(join(testDirectory, 'lecture', 'Audio'));
+    expect(files.some((file) => file.endsWith('.mp3'))).toBe(false);
+  });
+
   test('extracts selected original tracks into codec-specific containers for every segment', async () => {
     const id = await startAudioExtraction({
       inputPath,
