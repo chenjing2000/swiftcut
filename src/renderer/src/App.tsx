@@ -138,7 +138,6 @@ import { parse as parsePath, join as pathJoin, basename, dirname } from './util/
 
 const { ipcRenderer, webUtils } = window.require('electron');
 const { lstat, mkdir, rm } = window.require('node:fs/promises');
-const { randomUUID } = window.require('node:crypto');
 const { isAbsolute } = window.require('node:path');
 const { pathToFileURL, lossyMode, isLinux } = window.require('@electron/remote').require('./index.js');
 
@@ -184,7 +183,6 @@ function App() {
   const [losslessCustomDirectory, setLosslessCustomDirectory] = useState<{ source: string, value: string }>();
   const [losslessCustomFilename, setLosslessCustomFilename] = useState<{ source: string, value: string }>();
   const [cacheBuster, setCacheBuster] = useState(0);
-  const [currentFileExportCount, setCurrentFileExportCount] = useState(0);
 
   const { fileFormat, setFileFormat, detectedFileFormat, setDetectedFileFormat, isCustomFormatSelected } = useFileFormatState();
 
@@ -789,7 +787,6 @@ function App() {
     setHideCompatPlayer(false);
     setExportConfirmOpen(false);
     setOutputPlaybackRateState(1);
-    setCurrentFileExportCount(0);
   }, [videoRef, setCommandedTime, setPlaybackRate, setPreviewFilePath, setUsingDummyVideo, setPlaying, playingRef, setPlaybackMode, cutSegmentsHistory, setDetectedFileFormat, setCopyStreamIdsByFile, setThumbnails, setSubtitlesByStreamId, setOutputPlaybackRateState]);
 
 
@@ -1139,7 +1136,7 @@ function App() {
   const willMerge = segmentsToExport.length > 1 && autoMerge;
   const defaultLosslessDirectory = filePath == null ? '' : getMediaOutputDir(filePath, 'lossless');
   const losslessDirectory = filePath != null && losslessCustomDirectory?.source === filePath ? losslessCustomDirectory.value : defaultLosslessDirectory;
-  const losslessExtension = filePath == null ? 'mp4' : getOutFileExtension({ outFormat: fileFormat, filePath }).replace(/^\./, '');
+  const losslessExtension = filePath == null ? 'mp4' : (getOutFileExtension({ outFormat: fileFormat, filePath }) ?? parsePath(filePath).ext ?? '.mp4').replace(/^\./, '');
   const defaultLosslessFilename = filePath == null ? '' : getMediaOutputName({
     sourcePath: filePath,
     kind: 'lossless',
@@ -1182,7 +1179,7 @@ function App() {
       if (!isAbsolute(losslessDirectory)) throw new UserFacingError('Output directory must be an absolute path');
       assertOutputFilename(losslessFilename);
       if (parsePath(losslessFilename).ext.toLowerCase() !== `.${losslessExtension.toLowerCase()}`) throw new UserFacingError('Filename extension must match output format');
-      temporaryLosslessDir = pathJoin(losslessDirectory, '.swiftcut-lossless-tmp', randomUUID());
+      temporaryLosslessDir = pathJoin(losslessDirectory, '.swiftcut-lossless-tmp', window.crypto.randomUUID());
       await mkdir(temporaryLosslessDir, { recursive: true });
 
       // Special segments-to-chapters mode:
@@ -1310,7 +1307,6 @@ function App() {
       }
 
       setExportCount((c) => c + 1);
-      setCurrentFileExportCount((c) => c + 1);
 
       emitEvent({ eventName: 'export-complete', paths: exportedPaths });
     } catch (err) {
