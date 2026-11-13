@@ -223,6 +223,29 @@ describe('Crop Video single-segment service', () => {
     await expect(readdir(directory)).resolves.not.toContain('clip.crop-002.mp4');
   });
 
+  it('preserves completed files and reports partial success if a later commit fails', async () => {
+    const plan = makePlan();
+    plan.output.outputMode = 'separate';
+    plan.tasks = [
+      { start: 1, end: 3, originalIndex: 0, outputName: 'clip.crop-001.mp4' },
+      { start: 5, end: 7, originalIndex: 1, outputName: '../invalid.mp4' },
+    ];
+    const jobId = await startCropExport(plan);
+    await expectState(jobId, 'partial_success');
+    const result = getCropExportStatus(jobId)!;
+    expect(result.interruption).toBe('failed');
+    expect(result.error).toContain('Invalid crop output filename');
+    expect(result.outputPaths).toStrictEqual([join(directory, 'clip.crop-001.mp4')]);
+    await expect(readFile(result.outputPaths![0]!)).resolves.toStrictEqual(Buffer.from('mock encoded video'));
+    await expect(readdir(join(directory, '.swiftcut-crop-tmp'))).resolves.toStrictEqual([]);
+  });
+
+  it('does not publish a terminal state while temporary files are still present', async () => {
+    const jobId = await startCropExport(makePlan());
+    await expectState(jobId, 'success');
+    await expect(readdir(join(directory, '.swiftcut-crop-tmp'))).resolves.toStrictEqual([]);
+  });
+
   it('fails verification and never commits an invalid output', async () => {
     mocks.probe.mockImplementation(async () => ({
       stdout: Buffer.from(JSON.stringify({

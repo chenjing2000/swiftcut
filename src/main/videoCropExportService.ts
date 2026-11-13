@@ -233,6 +233,7 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
           // arrives during the asynchronous filesystem operation.
           job.status.outputPaths!.push(outputPath);
           finalOutput ??= outputPath;
+          job.status.outputPath ??= outputPath;
           job.status.progress = 0.9 + (job.status.outputPaths!.length / encoded.length) * 0.1;
         }
       }
