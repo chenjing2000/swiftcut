@@ -28,3 +28,10 @@
 
 .previewRow button { background: var(--gray-3); color: var(--gray-12); }
 .previewRow button:hover { filter: brightness(1.08); }
+
+.numberField input[type="text"] {
+  box-sizing: border-box;
+  height: 30px;
+  font-size: 13px;
+  text-align: center;
+}
