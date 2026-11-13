@@ -1,45 +1,63 @@
+/* Align settings, controls and Help icons using the same columns in both tables. */
 table.options {
   width: 100%;
-}
-
-table.options td:nth-child(2) {
-  text-align: right;
-}
-
-table.options td:last-child {
-  text-align: center;
-  width: 1.7em;
-}
-
-table.options td {
-  padding: .5em 0em;
-}
-
-table.options td {
-  vertical-align: top;
-}
-
-tr.notice-row td {
-  padding: 0;
-}
-
-/* Keep lengthy advanced-option labels and controls inside the 380px panel. */
-table.advancedOptions {
   table-layout: fixed;
-  width: 100%;
   border-collapse: collapse;
 }
-table.advancedOptions td:first-child { width: 52%; overflow-wrap: anywhere; }
-table.advancedOptions td:nth-child(2) { width: 40%; text-align: right; min-width: 0; }
-table.advancedOptions td:last-child { width: 8%; }
-table.advancedOptions td:nth-child(2) select {
+table.options td {
+  box-sizing: border-box;
+  padding: 6px 0;
+  vertical-align: middle;
+  min-width: 0;
+}
+table.options td:first-child {
+  width: 46%;
+  overflow-wrap: anywhere;
+}
+table.options td:nth-child(2) {
+  width: 46%;
+  text-align: right;
+}
+table.options td:last-child {
+  width: 8%;
+  text-align: center;
+  white-space: nowrap;
+}
+table.options td:nth-child(2) select {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 150px;
   max-width: 100%;
-  width: 100%;
+  min-width: 0;
   margin-left: 0 !important;
+  vertical-align: middle;
 }
-table.advancedOptions td:nth-child(2) button:not([role="switch"]) {
+table.options td:nth-child(2) > :is(button, span, div) {
   max-width: 100%;
 }
+table.options td:nth-child(2) > button {
+  vertical-align: middle;
+}
+table.options td:nth-child(2) > [role="switch"] {
+  display: inline-block;
+}
+table.options td:nth-child(2) > div {
+  margin-left: auto;
+}
+table.options td:last-child > svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+table.options tr.notice-row td {
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+/* The output path fields span the complete table and keep their own layout. */
+table.options td[colspan="3"] {
+  width: auto;
+}
+/* Advanced switches are compact without altering switches elsewhere. */
 table.advancedOptions td:nth-child(2) [role="switch"] {
   transform: scale(.8);
   transform-origin: right center;
