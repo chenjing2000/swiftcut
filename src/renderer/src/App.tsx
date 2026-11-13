@@ -50,7 +50,8 @@ import AudioExtractionDialog from './components/AudioExtraction/AudioExtractionD
 import VideoCropWorkspace from './components/VideoCrop/VideoCropWorkspace';
 import CropExportProgress from './components/VideoCrop/CropExportProgress';
 import { createCropExportPlan } from './videoCropExportPlanner';
-import { getMediaOutputDir, getMediaOutputName } from '../../common/mediaWorkspace.js';
+import { assertOutputFilename, getMediaOutputDir, getMediaOutputName, getSourceStem } from '../../common/mediaWorkspace.js';
+import { commitMediaOutputs } from './util/commitMediaOutputs';
 import { resolveVideoCropSegments } from './videoCropSegments';
 import { getSourceDisplayRotation } from './videoCropRotation';
 import type { CropVideoConfig } from '../../common/videoCropTypes.js';
@@ -136,7 +137,9 @@ import { appName } from '../../main/common.js';
 import { parse as parsePath, join as pathJoin, basename, dirname } from './util/path';
 
 const { ipcRenderer, webUtils } = window.require('electron');
-const { lstat } = window.require('node:fs/promises');
+const { lstat, mkdir, rm } = window.require('node:fs/promises');
+const { randomUUID } = window.require('node:crypto');
+const { isAbsolute } = window.require('node:path');
 const { pathToFileURL, lossyMode, isLinux } = window.require('@electron/remote').require('./index.js');
 
 
@@ -1057,7 +1060,6 @@ function App() {
 
       if (clearBatchFilesAfterConcat) closeBatch();
       if (!includeAllStreams && haveExcludedStreams) notices.add(i18n.t('Some extra tracks have been discarded. You can change this option before merging.'));
-      if (!enableOverwriteOutput) warnings.add(i18n.t('Overwrite output setting is disabled and some files might have been skipped.'));
 
       if (!hideAllNotifications) {
         showOsNotification(i18n.t('Merge finished'));
@@ -1170,6 +1172,7 @@ function App() {
 
   const onExportConfirm = useCallback(async () => {
     invariant(filePath != null && outputDir != null);
+    let temporaryLosslessDir: string | undefined;
     emitEvent({ eventName: 'export-start', path: filePath });
 
     if (numStreamsToCopy === 0) {
@@ -1188,6 +1191,11 @@ function App() {
     if (workingRef.current) return;
     try {
       setWorking({ text: i18n.t('Exporting') });
+      if (!isAbsolute(losslessDirectory)) throw new UserFacingError('Output directory must be an absolute path');
+      assertOutputFilename(losslessFilename);
+      if (parsePath(losslessFilename).ext.toLowerCase() !== `.${losslessExtension.toLowerCase()}`) throw new UserFacingError('Filename extension must match output format');
+      temporaryLosslessDir = pathJoin(losslessDirectory, '.swiftcut-lossless-tmp', randomUUID());
+      await mkdir(temporaryLosslessDir, { recursive: true });
 
       // Special segments-to-chapters mode:
       let chaptersToAdd: Chapter[] | undefined;
@@ -1201,31 +1209,19 @@ function App() {
         chaptersToAdd = isMatroska(fileFormat) ? sortedSegments : convertSegmentsToChaptersWithGaps(sortedSegments);
       }
 
-      console.log('cutFileTemplate', cutFileTemplateOrDefault);
-
       const notices = new Set<string>();
       const warnings = new Set<string>();
+      const count = Math.max(1, segmentsToExport.length);
+      const suffix = parsePath(losslessFilename).ext;
+      const userRenamed = losslessCustomFilename?.source === filePath;
+      const baseStem = userRenamed ? parsePath(losslessFilename).name.replace(/_segment_\\d+$/, '') : getSourceStem(filePath);
+      const segmentName = (index: number) => `${baseStem}_segment_${String(index + 1).padStart(Math.max(2, String(count).length), '0')}${suffix}`;
+      const cutFileNames = (count === 1 && !willMerge) ? [losslessFilename] : Array.from({ length: count }, (_, index) => segmentName(index));
+      // Write all intermediate media inside the task-owned workspace.
 
-      let cutFileNames: string[];
-      // When deleting merged segments, use the default template so that we e.g. don't risk creating a folder structure
-      // https://github.com/mifi/lossless-cut/issues/2637
-      if (willMerge && autoDeleteMergedSegments) {
-        const generated = await generateCutFileNames(defaultCutFileTemplate);
-        cutFileNames = generated.fileNames;
-      } else {
-        const generated = await generateCutFileNames(cutFileTemplateOrDefault);
-        cutFileNames = generated.fileNames;
-        if (generated.problems.error != null) {
-          console.warn('Output segments file name invalid, using default instead', generated.fileNames);
-          warnings.add(generated.problems.error);
-          warnings.add(t('Fell back to default output file name'));
-        }
-      }
-
-      // throw (() => { const err = new Error('test'); err.code = 'ENOENT'; return err; })();
       const outFiles = await cutMultiple({
-        outputDir,
-        customOutDir,
+        outputDir: temporaryLosslessDir,
+        customOutDir: temporaryLosslessDir,
         outFormat: fileFormat,
         fileDuration,
         rotation: isRotationSet ? effectiveRotation : undefined,
@@ -1251,26 +1247,12 @@ function App() {
       let mergedOutFilePath: string | undefined;
 
       if (willMerge) {
-        console.log('cutMergedFileTemplateOrDefault', cutMergedFileTemplateOrDefault);
-
         setProgress(0);
         setWorking({ text: i18n.t('Merging') });
-
-        const chapterNames = segmentsToChapters && !invertCutSegments ? segmentsToExport.map((s) => s.name) : undefined;
-
-        const { fileNames, problems } = await generateCutMergedFileNames(cutMergedFileTemplateOrDefault);
-        if (problems.error != null) {
-          console.warn('Merged file name invalid, using default instead', fileNames[0]);
-          warnings.add(problems.error);
-          warnings.add(t('Fell back to default output file name'));
-        }
-
-        const [fileName] = fileNames;
-        invariant(fileName != null);
-        mergedOutFilePath = getOutPath({ customOutDir, filePath, fileName });
-
+        const chapterNames = segmentsToChapters && !invertCutSegments ? segmentsToExport.map((seg) => seg.name) : undefined;
+        mergedOutFilePath = pathJoin(temporaryLosslessDir, losslessFilename);
         await concatCutSegments({
-          customOutDir,
+          customOutDir: temporaryLosslessDir,
           outFormat: fileFormat,
           segmentPaths: outFiles.map((f) => f.path),
           ffmpegExperimental,
@@ -1289,7 +1271,6 @@ function App() {
 
       if (!enableOverwriteOutput) warnings.add(i18n.t('Overwrite output setting is disabled and some files might have been skipped.'));
 
-      if (!exportConfirmEnabled) notices.add(i18n.t('Export options are not shown. You can enable export options by clicking the icon right next to the export button.'));
 
       invariant(mainFileFormat != null);
       // https://github.com/mifi/lossless-cut/issues/329
@@ -1298,17 +1279,29 @@ function App() {
       // https://github.com/mifi/lossless-cut/issues/280
       if (!ffmpegExperimental && isProblematicAvc1(fileFormat, mainStreams)) warnings.add(i18n.t('There is a known problem with this file type, and the output might not be playable. You can work around this problem by enabling the "Experimental flag" under Settings.'));
 
+      let extraPaths: string[] = [];
       if (exportExtraStreams) {
         try {
-          setProgress(undefined); // If extracting extra streams takes a long time, prevent loader from being stuck at 100%
+          setProgress(undefined);
           setWorking({ text: i18n.t('Extracting {{count}} unprocessable tracks', { count: nonCopiedExtraStreams.length }) });
-          await extractStreams({ customOutDir, streams: nonCopiedExtraStreams });
+          extraPaths = await extractStreams({ customOutDir: temporaryLosslessDir, streams: nonCopiedExtraStreams });
           notices.add(i18n.t('Unprocessable streams were exported as separate files.'));
         } catch (err) {
           console.error('Extra stream export failed', err);
-          warnings.add(i18n.t('Unable to export unprocessable streams.'));
+          warnings.add(t('Unable to export unprocessable streams.'));
         }
       }
+
+      const outputsToCommit = [
+        ...(!willMerge || !autoDeleteMergedSegments ? outFiles.map((file, index) => ({
+          temporaryPath: file.path,
+          requestedName: cutFileNames[index]!,
+        })) : []),
+        ...(willMerge && mergedOutFilePath != null ? [{ temporaryPath: mergedOutFilePath, requestedName: losslessFilename }] : []),
+        ...extraPaths.map((path) => ({ temporaryPath: path, requestedName: basename(path) })),
+      ];
+      const committedPaths = await commitMediaOutputs({ outputDir: losslessDirectory, outputs: outputsToCommit });
+      if (willMerge) mergedOutFilePath = committedPaths[autoDeleteMergedSegments ? 0 : outFiles.length];
 
       if (areWeCutting) notices.add(i18n.t('Cutpoints may be inaccurate.'));
 
@@ -1321,7 +1314,7 @@ function App() {
       }
 
       // Note: this should be after cleanup, so we don't accidentally open two dialogs at the same time, leading to error *and* success dialog simultaneously https://github.com/mifi/lossless-cut/issues/2609
-      const exportedPaths = willMerge && mergedOutFilePath != null ? [mergedOutFilePath] : outFiles.map((f) => f.path);
+      const exportedPaths = willMerge && mergedOutFilePath != null ? [mergedOutFilePath] : committedPaths;
       const [revealPath] = exportedPaths;
       invariant(revealPath != null);
       if (!hideAllNotifications) {
@@ -1366,10 +1359,11 @@ function App() {
 
       handleExportFailed(err);
     } finally {
+      if (temporaryLosslessDir != null) await rm(temporaryLosslessDir, { recursive: true, force: true }).catch(console.error);
       setWorking(undefined);
       setProgress(undefined);
     }
-  }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutFileTemplateOrDefault, generateCutFileNames, cutMultiple, outputDir, customOutDir, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, enableOverwriteOutput, exportConfirmEnabled, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, simpleMode, prefersReducedMotion, cleanupChoices, hideAllNotifications, segmentsOrInverse.selected, t, cutMergedFileTemplateOrDefault, segmentsToChapters, invertCutSegments, generateCutMergedFileNames, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, openCutFinishedDialog, handleExportFailed]);
+  }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutMultiple, outputDir, customOutDir, losslessDirectory, losslessFilename, losslessExtension, losslessCustomFilename, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, enableOverwriteOutput, exportConfirmEnabled, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, simpleMode, prefersReducedMotion, cleanupChoices, hideAllNotifications, segmentsOrInverse.selected, t, segmentsToChapters, invertCutSegments, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, openCutFinishedDialog, handleExportFailed]);
 
   const onExportPress = useCallback(() => openLosslessExport(), [openLosslessExport]);
 
