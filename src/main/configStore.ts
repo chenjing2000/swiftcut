@@ -83,8 +83,6 @@ const defaultKeyBindings: KeyBinding[] = [
   { keys: 'ControlLeft+ShiftLeft+KeyZ', action: 'redo' },
   { keys: 'MetaLeft+ShiftLeft+KeyZ', action: 'redo' },
 
-  { keys: 'KeyF', action: 'toggleFullscreenVideo' },
-
   { keys: 'Enter', action: 'labelCurrentSegment' },
 
   { keys: 'KeyE', action: 'export' },
@@ -94,6 +92,21 @@ const defaultKeyBindings: KeyBinding[] = [
   { keys: 'AltLeft+ArrowDown', action: 'decreaseVolume' },
   { keys: 'KeyM', action: 'toggleMuted' },
 ];
+
+// Only migrate an exact legacy default layout. Custom shortcuts must never be overwritten.
+const legacyDefaultKeyBindings: KeyBinding[] = [
+  ...defaultKeyBindings.slice(0, defaultKeyBindings.findIndex(({ keys }) => keys === 'Enter')),
+  { keys: 'KeyF', action: 'toggleFullscreenVideo' },
+  ...defaultKeyBindings.slice(defaultKeyBindings.findIndex(({ keys }) => keys === 'Enter')),
+];
+
+function usesLegacyDefaultKeyBindings(bindings: KeyBinding[]): boolean {
+  return bindings.length === legacyDefaultKeyBindings.length
+    && bindings.every((binding, index) => {
+      const legacy = legacyDefaultKeyBindings[index];
+      return legacy?.keys === binding.keys && legacy.action === binding.action;
+    });
+}
 
 const defaults: Config = {
   version: 2,
@@ -223,6 +236,10 @@ async function tryCreateStore({ customStoragePath }: { customStoragePath: string
         defaults,
         ...(customStoragePath != null && { cwd: customStoragePath }),
       });
+      const savedBindings = store.get('keyBindings') as KeyBinding[];
+      if (usesLegacyDefaultKeyBindings(savedBindings)) {
+        store.set('keyBindings', defaultKeyBindings);
+      }
       return;
     } catch (err) {
       await new Promise((resolve) => { setTimeout(resolve, 2000); });

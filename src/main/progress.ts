@@ -16,6 +16,9 @@ export function parseFfmpegProgressLine({ line, customMatcher, duration: duratio
   if (duration === 0) return undefined;
 
   const timeStr = match[1];
+  // FFmpeg legitimately emits time=N/A while timestamps are not yet available.
+  // No update is preferable to logging an error or resetting progress.
+  if (timeStr === 'N/A') return undefined;
   // console.log(timeStr);
   const match2 = /^(-?)(\d+):(\d+):(\d+)\.(\d+)$/.exec(timeStr!);
   if (!match2) throw new Error(`Invalid time from ffmpeg progress ${timeStr}`);

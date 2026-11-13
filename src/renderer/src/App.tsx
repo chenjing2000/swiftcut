@@ -47,6 +47,12 @@ import KeyboardShortcuts from './components/KeyboardShortcuts';
 import Working from './components/Working';
 import OutputFormatSelect from './components/OutputFormatSelect';
 import AudioExtractionDialog from './components/AudioExtraction/AudioExtractionDialog';
+import VideoCropWorkspace from './components/VideoCrop/VideoCropWorkspace';
+import CropExportProgress from './components/VideoCrop/CropExportProgress';
+import { createCropExportPlan } from './videoCropExportPlanner';
+import { resolveVideoCropSegments } from './videoCropSegments';
+import { getSourceDisplayRotation } from './videoCropRotation';
+import type { CropVideoConfig } from '../../common/videoCropTypes.js';
 import * as Dialog from './components/Dialog';
 
 import { runStartupCheck } from './mifi';
@@ -158,6 +164,11 @@ function App() {
   const [streamsSelectorShown, setStreamsSelectorShown] = useState(false);
   const [concatDialogOpen, setConcatDialogOpen] = useState(false);
   const [audioExtractionDialogOpen, setAudioExtractionDialogOpen] = useState(false);
+  const [cropVideoForFile, setCropVideoForFile] = useState<string>();
+  const [cropExportJobId, setCropExportJobId] = useState<string>();
+  const [cropExportStatus, setCropExportStatus] = useState<Awaited<ReturnType<typeof mainApi.getCropExportStatus>>>();
+  const cropVideoOpen = filePath != null && cropVideoForFile === filePath;
+  const [cropPreviewRect, setCropPreviewRect] = useState<{ left: number; top: number; width: number; height: number }>();
   const [zoomUnrounded, setZoom] = useState(1);
   const [shortestFlag, setShortestFlag] = useState(false);
   const [zoomWindowStartTime, setZoomWindowStartTime] = useState(0);
@@ -343,9 +354,33 @@ function App() {
     return ret;
   }, [activeAudioStreamIndexes, audioStreams, mainAudioStream]);
 
-  // 360 means we don't modify rotation gtrgt
+  // 360 means no user-specified rotation; use the source display orientation.
   const isRotationSet = rotation !== 360;
-  const effectiveRotation = useMemo(() => (isRotationSet ? rotation : (activeVideoStream?.tags?.rotate ? parseInt(activeVideoStream.tags.rotate, 10) : undefined)), [isRotationSet, activeVideoStream, rotation]);
+  const effectiveRotation = useMemo(() => (isRotationSet ? rotation : getSourceDisplayRotation(activeVideoStream)), [isRotationSet, activeVideoStream, rotation]);
+
+  const cropFrame = useMemo(() => {
+    if (activeVideoStream?.width == null || activeVideoStream.height == null) return undefined;
+    const [sarNumRaw, sarDenRaw] = (activeVideoStream.sample_aspect_ratio ?? '1:1').split(':').map(Number);
+    const sarNum = sarNumRaw && Number.isFinite(sarNumRaw) ? sarNumRaw : 1;
+    const sarDen = sarDenRaw && Number.isFinite(sarDenRaw) ? sarDenRaw : 1;
+    const degrees = (((effectiveRotation ?? 0) % 360) + 360) % 360;
+    const resolvedRotation = ([0, 90, 180, 270] as const).find((angle) => angle === degrees);
+    if (resolvedRotation == null) return undefined;
+    return {
+      width: activeVideoStream.width,
+      height: activeVideoStream.height,
+      sarNum,
+      sarDen,
+      rotation: resolvedRotation,
+    };
+  }, [activeVideoStream, effectiveRotation]);
+
+  const openCropVideo = useCallback(() => {
+    if (filePath == null || !cropFrame || !isDurationValid(fileDuration)) return;
+    pause();
+    setCropVideoForFile(filePath);
+  }, [cropFrame, fileDuration, filePath, pause]);
+
 
   const zoomAbs = useCallback((fn: (v: number) => number) => setZoom((z) => Math.min(Math.max(fn(z), 1), zoomMax)), []);
   const zoomRel = useCallback((rel: number) => zoomAbs((z) => z + (rel * (1 + (z / 10)))), [zoomAbs]);
@@ -430,6 +465,48 @@ function App() {
   // const getSafeCutTime = useCallback((cutTime, next) => ffmpeg.getSafeCutTime(neighbouringFrames, cutTime, next), [neighbouringFrames]);
 
   const outputDir = getOutDir(customOutDir, filePath);
+
+  const submitCropExport = useCallback(async (config: CropVideoConfig) => {
+    if (!filePath || !cropFrame || !fileDuration || !outputDir || activeVideoStream == null) {
+      throw new Error('No valid crop video is loaded');
+    }
+    if (cropExportStatus && !['success', 'partial_success', 'failed', 'cancelled'].includes(cropExportStatus.state)) {
+      throw new Error('A crop video export is already running');
+    }
+    const selected = resolveVideoCropSegments({
+      segments: cutSegments,
+      inverseSegments: inverseCutSegments,
+      inverted: invertCutSegments,
+      duration: fileDuration,
+      timeRange: config.output.timeRange,
+    });
+    if (selected.length === 0) throw new Error('No valid segments selected');
+    const plan = createCropExportPlan({
+      sourcePath: filePath,
+      outputDir,
+      frame: cropFrame,
+      videoStreamIndex: activeVideoStream.index,
+      ...(config.output.keepAudio && activeAudioStreams[0] != null && { audioStreamIndex: activeAudioStreams[0].index }),
+      sourceDuration: fileDuration,
+      config,
+      segments: selected,
+    });
+    const jobId = await mainApi.startCropExport(plan);
+    setCropExportJobId(jobId);
+    setCropExportStatus({ id: jobId, state: 'preparing', progress: 0 });
+  }, [filePath, cropFrame, fileDuration, outputDir, activeVideoStream, cropExportStatus, cutSegments, inverseCutSegments, invertCutSegments, activeAudioStreams]);
+
+  useEffect(() => {
+    if (cropExportJobId == null) return undefined;
+    let active = true;
+    const update = async () => {
+      const result = await mainApi.getCropExportStatus(cropExportJobId);
+      if (active && result != null) setCropExportStatus(result);
+    };
+    update().catch(console.error);
+    const interval = setInterval(() => { update().catch(console.error); }, 300);
+    return () => { active = false; clearInterval(interval); };
+  }, [cropExportJobId]);
 
   const increaseRotation = useCallback(() => {
     setRotation((r) => (r + 90) % 450);
@@ -2344,8 +2421,6 @@ function App() {
     e.target.blur();
   }, []);
 
-  const onVideoClick = useCallback(() => togglePlay(), [togglePlay]);
-
   const tryExportEdlFile = useCallback(async (type: EdlExportType) => {
     if (!checkFileOpened() || selectedSegments.length === 0) return;
     await withErrorHandling(async () => {
@@ -2399,7 +2474,7 @@ function App() {
         },
       ] as const),
       // all main actions (no arguments):
-      ...Object.entries({ extractAudio: openAudioExtractionDialog }).map(([key, fn]) => [
+      ...Object.entries({ extractAudio: openAudioExtractionDialog, cropVideo: openCropVideo }).map(([key, fn]) => [
         key,
         async () => {
           fn();
@@ -2447,7 +2522,7 @@ function App() {
       ipcActions.forEach(([key, action]) => ipcRenderer.off(key, action));
       ipcRenderer.off('apiAction', tryApiAction);
     };
-  }, [checkFileOpened, customOutDir, detectedFps, filePath, getFrameCount, getKeyboardAction, goToTimecodeDirect, handleError, importEdlFile, loadCutSegments, mainActions, openAudioExtractionDialog, promptDownloadMediaUrlWrapper, selectedSegments, toggleKeyboardShortcuts, tryExportEdlFile, userOpenFiles]);
+  }, [checkFileOpened, customOutDir, detectedFps, filePath, getFrameCount, getKeyboardAction, goToTimecodeDirect, handleError, importEdlFile, loadCutSegments, mainActions, openAudioExtractionDialog, openCropVideo, promptDownloadMediaUrlWrapper, selectedSegments, toggleKeyboardShortcuts, tryExportEdlFile, userOpenFiles]);
 
   const handleBatchFilesDrop = useCallback<DragEventHandler<HTMLDivElement>>(async (ev) => {
     ev.preventDefault();
@@ -2530,6 +2605,17 @@ function App() {
 
   // throw new Error('Test error boundary');
 
+  const cropPreviewStyle = useMemo<CSSProperties | undefined>(() => {
+    const view = videoContainerRef.current;
+    if (!cropVideoOpen || !cropPreviewRect || !view || cropPreviewRect.width <= 0 || cropPreviewRect.height <= 0) return undefined;
+    const scale = Math.min(view.clientWidth / cropPreviewRect.width, view.clientHeight / cropPreviewRect.height);
+    return {
+      transformOrigin: 'top left',
+      clipPath: `inset(${Math.max(0, cropPreviewRect.top)}px ${Math.max(0, view.clientWidth - cropPreviewRect.left - cropPreviewRect.width)}px ${Math.max(0, view.clientHeight - cropPreviewRect.top - cropPreviewRect.height)}px ${Math.max(0, cropPreviewRect.left)}px)`,
+      transform: `translate(${((view.clientWidth - (cropPreviewRect.width * scale)) / 2) - (cropPreviewRect.left * scale)}px, ${((view.clientHeight - (cropPreviewRect.height * scale)) / 2) - (cropPreviewRect.top * scale)}px) scale(${scale})`,
+    };
+  }, [cropPreviewRect, cropVideoOpen, videoContainerRef]);
+
   const baseColorStyle = useMemo(() => ({ color: 'var(--gray-12)', background: 'var(--gray-1)', colorScheme: darkMode ? 'only dark' : 'only light' }), [darkMode]);
 
   const rootClass = useMemo(() => [
@@ -2585,7 +2671,7 @@ function App() {
                   <div style={{ position: 'relative', flexGrow: 1, overflow: 'hidden' }} ref={videoContainerRef}>
                     {!isFileOpened && <NoFileLoaded currentCutSeg={currentCutSeg} onClick={openFilesDialog} keyBindingByAction={keyBindingByAction} />}
 
-                    <div className="no-user-select" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, visibility: !isFileOpened || !hasVideo || bigWaveformEnabled ? 'hidden' : undefined }} onWheel={onTimelineWheel}>
+                    <div className="no-user-select" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, visibility: !isFileOpened || !hasVideo || bigWaveformEnabled ? 'hidden' : undefined, ...cropPreviewStyle }} onWheel={onTimelineWheel}>
                       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                       <video
                         className={styles['video']}
@@ -2599,7 +2685,6 @@ function App() {
                         onDurationChange={onDurationChange}
                         onTimeUpdate={onTimeUpdate}
                         onError={onVideoError}
-                        onClick={onVideoClick}
                         onDoubleClick={toggleFullscreenVideo}
                         onFocusCapture={onVideoFocus}
                         onSeeked={onSeeked}
@@ -2609,6 +2694,40 @@ function App() {
 
                       {filePath != null && compatPlayerEnabled && <MediaSourcePlayer rotate={effectiveRotation} filePath={filePath} videoStream={activeVideoStream} audioStreams={activeAudioStreams} masterVideoRef={videoRef} mediaSourceQuality={mediaSourceQuality} ffmpegHwaccel={ffmpegHwaccel} baseVideoStyle={mainVideoStyle} />}
                     </div>
+
+                    {cropVideoOpen && cropFrame && fileDuration != null && (
+                      <VideoCropWorkspace
+                        key={filePath}
+                        containerRef={videoContainerRef}
+                        frame={cropFrame}
+                        videoFit={videoFit}
+                        segments={cutSegments}
+                        selectedSegmentCount={resolveVideoCropSegments({ segments: cutSegments, inverseSegments: inverseCutSegments, inverted: invertCutSegments, duration: fileDuration, timeRange: 'selected' }).length}
+                        duration={fileDuration}
+                        fullscreen={fullscreen}
+                        onToggleFullscreen={toggleFullscreenVideo}
+                        onExport={submitCropExport}
+                        onClose={() => {
+                          setCropVideoForFile(undefined);
+                          setCropPreviewRect(undefined);
+                        }}
+                        onPreviewChange={setCropPreviewRect}
+                      />
+                    )}
+
+                    {cropExportStatus && (
+                      <CropExportProgress
+                        key={cropExportStatus.id}
+                        status={cropExportStatus}
+                        onCancel={async () => {
+                          if (cropExportJobId) await mainApi.cancelCropExport(cropExportJobId);
+                        }}
+                        onDismiss={() => {
+                          setCropExportJobId(undefined);
+                          setCropExportStatus(undefined);
+                        }}
+                      />
+                    )}
 
                     {bigWaveformEnabled && <BigWaveform waveforms={waveforms} relevantTime={relevantTime} playing={playing} fileDurationNonZero={fileDurationNonZero} zoom={zoomUnrounded} seekRel={seekRel} darkMode={darkMode} />}
 

@@ -453,6 +453,12 @@ export default ({ app, mainWindow, isStoreBuild, openExternal }: {
             mainWindow.webContents.send('extractAudio');
           },
         },
+        {
+          label: esc(t('Crop Video...')),
+          click() {
+            mainWindow.webContents.send('cropVideo');
+          },
+        },
       ],
     },
     {

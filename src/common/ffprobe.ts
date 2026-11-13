@@ -297,6 +297,9 @@ export interface FFprobeStream {
   /** The sample aspect ratio (you probably want "display_aspect_ratio") (not present if codec_type is not "video") */
   sample_aspect_ratio?: string,
 
+  /** Rotation and other frame display information emitted by FFprobe. */
+  side_data_list?: { side_data_type?: string, rotation?: number }[],
+
   /** The display (real) aspect ratio (e.g. "16:9") (not present if codec_type is not "video") */
   display_aspect_ratio?: string,
 

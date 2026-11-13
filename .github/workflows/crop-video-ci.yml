@@ -1,0 +1,30 @@
+name: Crop Video Windows CI
+
+on:
+  push:
+    branches:
+      - feature/crop-video
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --immutable
+      - run: yarn test --run
+      - uses: AnimMouse/setup-ffmpeg@v1
+      - name: Real FFmpeg crop smoke test
+        run: yarn test --run src/main/videoCropFfmpegIntegration.test.ts src/main/videoCropCompatibility.test.ts
+        env:
+          SWIFTCUT_CROP_FFMPEG_TEST: '1'
+      - run: yarn tsc
+      - run: yarn lint
+      - run: yarn build
