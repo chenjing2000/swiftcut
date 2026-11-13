@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import * as Dialog from '../Dialog';
@@ -37,6 +37,14 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   ));
   const [mode, setMode] = useState<AudioExtractionMode>('mp3');
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
+  // The settings component remains mounted while a job runs; streams may
+  // arrive after the source path, so select the first available track once.
+  useEffect(() => {
+    if (streams.length > 0) {
+      setSelectedStreamIndexes((current) => current.length > 0 ? current : [streams[0]!.index]);
+    }
+  }, [streams]);
+
   const { job, isStarting, isBusy, startExtraction, cancelExtraction, dismissJob } = useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments });
 
   const isMp4 = useMemo(() => {
