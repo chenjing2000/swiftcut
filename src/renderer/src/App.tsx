@@ -2723,7 +2723,7 @@ function App() {
                     )}
                     {cropExportStatus && ['success', 'partial_success', 'failed', 'cancelled'].includes(cropExportStatus.state) && (
                       <div style={{ position: 'fixed', right: 16, bottom: 24, zIndex: 300, width: 310, padding: 14, borderRadius: 10, border: '1px solid var(--gray-7)', background: 'var(--gray-2)', color: 'var(--gray-12)', boxShadow: '0 6px 22px #0005' }}>
-                        <strong>{cropExportStatus.state === 'success' ? 'Crop export completed' : (cropExportStatus.state === 'partial_success' ? 'Crop export partially completed' : (cropExportStatus.state === 'failed' ? 'Crop export failed' : 'Crop export cancelled'))}</strong>
+                        <strong>{({ success: 'Crop export completed', partial_success: 'Crop export partially completed', failed: 'Crop export failed', cancelled: 'Crop export cancelled' } as Record<string, string>)[cropExportStatus.state]}</strong>
                         {cropExportStatus.outputPaths?.map((path) => <div key={path} style={{ overflowWrap: 'anywhere' }}>{path}</div>)}
                         {cropExportStatus.state === 'partial_success' && <div role="status">{cropExportStatus.outputPaths?.length ?? 0} file(s) saved. Completed files were preserved.</div>}
                         {cropExportStatus.error && <div role="alert">{cropExportStatus.error}</div>}
