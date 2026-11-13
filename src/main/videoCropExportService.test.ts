@@ -17,10 +17,24 @@ type FfmpegMock = (args: {
 type LoggerMock = (...args: unknown[]) => void;
 
 const mocks = vi.hoisted(() => ({
+  failCropCleanup: false,
   probe: vi.fn<FfprobeMock>(),
   run: vi.fn<FfmpegMock>(),
   logger: { error: vi.fn<LoggerMock>(), warn: vi.fn<LoggerMock>(), info: vi.fn<LoggerMock>() },
 }));
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const fs = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...fs,
+    rm: async (...args: Parameters<typeof fs.rm>) => {
+      if (mocks.failCropCleanup && String(args[0]).includes('.swiftcut-crop-tmp')) {
+        throw new Error('Simulated crop cleanup error');
+      }
+      return fs.rm(...args);
+    },
+  };
+});
 
 vi.mock('./ffmpeg.js', () => ({
   runFfprobe: mocks.probe,
@@ -73,6 +87,7 @@ describe('Crop Video single-segment service', () => {
     source = join(directory, 'clip.mp4');
     await writeFile(source, 'mock video source');
     vi.clearAllMocks();
+    mocks.failCropCleanup = false;
     mocks.probe.mockImplementation(async (args) => ({
       stdout: Buffer.from(JSON.stringify({
         streams: [
@@ -90,6 +105,7 @@ describe('Crop Video single-segment service', () => {
   });
 
   afterEach(async () => {
+    mocks.failCropCleanup = false;
     await rm(directory, { force: true, recursive: true });
   });
 
@@ -123,6 +139,18 @@ describe('Crop Video single-segment service', () => {
     ];
     await expect(startCropExport(plan)).rejects.toThrow('Overlapping crop segments');
     expect(mocks.run).not.toHaveBeenCalled();
+  });
+
+  it('keeps a fully committed output successful if temporary cleanup fails', async () => {
+    mocks.failCropCleanup = true;
+    const jobId = await startCropExport(makePlan());
+    await expectState(jobId, 'success');
+    const status = getCropExportStatus(jobId)!;
+    expect(status.cleanupWarning).toContain('Simulated crop cleanup error');
+    expect(status.error).toBeUndefined();
+    expect(status.interruption).toBeUndefined();
+    expect(status.outputPaths).toStrictEqual([join(directory, 'clip.crop.mp4')]);
+    await expect(readFile(join(directory, 'clip.crop.mp4'))).resolves.toStrictEqual(Buffer.from('mock encoded video'));
   });
 
   it('validates and commits a single encoded file without leaving task files', async () => {
