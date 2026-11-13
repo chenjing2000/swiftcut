@@ -41,9 +41,9 @@ describe('safe media output publication', () => {
     expect(files.map((file) => path.basename(file))).toStrictEqual([
       'Travel_segment_01 (1).mp4', 'Travel_segment_02 (1).mp4',
     ]);
-    expect(await fs.readFile(original, 'utf8')).toBe('original');
-    expect(await fs.readFile(files[0]!, 'utf8')).toBe('new 1');
-    expect(await fs.readFile(files[1]!, 'utf8')).toBe('new 2');
+    await expect(fs.readFile(original, 'utf8')).resolves.toBe('original');
+    await expect(fs.readFile(files[0]!, 'utf8')).resolves.toBe('new 1');
+    await expect(fs.readFile(files[1]!, 'utf8')).resolves.toBe('new 2');
   });
 
   it('rejects a directory traversal filename without writing output', async () => {
@@ -54,6 +54,6 @@ describe('safe media output publication', () => {
       outputDir: root,
       outputs: [{ temporaryPath: staged, requestedName: '../escape.mp4' }],
     })).rejects.toThrow('Invalid output filename');
-    expect(await fs.readFile(staged, 'utf8')).toBe('clip');
+    await expect(fs.readFile(staged, 'utf8')).resolves.toBe('clip');
   });
 });
