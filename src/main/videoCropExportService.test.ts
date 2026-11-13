@@ -73,13 +73,13 @@ describe('Crop Video single-segment service', () => {
     source = join(directory, 'clip.mp4');
     await writeFile(source, 'mock video source');
     vi.clearAllMocks();
-    mocks.probe.mockImplementation(async () => ({
+    mocks.probe.mockImplementation(async (args) => ({
       stdout: Buffer.from(JSON.stringify({
         streams: [
           { codec_type: 'video', codec_name: 'h264', width: 100, height: 100 },
           { codec_type: 'audio', codec_name: 'aac' },
         ],
-        format: { duration: '2' },
+        format: { duration: args.at(-1) === source ? '12' : '2' },
       })),
     }));
     mocks.run.mockImplementation(({ ffmpegArgs, onProgress }) => {
@@ -91,6 +91,38 @@ describe('Crop Video single-segment service', () => {
 
   afterEach(async () => {
     await rm(directory, { force: true, recursive: true });
+  });
+
+  it('rejects a crop whose segment extends beyond the actual source duration', async () => {
+    const plan = makePlan();
+    plan.tasks = [{ start: 11, end: 15, originalIndex: 0, outputName: 'invalid.mp4' }];
+    await expect(startCropExport(plan)).rejects.toThrow('Invalid export segment');
+    expect(mocks.run).not.toHaveBeenCalled();
+  });
+
+  it('rejects an entire-video request that does not cover the source duration', async () => {
+    const plan = makePlan();
+    plan.output.timeRange = 'entire';
+    await expect(startCropExport(plan)).rejects.toThrow('Entire video must cover the full source duration');
+    expect(mocks.run).not.toHaveBeenCalled();
+  });
+
+  it('rejects a source whose duration cannot be determined', async () => {
+    mocks.probe.mockImplementationOnce(async () => ({
+      stdout: Buffer.from(JSON.stringify({ streams: [], format: {} })),
+    }));
+    await expect(startCropExport(makePlan())).rejects.toThrow('Cannot determine crop source duration');
+    expect(mocks.run).not.toHaveBeenCalled();
+  });
+
+  it('rejects a segment overlap even in otherwise valid plans', async () => {
+    const plan = makePlan();
+    plan.tasks = [
+      { start: 1, end: 5, originalIndex: 0, outputName: 'first.mp4' },
+      { start: 4, end: 7, originalIndex: 1, outputName: 'second.mp4' },
+    ];
+    await expect(startCropExport(plan)).rejects.toThrow('Overlapping crop segments');
+    expect(mocks.run).not.toHaveBeenCalled();
   });
 
   it('validates and commits a single encoded file without leaving task files', async () => {
@@ -156,7 +188,7 @@ describe('Crop Video single-segment service', () => {
           { codec_type: 'video', codec_name: 'h264', width: 100, height: 100 },
           { codec_type: 'audio', codec_name: 'aac' },
         ],
-        format: { duration: args.at(-1)?.includes('merged.') ? '4' : '2' },
+        format: { duration: args.at(-1) === source ? '12' : (args.at(-1)?.includes('merged.') ? '4' : '2') },
       })),
     }));
     const jobId = await startCropExport(plan);
@@ -247,7 +279,7 @@ describe('Crop Video single-segment service', () => {
   });
 
   it('rejects output that would be double-rotated by the video player', async () => {
-    mocks.probe.mockImplementation(async () => ({
+    mocks.probe.mockImplementation(async (args) => ({
       stdout: Buffer.from(JSON.stringify({
         streams: [
           {
@@ -259,7 +291,7 @@ describe('Crop Video single-segment service', () => {
           },
           { codec_type: 'audio', codec_name: 'aac' },
         ],
-        format: { duration: '2' },
+        format: { duration: args.at(-1) === source ? '12' : '2' },
       })),
     }));
     const jobId = await startCropExport(makePlan());
@@ -269,10 +301,10 @@ describe('Crop Video single-segment service', () => {
   });
 
   it('fails verification and never commits an invalid output', async () => {
-    mocks.probe.mockImplementation(async () => ({
+    mocks.probe.mockImplementation(async (args) => ({
       stdout: Buffer.from(JSON.stringify({
         streams: [{ codec_type: 'video', codec_name: 'h264', width: 10, height: 10 }],
-        format: { duration: '2' },
+        format: { duration: args.at(-1) === source ? '12' : '2' },
       })),
     }));
     const jobId = await startCropExport(makePlan());
