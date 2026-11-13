@@ -4,12 +4,12 @@ import { useTranslation } from 'react-i18next';
 import * as Dialog from '../Dialog';
 import actionStyles from '../OutputActionButtons.module.css';
 import chrome from '../OutputPanelChrome.module.css';
-import { dangerColor, primaryTextColor, saveColor, warningColor } from '../../colors';
 import Checkbox from '../Checkbox';
 import type { FFprobeStream } from '../../../../common/ffprobe';
 import type { SegmentToExport } from '../../types';
 
-import type { AudioExtractionMode, Mp3Quality, AudioExtractionTaskStatus } from '../../../../main/audioExtraction';
+import type { AudioExtractionMode, Mp3Quality } from '../../../../main/audioExtraction';
+import AudioExtractionProgress from './AudioExtractionProgress';
 import useAudioExtractionJob from './useAudioExtractionJob';
 
 interface AudioExtractionDialogProps {
@@ -30,58 +30,6 @@ const formatTime = (seconds: number) => {
   return [hours, minutes, secs].map((part) => String(part).padStart(2, '0')).join(':');
 };
 
-const getFileName = (path: string) => path.split(/[\\/]/u).at(-1) ?? path;
-
-const getTaskStateLabel = (task: AudioExtractionTaskStatus, t: (key: string) => string) => {
-  switch (task.state) {
-    case 'pending': {
-      return t('Pending');
-    }
-    case 'running': {
-      return t('Running');
-    }
-    case 'success': {
-      return t('Saved');
-    }
-    case 'failed': {
-      return t('Failed');
-    }
-    case 'cancelled': {
-      return t('Cancelled');
-    }
-    case 'skipped': {
-      return t('Skipped');
-    }
-    default: {
-      return task.state;
-    }
-  }
-};
-
-const getTaskStateColor = (task: AudioExtractionTaskStatus) => {
-  switch (task.state) {
-    case 'success': {
-      return saveColor;
-    }
-    case 'failed': {
-      return dangerColor;
-    }
-    case 'cancelled': {
-      return warningColor;
-    }
-    case 'running': {
-      return primaryTextColor;
-    }
-    case 'pending':
-    case 'skipped': {
-      return 'var(--gray-11)';
-    }
-    default: {
-      return 'var(--gray-11)';
-    }
-  }
-};
-
 export default function AudioExtractionDialog({ open, onOpenChange, filePath, streams, segments, formatName }: AudioExtractionDialogProps) {
   const { t } = useTranslation();
   const [selectedStreamIndexes, setSelectedStreamIndexes] = useState<number[]>(() => (
@@ -89,7 +37,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   ));
   const [mode, setMode] = useState<AudioExtractionMode>('mp3');
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
-  const { job, isStarting, isBusy, startExtraction, cancelExtraction } = useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments });
+  const { job, isStarting, isBusy, startExtraction, cancelExtraction, dismissJob } = useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments });
 
   const isMp4 = useMemo(() => {
     const extensionIsMp4 = filePath?.toLowerCase().endsWith('.mp4') ?? false;
@@ -100,15 +48,14 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const selectedCount = selectedStreamIndexes.length;
   const segmentCount = Math.max(segments.length, 1);
   const outputCount = selectedCount * segmentCount;
-  const currentTask = job?.tasks.find((task) => task.state === 'running');
-  const currentTaskNumber = currentTask ? (job?.completedTasks ?? 0) + 1 : job?.completedTasks ?? 0;
-  const savedTaskCount = job?.tasks.filter((task) => task.state === 'success').length ?? 0;
-  const failedTaskCount = job?.tasks.filter((task) => task.state === 'failed').length ?? 0;
-  const cancelledTaskCount = job?.tasks.filter((task) => task.state === 'cancelled').length ?? 0;
-  const skippedTaskCount = job?.tasks.filter((task) => task.state === 'skipped').length ?? 0;
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && isBusy) return;
+    if (!nextOpen && isStarting) return;
     onOpenChange(nextOpen);
+  };
+
+  const beginExtraction = async () => {
+    const started = await startExtraction();
+    if (started) onOpenChange(false);
   };
 
   const toggleStream = (streamIndex: number, checked: boolean) => {
@@ -119,7 +66,8 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   };
 
   return (
-    <Dialog.Root modal={false} open={open} onOpenChange={handleOpenChange}>
+    <>
+      <Dialog.Root modal={false} open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         {/* This settings panel uses the same unobscured floating presentation as Crop Video. */}
         <Dialog.Content
@@ -146,7 +94,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             <button
               type="button"
               aria-label={t('Close')}
-              disabled={isBusy}
+              disabled={isStarting}
               onClick={() => handleOpenChange(false)}
               style={{ cursor: isBusy ? 'not-allowed' : 'pointer' }}
             >
@@ -254,62 +202,28 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             </section>
 
             {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
-            {job && (
-              <section style={{ marginTop: '.6em' }}>
-                <div role="status" style={{ marginBottom: '.5em' }}>
-                  {job.state === 'running' && t('Extracting {{progress}}% · {{current}}/{{total}}', {
-                    progress: Math.round(job.progress * 100),
-                    current: currentTaskNumber,
-                    total: job.totalTasks,
-                  })}
-                  {job.state === 'paused' && t('Extraction paused after an error. Confirm the message to continue or cancel the remaining tasks.')}
-                  {job.state === 'success' && t('{{count}} output file(s) saved.', { count: job.outputPaths.length })}
-                  {job.state === 'cancelled' && t('Extraction cancelled. {{count}} output file(s) saved.', { count: job.outputPaths.length })}
-                  {job.state === 'failed' && t('Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.', {
-                    failed: failedTaskCount,
-                    success: job.outputPaths.length,
-                  })}
-                </div>
-                {job.state === 'cancelled' && (
-                  <div style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: '.5em' }}>
-                    {savedTaskCount} {t('Saved')}
-                    {failedTaskCount > 0 && <> · {failedTaskCount} {t('Failed')}</>}
-                    {' · '}{cancelledTaskCount} {t('Cancelled')} · {skippedTaskCount} {t('Skipped')}
-                  </div>
-                )}
-                {job.tasks.length > 0 && (
-                  <div style={{ maxHeight: '10em', overflowY: 'auto', border: '1px solid var(--gray-6)', borderRadius: 6, padding: '.5em' }}>
-                    {job.tasks.map((task, index) => (
-                      <div key={`${task.segmentNumber}-${task.trackNumber}-${task.streamIndex}`} style={{ padding: '.25em 0', borderBottom: index < job.tasks.length - 1 ? '1px solid var(--gray-5)' : undefined }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '.5em' }}>
-                          <span>{t('Segment {{segment}} · Track {{track}}', { segment: task.segmentNumber, track: task.trackNumber })}</span>
-                          <strong style={{ color: getTaskStateColor(task) }}>{getTaskStateLabel(task, t)}{task.state === 'running' ? ` ${Math.round(task.progress * 100)}%` : ''}</strong>
-                        </div>
-                        {task.outputPath && <div style={{ overflowWrap: 'anywhere', color: 'var(--gray-11)', fontSize: '.85em' }}>{getFileName(task.outputPath)}</div>}
-                        {task.state === 'failed' && task.error && <div role="alert" style={{ color: 'var(--red-10)', fontSize: '.85em' }}>{task.error}</div>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
           </div>
           <div className={chrome['footer']}>
             <button
               type="button"
               className={actionStyles['action']}
               disabled={isStarting}
-              onClick={() => {
-                if (job?.state === 'running' || job?.state === 'paused') cancelExtraction().catch(console.error);
-                else handleOpenChange(false);
-              }}
+              onClick={() => handleOpenChange(false)}
             >
               {t('Cancel')}
             </button>
-            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract')}</button>
+            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={() => { beginExtraction().catch(console.error); }}>{t('Extract')}</button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+    {job && (
+      <AudioExtractionProgress
+        job={job}
+        onCancel={() => cancelExtraction()}
+        onDismiss={dismissJob}
+      />
+    )}
+    </>
   );
 }

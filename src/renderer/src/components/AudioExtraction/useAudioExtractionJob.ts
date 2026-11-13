@@ -81,7 +81,7 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
   }, [pollingJobId, t]);
 
   const startExtraction = async () => {
-    if (!filePath || selectedStreamIndexes.length === 0 || isStarting || job?.state === 'running' || job?.state === 'paused') return;
+    if (!filePath || selectedStreamIndexes.length === 0 || isStarting || job?.state === 'running' || job?.state === 'paused') return false;
     setIsStarting(true);
     setJob(undefined);
     try {
@@ -101,6 +101,7 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
         tasks: [],
         outputPaths: [],
       });
+      return true;
     } catch (err) {
       await showErrorNotification({
         title: t('Unable to start audio extraction'),
@@ -108,6 +109,7 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
         ...(err instanceof Error && err.stack && { details: err.stack }),
         source: 'audio-extraction-start',
       });
+      return false;
     } finally {
       setIsStarting(false);
     }
@@ -119,5 +121,8 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
 
 
   const isBusy = isStarting || job?.state === 'running' || job?.state === 'paused';
-  return { job, isStarting, isBusy, startExtraction, cancelExtraction };
+  const dismissJob = () => {
+    if (!isBusy) setJob(undefined);
+  };
+  return { job, isStarting, isBusy, startExtraction, cancelExtraction, dismissJob };
 }
