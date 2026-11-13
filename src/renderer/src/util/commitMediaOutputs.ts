@@ -1,5 +1,6 @@
-import { link, stat, unlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join } from './path';
+
+const { link, stat, unlink } = window.require('node:fs/promises');
 import { assertOutputFilename, findAvailableBatchNames } from '../../common/mediaWorkspace.js';
 
 function getErrorCode(error: unknown): unknown {
