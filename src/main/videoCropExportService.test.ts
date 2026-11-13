@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('node:fs/promises', async (importOriginal) => {
-  const fs = await importOriginal<typeof import('node:fs/promises')>();
+  const fs = await importOriginal<{ rm: typeof rm }>();
   return {
     ...fs,
     rm: async (...args: Parameters<typeof fs.rm>) => {

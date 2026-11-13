@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getCropEncodedDimensions, validateCropRect, validateCropOutput } from '../../common/videoCropValidation.js';
-import type { CropOutputSettings } from '../../common/videoCropTypes.js';
+import { getCropEncodedDimensions, validateCropRect, validateCropOutput, validateCropExportRequest } from '../../common/videoCropValidation.js';
+import type { CropExportRequest, CropOutputSettings } from '../../common/videoCropTypes.js';
 
 describe('Crop Video validation', () => {
   it('rejects invalid or out-of-bounds crop regions', () => {
@@ -8,6 +8,32 @@ describe('Crop Video validation', () => {
     expect(validateCropRect({ x: -1, y: 0, width: 5, height: 5 }, { width: 100, height: 100 }).length).toBeGreaterThan(0);
     expect(validateCropRect({ x: 99, y: 0, width: 2, height: 5 }, { width: 100, height: 100 }).length).toBeGreaterThan(0);
     expect(validateCropRect({ x: 0, y: 0, width: 0, height: 5 }, { width: 100, height: 100 }).length).toBeGreaterThan(0);
+  });
+
+  it('applies the main-process duration tolerance only to small rounding differences', () => {
+    const request: CropExportRequest = {
+      sourcePath: 'input.mp4',
+      outputDir: 'exports',
+      frame: { width: 160, height: 120, rotation: 0, sarNum: 1, sarDen: 1 },
+      videoStreamIndex: 0,
+      sourceDuration: 12,
+      config: {
+        rect: { x: 0, y: 0, width: 100, height: 100 },
+        aspectPreset: 'free',
+        output: {
+          resize: false, width: 100, height: 100, lockAspect: true,
+          quality: 'high', encoder: 'libx264', crf: 18, preset: 'medium',
+          pixelFormat: 'yuv420p', format: 'mp4', keepAudio: false,
+          timeRange: 'entire', outputMode: 'merge',
+        },
+      },
+      segments: [{ start: 0, end: 12.05, originalIndex: 0 }],
+    };
+    expect(validateCropExportRequest(request).some(({ field }) => field === 'segments')).toBe(true);
+    expect(validateCropExportRequest({ ...request, sourceDurationTolerance: 0.1 })).toStrictEqual([]);
+    expect(validateCropExportRequest({ ...request, sourceDurationTolerance: 0.1,
+      segments: [{ start: 0, end: 12.25, originalIndex: 0 }] })
+      .some(({ field }) => field === 'segments')).toBe(true);
   });
 
   it('pads only when the chosen pixel format requires it', () => {
