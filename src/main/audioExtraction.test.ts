@@ -129,15 +129,16 @@ describe('MP3 extraction segments and task planning', () => {
     expect(tasks.map(({ segmentNumber, trackNumber, streamIndex, outputSuffix }) => ({
       segmentNumber, trackNumber, streamIndex, outputSuffix,
     }))).toStrictEqual([
-      { segmentNumber: 1, trackNumber: 1, streamIndex: 1, outputSuffix: '_segment-01_track-01' },
-      { segmentNumber: 1, trackNumber: 2, streamIndex: 2, outputSuffix: '_segment-01_track-02' },
-      { segmentNumber: 2, trackNumber: 1, streamIndex: 1, outputSuffix: '_segment-02_track-01' },
-      { segmentNumber: 2, trackNumber: 2, streamIndex: 2, outputSuffix: '_segment-02_track-02' },
+      { segmentNumber: 1, trackNumber: 1, streamIndex: 1, outputSuffix: '_segment_01_track_01' },
+      { segmentNumber: 1, trackNumber: 2, streamIndex: 2, outputSuffix: '_segment_01_track_02' },
+      { segmentNumber: 2, trackNumber: 1, streamIndex: 1, outputSuffix: '_segment_02_track_01' },
+      { segmentNumber: 2, trackNumber: 2, streamIndex: 2, outputSuffix: '_segment_02_track_02' },
     ]);
   });
 
   test('creates concise names for a single dimension of multiple outputs', () => {
     const trackTasks = createAudioExtractionTasks({
+      entireSource: true,
       segments: [{ start: 0, end: 12 }],
       selectedStreamIndexes: [1, 2],
       audioStreamIndexes: [1, 2],
@@ -148,8 +149,8 @@ describe('MP3 extraction segments and task planning', () => {
       audioStreamIndexes: [1, 2],
     });
 
-    expect(trackTasks.map((task) => task.outputSuffix)).toStrictEqual(['_track-01', '_track-02']);
-    expect(segmentTasks.map((task) => task.outputSuffix)).toStrictEqual(['_segment-01', '_segment-02']);
+    expect(trackTasks.map((task) => task.outputSuffix)).toStrictEqual(['_audio_track_01', '_audio_track_02']);
+    expect(segmentTasks.map((task) => task.outputSuffix)).toStrictEqual(['_segment_01', '_segment_02']);
   });
 
   test('rejects empty, duplicate, or non-audio stream selections', () => {

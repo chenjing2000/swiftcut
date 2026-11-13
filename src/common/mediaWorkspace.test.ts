@@ -7,6 +7,7 @@ describe('media workspace', () => {
     expect(getMediaWorkspaceDir(String.raw`D:\Videos\Travel.mp4`)).toBe(String.raw`D:\Videos\Travel`);
     expect(getMediaOutputDir(String.raw`D:\Videos\Travel.mkv`, 'lossless')).toBe(String.raw`D:\Videos\Travel\Lossless`);
     expect(getMediaOutputDir('/media/Travel.mp4', 'crop')).toBe('/media/Travel/Croploss');
+    expect(getMediaOutputDir('/media/Travel.mp4', 'audio')).toBe('/media/Travel/Audio');
     expect(getMediaWorkspaceDir('/media/My Video.2026.mp4')).toBe('/media/My Video.2026');
   });
 
@@ -14,6 +15,7 @@ describe('media workspace', () => {
     const sourcePath = '/media/Travel.mp4';
     expect(getMediaOutputName({ sourcePath, kind: 'lossless', mode: 'entire', extension: 'mp4' })).toBe('Travel_lossless.mp4');
     expect(getMediaOutputName({ sourcePath, kind: 'crop', mode: 'entire', extension: 'mkv' })).toBe('Travel_croploss.mkv');
+    expect(getMediaOutputName({ sourcePath, kind: 'audio', mode: 'entire', extension: 'mp3' })).toBe('Travel_audio.mp3');
     expect(getMediaOutputName({ sourcePath, kind: 'crop', mode: 'segment', extension: 'mp4', segmentIndex: 2, segmentCount: 3 })).toBe('Travel_segment_02.mp4');
     expect(getMediaOutputName({ sourcePath, kind: 'lossless', mode: 'segment', extension: 'mp4', segmentIndex: 120, segmentCount: 120 })).toBe('Travel_segment_120.mp4');
     expect(getMediaOutputName({ sourcePath, kind: 'lossless', mode: 'merge', extension: 'mp4' })).toBe('Travel_segments_merge.mp4');

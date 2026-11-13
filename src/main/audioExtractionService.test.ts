@@ -112,10 +112,10 @@ describe('Audio extraction task service', () => {
     expect(status.outputPaths).toHaveLength(4);
     expect(status.tasks.every((task) => task.state === 'success')).toBe(true);
     expect(status.outputPaths.map((path) => path.split(/[\\/]/u).at(-1))).toStrictEqual([
-      'lecture_segment-01_track-01.mp3',
-      'lecture_segment-01_track-02.mp3',
-      'lecture_segment-02_track-01.mp3',
-      'lecture_segment-02_track-02.mp3',
+      'lecture_segment_01_track_01.mp3',
+      'lecture_segment_01_track_02.mp3',
+      'lecture_segment_02_track_01.mp3',
+      'lecture_segment_02_track_02.mp3',
     ]);
 
     const ffmpegCalls = mocks.runScopedFfmpeg.mock.calls;
@@ -144,10 +144,10 @@ describe('Audio extraction task service', () => {
 
     expect(status.totalTasks).toBe(4);
     expect(status.outputPaths.map((path) => path.split(/[\\/]/u).at(-1))).toStrictEqual([
-      'lecture_segment-01_track-01.m4a',
-      'lecture_segment-01_track-02.ac3',
-      'lecture_segment-02_track-01.m4a',
-      'lecture_segment-02_track-02.ac3',
+      'lecture_segment_01_track_01.m4a',
+      'lecture_segment_01_track_02.ac3',
+      'lecture_segment_02_track_01.m4a',
+      'lecture_segment_02_track_02.ac3',
     ]);
 
     const ffmpegCalls = mocks.runScopedFfmpeg.mock.calls;
@@ -186,12 +186,12 @@ describe('Audio extraction task service', () => {
 
     await waitForJob(id, 'success');
     const status = getAudioExtractionStatus(id)!;
-    expect(status.outputPaths).toStrictEqual([join(testDirectory, 'lecture.mka')]);
+    expect(status.outputPaths).toStrictEqual([join(testDirectory, 'lecture', 'Audio', 'lecture_audio.mka')]);
     expect(mocks.runScopedFfmpeg.mock.calls[0]![0].ffmpegArgs).toContain('matroska');
   });
 
   test('does not overwrite an existing Original-mode output file', async () => {
-    const existingPath = join(testDirectory, 'lecture.m4a');
+    const existingPath = join(testDirectory, 'lecture', 'Audio', 'lecture_audio.m4a');
     await writeFile(existingPath, 'keep original content');
 
     const id = await startAudioExtraction({
@@ -203,7 +203,7 @@ describe('Audio extraction task service', () => {
 
     await waitForJob(id, 'success');
     const status = getAudioExtractionStatus(id)!;
-    expect(status.outputPaths[0]).toBe(join(testDirectory, 'lecture_1.m4a'));
+    expect(status.outputPaths[0]).toBe(join(testDirectory, 'lecture', 'Audio', 'lecture_audio (1).m4a'));
     await expect(readFile(existingPath, 'utf8')).resolves.toBe('keep original content');
   });
 
@@ -232,7 +232,7 @@ describe('Audio extraction task service', () => {
   });
 
   test('does not overwrite an existing output file', async () => {
-    const existingPath = join(testDirectory, 'lecture.mp3');
+    const existingPath = join(testDirectory, 'lecture', 'Audio', 'lecture_audio.mp3');
     await writeFile(existingPath, 'keep existing content');
 
     const id = await startAudioExtraction({
@@ -244,7 +244,7 @@ describe('Audio extraction task service', () => {
     await waitForJob(id, 'success');
     const status = getAudioExtractionStatus(id)!;
 
-    expect(status.outputPaths[0]).toBe(join(testDirectory, 'lecture_1.mp3'));
+    expect(status.outputPaths[0]).toBe(join(testDirectory, 'lecture', 'Audio', 'lecture_audio (1).mp3'));
     await expect(readFile(existingPath, 'utf8')).resolves.toBe('keep existing content');
   });
 
@@ -369,7 +369,7 @@ describe('Audio extraction task service', () => {
     });
 
     await vi.waitFor(() => expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(2));
-    const firstOutputPath = join(testDirectory, 'lecture_segment-01_track-01.mp3');
+    const firstOutputPath = join(testDirectory, 'lecture', 'Audio', 'lecture_segment_01_track_01.mp3');
     await expect(readFile(firstOutputPath, 'utf8')).resolves.toBe('mock MP3 data 1');
 
     cancelAudioExtraction(id);
@@ -432,8 +432,8 @@ describe('Audio extraction task service', () => {
     const status = getAudioExtractionStatus(id)!;
     expect(status.totalTasks).toBe(2);
     expect(status.outputPaths.map((path) => path.split(/[\\/]/u).at(-1))).toStrictEqual([
-      'lecture_track-01.mp3',
-      'lecture_track-02.mp3',
+      'lecture_audio_track_01.mp3',
+      'lecture_audio_track_02.mp3',
     ]);
     expect(mocks.runScopedFfmpeg.mock.calls[0]![0].ffmpegArgs).toContain('12');
     expect(mocks.runScopedFfmpeg.mock.calls[0]![0].ffmpegArgs).not.toContain('-ss');

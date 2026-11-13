@@ -1,6 +1,6 @@
 // Pure path and filename rules shared by renderer and main process.
 // Directory creation is deliberately handled by each export service.
-export type MediaExportKind = 'lossless' | 'crop';
+export type MediaExportKind = 'lossless' | 'crop' | 'audio';
 export type MediaExportMode = 'entire' | 'segment' | 'merge' | 'chapters';
 
 export function getSourceStem(sourcePath: string): string {
@@ -19,7 +19,7 @@ export function getMediaWorkspaceDir(sourcePath: string): string {
 export function getMediaOutputDir(sourcePath: string, kind: MediaExportKind): string {
   const workspace = getMediaWorkspaceDir(sourcePath);
   const sep = sourcePath.includes('\\') ? '\\' : '/';
-  return `${workspace}${sep}${kind === 'lossless' ? 'Lossless' : 'Croploss'}`;
+  return `${workspace}${sep}${kind === 'lossless' ? 'Lossless' : kind === 'audio' ? 'Audio' : 'Croploss'}`;
 }
 
 export function assertOutputFilename(filename: string): void {
@@ -46,7 +46,7 @@ export function getMediaOutputName({
   let name: string;
   switch (mode) {
     case 'entire': {
-      name = `${stem}_${kind === 'lossless' ? 'lossless' : 'croploss'}`;
+      name = `${stem}_${kind === 'lossless' ? 'lossless' : kind === 'audio' ? 'audio' : 'croploss'}`;
       break;
     }
     case 'segment': {

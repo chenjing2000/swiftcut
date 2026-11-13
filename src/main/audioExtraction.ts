@@ -1,5 +1,6 @@
 import { basename, dirname, extname, join } from 'node:path';
-import { access, link, stat, unlink } from 'node:fs/promises';
+import { access, link, mkdir, stat, unlink } from 'node:fs/promises';
+import { findAvailableBatchNames, getMediaOutputDir, getSourceStem } from '../common/mediaWorkspace.js';
 import { randomUUID } from 'node:crypto';
 import { runFfprobe, runScopedFfmpeg } from './ffmpeg.js';
 import logger from './logger.js';
@@ -102,49 +103,18 @@ async function exists(path: string) {
   }
 }
 
-async function findAvailablePath(inputPath: string, suffix: string, extension: string, reservedPaths: Set<string>) {
-  const base = basename(inputPath, extname(inputPath));
-  const folder = dirname(inputPath);
-  for (let index = 0; index < 10000; index += 1) {
-    const collisionSuffix = index === 0 ? '' : `_${index}`;
-    const candidate = join(folder, `${base}${suffix}${collisionSuffix}.${extension}`);
-    if (!reservedPaths.has(candidate) && !(await exists(candidate))) {
-      reservedPaths.add(candidate);
-      return candidate;
-    }
+/** Publish verified media without ever replacing an existing destination. */
+async function commitWithoutOverwrite(tempPath: string, outputPath: string) {
+  try {
+    await link(tempPath, outputPath);
+  } catch (error) {
+    if (getErrorCode(error) === 'EEXIST') throw new Error('Audio output was claimed by another export; retry the export');
+    throw error;
   }
-  throw new Error('No available audio output filename');
-}
-
-async function commitWithoutOverwrite({
-  tempPath,
-  initialOutputPath,
-  inputPath,
-  suffix,
-  extension,
-  reservedPaths,
-}: {
-  tempPath: string;
-  initialOutputPath: string;
-  inputPath: string;
-  suffix: string;
-  extension: string;
-  reservedPaths: Set<string>;
-}) {
-  let outputPath = initialOutputPath;
-  for (let attempt = 0; attempt < 10000; attempt += 1) {
-    try {
-      await link(tempPath, outputPath);
-      await unlink(tempPath).catch((error: unknown) => {
-        if (getErrorCode(error) !== 'ENOENT') logger.warn('Failed to remove linked temporary audio file', tempPath, error);
-      });
-      return outputPath;
-    } catch (error) {
-      if (getErrorCode(error) !== 'EEXIST') throw error;
-      outputPath = await findAvailablePath(inputPath, suffix, extension, reservedPaths);
-    }
-  }
-  throw new Error('No available audio output filename');
+  await unlink(tempPath).catch((error: unknown) => {
+    if (getErrorCode(error) !== 'ENOENT') logger.warn('Failed to remove linked temporary audio file', tempPath, error);
+  });
+  return outputPath;
 }
 
 async function probe(path: string) {
@@ -212,10 +182,13 @@ export async function startAudioExtraction(args: {
   const durationValue = Number(info.format?.duration);
   const duration = Number.isFinite(durationValue) && durationValue > 0 ? durationValue : undefined;
   const segments = normalizeAudioExtractionSegments(requestedSegments, duration);
+  const entireSource = segments.length === 1 && segments[0]?.start === 0
+    && (duration == null || (segments[0]?.end != null && Math.abs(segments[0].end - duration) < 0.01));
   const tasks = createAudioExtractionTasks({
     segments,
     selectedStreamIndexes,
     audioStreamIndexes,
+    entireSource,
   }).map((task) => {
     const stream = audioStreams.find((item) => item.index === task.streamIndex);
     const codecName = stream?.codec_name;
@@ -251,8 +224,11 @@ export async function startAudioExtraction(args: {
   pruneCompletedJobs();
   jobs.set(id, job);
 
-  const reservedPaths = new Set<string>();
+  const outputDir = getMediaOutputDir(inputPath, 'audio');
+  const sourceStem = getSourceStem(inputPath);
   const extractionTask = (async () => {
+    const requestedNames = tasks.map((task) => `${sourceStem}${task.outputSuffix}.${task.outputExtension}`);
+    const availableNames = await findAvailableBatchNames(requestedNames, async (name) => exists(join(outputDir, name)));
     for (const [taskIndex, task] of tasks.entries()) {
       const taskStatus = status.tasks[taskIndex]!;
       if (job.cancelled) {
@@ -264,9 +240,14 @@ export async function startAudioExtraction(args: {
       let tempPath: string | undefined;
 
       try {
-        const outputPath = await findAvailablePath(inputPath, task.outputSuffix, task.outputExtension, reservedPaths);
+        const outputPath = join(outputDir, availableNames[taskIndex]!);
         // Cancellation may arrive while the output path is being prepared. In
         // that case no FFmpeg process has started, so this task was skipped.
+        if (job.cancelled) {
+          taskStatus.state = 'skipped';
+          continue;
+        }
+        await mkdir(outputDir, { recursive: true });
         if (job.cancelled) {
           taskStatus.state = 'skipped';
           continue;
@@ -319,14 +300,7 @@ export async function startAudioExtraction(args: {
         }
         if (job.cancelled) throw new Error('Extraction cancelled');
 
-        const finalPath = await commitWithoutOverwrite({
-          tempPath,
-          initialOutputPath: outputPath,
-          inputPath,
-          suffix: task.outputSuffix,
-          extension: task.outputExtension,
-          reservedPaths,
-        });
+        const finalPath = await commitWithoutOverwrite(tempPath, outputPath);
         tempPath = undefined;
         taskStatus.outputPath = finalPath;
         taskStatus.progress = 1;
