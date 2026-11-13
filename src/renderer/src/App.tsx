@@ -354,7 +354,7 @@ function App() {
     return ret;
   }, [activeAudioStreamIndexes, audioStreams, mainAudioStream]);
 
-  // 360 means we don't modify rotation gtrgt
+  // 360 means no user-specified rotation; use the source display orientation.
   const isRotationSet = rotation !== 360;
   const effectiveRotation = useMemo(() => (isRotationSet ? rotation : getSourceDisplayRotation(activeVideoStream)), [isRotationSet, activeVideoStream, rotation]);
 

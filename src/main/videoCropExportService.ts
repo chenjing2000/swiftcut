@@ -96,19 +96,18 @@ async function commitWithoutOverwrite(tempPath: string, outputDir: string, outpu
   throw new Error('Cannot reserve crop output filename');
 }
 
-async function probeJson(path: string): Promise<{
+interface CropProbeMetadata {
   streams?: { codec_type?: string; codec_name?: string; width?: number; height?: number; tags?: { rotate?: string }; side_data_list?: { rotation?: number }[] }[];
   format?: { duration?: string };
-}> {
+}
+
+async function probeJson(path: string): Promise<CropProbeMetadata> {
   const { stdout } = await runFfprobe([
     '-v', 'error', '-show_entries',
     'format=duration:stream=codec_type,codec_name,width,height:stream_tags=rotate:stream_side_data=rotation',
     '-of', 'json', path,
   ]);
-  return JSON.parse(Buffer.from(stdout).toString('utf8')) as {
-    streams?: { codec_type?: string; codec_name?: string; width?: number; height?: number; tags?: { rotate?: string }; side_data_list?: { rotation?: number }[] }[];
-    format?: { duration?: string };
-  };
+  return JSON.parse(Buffer.from(stdout).toString('utf8')) as CropProbeMetadata;
 }
 
 async function verifyOutput(path: string, plan: CropExportPlan, expectedDuration: number) {
@@ -183,6 +182,7 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
     const totalDuration = plan.tasks.reduce((sum, task) => sum + task.end - task.start, 0);
     const merged = plan.output.outputMode === 'merge' && plan.tasks.length > 1;
     const encoded: { path: string; task: CropExportTask }[] = [];
+    let encodedDuration = 0;
     try {
       assertNotCancelled(job);
       await mkdir(workDir, { recursive: true });
@@ -190,7 +190,7 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
         assertNotCancelled(job);
         job.status.state = 'encoding';
         const temporary = join(workDir, `segment-${String(index + 1).padStart(3, '0')}.${plan.output.format}`);
-        const elapsedBefore = encoded.reduce((sum, item) => sum + item.task.end - item.task.start, 0);
+        const elapsedBefore = encodedDuration;
         const duration = task.end - task.start;
         const args = buildCropFfmpegArgs({ plan, task, outputPath: temporary });
         const runner = runScopedFfmpeg({
@@ -209,6 +209,7 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
         job.status.state = 'verifying';
         await verifyOutput(temporary, plan, duration);
         encoded.push({ path: temporary, task });
+        encodedDuration += duration;
         job.status.completedSegments = encoded.length;
       }
 

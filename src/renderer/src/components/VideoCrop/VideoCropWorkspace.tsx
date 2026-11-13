@@ -498,7 +498,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               </select>
             </label>
             <div className={styles['footer']}>
-              <span className={styles['phaseNote']} />
               <button type="button" onClick={onClose}>{t('Cancel')}</button>
               <button type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export Video')}</button>
             </div>
