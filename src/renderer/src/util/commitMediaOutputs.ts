@@ -47,7 +47,7 @@ export async function commitMediaOutputs({
       const rollback = await Promise.allSettled(committed.map((target) => unlink(target)));
       const rollbackFailure = rollback.find((result) => result.status === 'rejected');
       if (rollbackFailure?.status === 'rejected') {
-        throw new Error(`Output batch rollback failed; files may remain: ${committed.join(', ')}`, { cause: rollbackFailure.reason });
+        throw new Error(`Output batch rollback failed; files may remain: ${committed.join(', ')}`, { cause: error });
       }
       if (getErrorCode(error) !== 'EEXIST') throw error;
     }
