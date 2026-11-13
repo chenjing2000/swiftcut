@@ -27,11 +27,14 @@ function ExportSheet({
 }) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLElement>(null);
   const { position, resetPosition, headingRef, onPointerDown, onPointerMove, onPointerUp } = useOutputPanelDrag(panelRef);
 
   // ExportSheet stays mounted while hidden, so reset only when reopened.
   useLayoutEffect(() => {
-    if (visible) resetPosition();
+    if (!visible) return;
+    resetPosition();
+    titleRef.current?.focus();
   }, [visible, resetPosition]);
 
   useEffect(() => {
@@ -76,7 +79,7 @@ function ExportSheet({
         onPointerCancel={onPointerUp}
         onLostPointerCapture={onPointerUp}
       >
-        <strong>{title}</strong>
+        <strong ref={titleRef} tabIndex={-1}>{title}</strong>
         <button type="button" onClick={onClosePress} aria-label={t('Close')}>×</button>
       </div>
       <div className={`${chrome['contents']} ${styles['contents']}`}>{children}</div>
