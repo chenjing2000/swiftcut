@@ -220,6 +220,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
       </Dialog.Root>
       {job && (
         <AudioExtractionProgress
+        key={job.id}
           job={job}
           onCancel={() => cancelExtraction()}
           onDismiss={dismissJob}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AudioJobStatus } from '../../../../main/audioExtraction';
 import { ExportOutputPaths, ExportProgressHeader } from '../ExportProgressParts';
@@ -13,6 +14,19 @@ interface Props {
 /** Shows extraction status independently of the settings dialog. */
 export default function AudioExtractionProgress({ job, onCancel, onDismiss }: Props) {
   const { t } = useTranslation();
+  const [cancelPending, setCancelPending] = useState(false);
+  const [cancelError, setCancelError] = useState<string>();
+  const requestCancel = async () => {
+    if (cancelPending) return;
+    setCancelPending(true);
+    setCancelError(undefined);
+    try {
+      await onCancel();
+    } catch (error) {
+      setCancelPending(false);
+      setCancelError(error instanceof Error ? error.message : String(error));
+    }
+  };
   const active = job.state === 'running' || job.state === 'paused';
   const percentage = Math.round(Math.max(0, Math.min(1, job.progress)) * 100);
   const currentTask = job.tasks.find((task) => task.state === 'running');
@@ -40,16 +54,19 @@ export default function AudioExtractionProgress({ job, onCancel, onDismiss }: Pr
             {job.state === 'paused' && (
               <p>{t('Extraction paused after an error. Confirm the message to continue or cancel the remaining tasks.')}</p>
             )}
+            {cancelError && <p role="alert" className={styles['error']}>{cancelError}</p>}
             <div className={styles['actions']}>
-              <Button type="button" onClick={() => { onCancel().catch(console.error); }}>{t('Cancel Export')}</Button>
+              <Button type="button" disabled={cancelPending} onClick={() => { requestCancel().catch(console.error); }}>
+                {t(cancelPending ? 'Cancelling export' : 'Cancel Export')}
+              </Button>
             </div>
           </>
         ) : (
           <>
-            {job.state === 'success'
-              ? <p>{t('{{count}} output file(s) saved.', { count: job.outputPaths.length })}</p>
-              : <p>{t('Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.', { failed, success: job.outputPaths.length })}</p>}
-            <ExportOutputPaths paths={job.outputPaths} heading={t('Crop exported files')} />
+            {job.state === 'success' && <p>{t('{{count}} output file(s) saved.', { count: job.outputPaths.length })}</p>}
+            {job.state === 'cancelled' && <p>{t('Extraction cancelled. {{count}} output file(s) saved.', { count: job.outputPaths.length })}</p>}
+            {job.state === 'failed' && <p>{t('Extraction finished with {{failed}} failed task(s). {{success}} output file(s) saved.', { failed, success: job.outputPaths.length })}</p>}
+            <ExportOutputPaths paths={job.outputPaths} />
             {job.error && <p className={styles['error']} role="alert">{job.error}</p>}
             <div className={styles['actions']}>
               <Button type="button" onClick={onDismiss}>{t('Dismiss')}</Button>
