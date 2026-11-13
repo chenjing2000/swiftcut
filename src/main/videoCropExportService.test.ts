@@ -168,7 +168,7 @@ describe('Crop Video single-segment service', () => {
     const jobId = await startCropExport(makePlan());
     await expectState(jobId, 'success');
     await expect(readFile(join(directory, 'clip.crop.mp4'), 'utf8')).resolves.toBe('original');
-    expect(getCropExportStatus(jobId)?.outputPath).toBe(join(directory, 'clip.crop_1.mp4'));
+    expect(getCropExportStatus(jobId)?.outputPath).toBe(join(directory, 'clip.crop (1).mp4'));
   });
 
   it('reports cancellation and does not commit a partial output', async () => {
