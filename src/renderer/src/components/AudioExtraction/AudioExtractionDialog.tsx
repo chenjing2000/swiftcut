@@ -42,8 +42,9 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const [outputMode, setOutputMode] = useState<'merge' | 'separate'>('merge');
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
 
-  const effectiveSegments = timeRange === 'selected' ? segments : [];
-  const multiple = timeRange === 'selected' && segments.length > 1;
+  const effectiveTimeRange = timeRange === 'selected' && segments.length === 0 ? 'entire' : timeRange;
+  const effectiveSegments = effectiveTimeRange === 'selected' ? segments : [];
+  const multiple = effectiveTimeRange === 'selected' && segments.length > 1;
   const { job, isStarting, isBusy, startExtraction, cancelExtraction, dismissJob } = useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments: effectiveSegments, outputMode });
 
   const isMp4 = useMemo(() => {
@@ -55,14 +56,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const selectedCount = selectedStreamIndexes.length;
   const segmentCount = Math.max(effectiveSegments.length, 1);
   const outputCount = selectedCount * (multiple && outputMode === 'merge' ? 1 : segmentCount);
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && isStarting) return;
-    onOpenChange(nextOpen);
-  };
-
-  const beginExtraction = async () => {
-    await startExtraction();
-  };
+  const handleOpenChange = (nextOpen: boolean) => onOpenChange(nextOpen);
 
   const toggleStream = (streamIndex: number, checked: boolean) => {
     setTrackSelection({
@@ -103,9 +97,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               <button
                 type="button"
                 aria-label={t('Close')}
-                disabled={isStarting}
                 onClick={() => handleOpenChange(false)}
-                style={{ cursor: isBusy ? 'not-allowed' : 'pointer' }}
               >
                 ×
               </button>
@@ -147,7 +139,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               <section style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: '1.2em' }}>
                 <strong>{t('Export')}</strong>
                 <label className={styles['row']} htmlFor="audio-time-range"><span>{t('Time range')}</span>
-                  <select id="audio-time-range" value={timeRange} disabled={isBusy} onChange={(event) => setTimeRange(event.target.value as 'selected' | 'entire')}>
+                  <select id="audio-time-range" value={effectiveTimeRange} disabled={isBusy} onChange={(event) => setTimeRange(event.target.value as 'selected' | 'entire')}>
                     <option value="selected" disabled={segments.length === 0}>{t('Selected segments')}</option>
                     <option value="entire">{t('Entire video')}</option>
                   </select>
@@ -202,15 +194,11 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               <button
                 type="button"
                 className={actionStyles['action']}
-                disabled={isStarting}
-                onClick={() => {
-                  if (job?.state === 'running' || job?.state === 'paused') cancelExtraction().catch(console.error);
-                  else handleOpenChange(false);
-                }}
+                onClick={() => handleOpenChange(false)}
               >
                 {t('Cancel')}
               </button>
-              <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (timeRange === 'selected' && segments.length === 0)} onClick={() => { beginExtraction().catch(console.error); }}>{t('Extract')}</button>
+              <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
             </div>
           </Dialog.Content>
         </Dialog.Portal>
