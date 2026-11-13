@@ -412,7 +412,7 @@ function App() {
 
   const { getEdlFilePath, projectFileSavePath, getProjectFileSavePath } = useSegmentsAutoSave({ autoSaveProjectFile, storeProjectInWorkingDir, filePath, customOutDir, cutSegments });
 
-  const { nonCopiedExtraStreams, exportExtraStreams, mainCopiedThumbnailStreams, numStreamsToCopy, toggleStripVideo, toggleStripAudio, toggleStripSubtitle, toggleStripThumbnail, toggleStripAll, copyStreamIdsByFile, setCopyStreamIdsByFile, copyFileStreams, mainCopiedStreams, setCopyStreamIdsForPath, toggleCopyStreamId, isCopyingStreamId, toggleCopyStreamIds, changeEnabledStreamsFilter, applyEnabledStreamsFilter, enabledStreamsFilter, toggleCopyAllStreamsForPath } = useStreamsMeta({ mainStreams, externalFilesMeta, filePath, autoExportExtraStreams, showGenericDialog });
+  const { nonCopiedExtraStreams, exportExtraStreams, mainCopiedThumbnailStreams, numStreamsToCopy, toggleStripVideo, toggleStripAudio, toggleStripSubtitle, toggleStripThumbnail, toggleStripAll, copyStreamIdsByFile, setCopyStreamIdsByFile, copyFileStreams, mainCopiedStreams, setCopyStreamIdsForPath, toggleCopyStreamId, isCopyingStreamId, toggleCopyStreamIds, changeEnabledStreamsFilter, applyEnabledStreamsFilter, toggleCopyAllStreamsForPath } = useStreamsMeta({ mainStreams, externalFilesMeta, filePath, autoExportExtraStreams, showGenericDialog });
 
   const onDurationChange = useCallback<ReactEventHandler<HTMLVideoElement>>((e) => {
     // Some files report duration infinity first, then proper duration later
@@ -1136,7 +1136,7 @@ function App() {
   const willMerge = segmentsToExport.length > 1 && autoMerge;
   const defaultLosslessDirectory = filePath == null ? '' : getMediaOutputDir(filePath, 'lossless');
   const losslessDirectory = filePath != null && losslessCustomDirectory?.source === filePath ? losslessCustomDirectory.value : defaultLosslessDirectory;
-  const losslessExtension = filePath == null ? 'mp4' : (getOutFileExtension({ outFormat: fileFormat, filePath }) ?? parsePath(filePath).ext ?? '.mp4').replace(/^\./, '');
+  const losslessExtension = filePath == null ? 'mp4' : (getOutFileExtension({ outFormat: fileFormat, filePath }) ?? (parsePath(filePath).ext ?? '.mp4')).replace(/^\./, '');
   const defaultLosslessFilename = filePath == null ? '' : getMediaOutputName({
     sourcePath: filePath,
     kind: 'lossless',
@@ -1199,7 +1199,7 @@ function App() {
       const count = Math.max(1, segmentsToExport.length);
       const suffix = parsePath(losslessFilename).ext;
       const userRenamed = losslessCustomFilename?.source === filePath;
-      const baseStem = userRenamed ? parsePath(losslessFilename).name.replace(/_segment_\\d+$/, '') : getSourceStem(filePath);
+      const baseStem = userRenamed ? parsePath(losslessFilename).name.replace(/_segment_\d+$/, '') : getSourceStem(filePath);
       const segmentName = (index: number) => `${baseStem}_segment_${String(index + 1).padStart(Math.max(2, String(count).length), '0')}${suffix}`;
       const cutFileNames = (count === 1 && !willMerge) ? [losslessFilename] : Array.from({ length: count }, (_, index) => segmentName(index));
       // Write all intermediate media inside the task-owned workspace.
