@@ -1,5 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import type { ReactNode } from 'react';
+import { forwardRef } from 'react';
 
 import styles from './Dialog.module.css';
 import { withClass } from './util';
@@ -11,10 +12,11 @@ export * from '@radix-ui/react-dialog';
 
 export const Overlay = withClass(Dialog.Overlay, styles['DialogOverlay']!);
 
-export function Content({ className, style, ...props }: Dialog.DialogContentProps) {
+export const Content = forwardRef<HTMLDivElement, Dialog.DialogContentProps>(({ className, style, ...props }, ref) => {
   const { offset, onPointerDown, onPointerMove, onPointerUp } = useCenteredDialogDrag();
   return (
     <Dialog.Content
+      ref={ref}
       {...props}
       className={[styles['DialogContent'], className].filter(Boolean).join(' ')}
       style={{ ...style, left: `calc(50% + ${offset.x}px)`, top: `calc(50% + ${offset.y}px)` }}
@@ -25,7 +27,7 @@ export function Content({ className, style, ...props }: Dialog.DialogContentProp
       onLostPointerCapture={onPointerUp}
     />
   );
-}
+});
 
 export const Description = withClass(Dialog.Description, styles['DialogDescription']!);
 
