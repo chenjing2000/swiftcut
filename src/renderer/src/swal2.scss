@@ -3,7 +3,7 @@ $swal2-outline-color: var(--gray-5) !default;
 // see colors.ts primaryColor
 $swal2-confirm-button-background-color: var(--cyan-9);
 
-$myswal-background: var(--gray-1);
+$myswal-background: var(--color-panel-solid, var(--gray-2));
 $myswal-foreground: var(--gray-12);
 $swal2-outline-color: $swal2-outline-color;
 
