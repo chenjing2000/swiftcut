@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { CropExportStatus } from '../../../../main/videoCropExportService.js';
 import Button from '../Button';
-import { getCropExportPresentation } from './cropExportPresentation';
+import { getCropExportPresentation, getCropExportSegmentPosition } from './cropExportPresentation';
 
 import styles from './CropExportProgress.module.css';
 
@@ -20,6 +20,7 @@ export default function CropExportProgress({ status, onCancel, onDismiss }: Prop
   const presentation = getCropExportPresentation(status);
   const percent = Math.round(Math.max(0, Math.min(1, status.progress)) * 100);
   const savedCount = status.outputPaths?.length ?? 0;
+  const segmentPosition = getCropExportSegmentPosition(status);
 
   const cancel = async () => {
     if (cancelRequested) return;
@@ -48,7 +49,7 @@ export default function CropExportProgress({ status, onCancel, onDismiss }: Prop
         <div className={styles['contents']} role="status" aria-live="polite" aria-atomic="true">
           <div className={styles['progressText']}>
             <span>{t('Crop export progress', { percent })}</span>
-            <span>{t('Crop segments completed', { completed: status.completedSegments ?? 0, total: status.totalSegments ?? 1 })}</span>
+            <span>{t('Crop current segment', segmentPosition)}</span>
           </div>
           <progress className={styles['progress']} value={percent} max={100} aria-label={t('Crop export progress', { percent })} />
           {cancelError && <p className={styles['error']} role="alert">{cancelError}</p>}

@@ -22,3 +22,11 @@ const presentations: Record<CropExportState, Presentation> = {
 export function getCropExportPresentation(status: Pick<CropExportStatus, 'state'>): Presentation {
   return presentations[status.state];
 }
+
+/** Present the current segment (1-based), rather than the number already finished. */
+export function getCropExportSegmentPosition(status: Pick<CropExportStatus, 'state' | 'completedSegments' | 'totalSegments'>) {
+  const total = Math.max(1, status.totalSegments ?? 1);
+  const completed = Math.max(0, status.completedSegments ?? 0);
+  const processingSegment = ['preparing', 'encoding', 'verifying'].includes(status.state);
+  return { current: Math.min(total, Math.max(1, completed + (processingSegment ? 1 : 0))), total };
+}

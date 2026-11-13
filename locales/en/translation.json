@@ -1012,5 +1012,6 @@
   "Crop partially saved files": "{{count}} file(s) saved. Completed files were preserved.",
   "Crop exported files": "Crop exported files",
   "Crop cleanup warning": "Temporary files could not be fully cleaned: {{details}}",
-  "Dismiss": "Dismiss"
+  "Dismiss": "Dismiss",
+  "Crop current segment": "Current segment: {{current}}/{{total}}"
 }
