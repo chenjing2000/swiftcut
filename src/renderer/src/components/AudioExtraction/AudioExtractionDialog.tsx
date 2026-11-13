@@ -12,6 +12,7 @@ import type { SegmentToExport } from '../../types';
 import type { AudioExtractionMode, Mp3Quality } from '../../../../main/audioExtraction';
 import AudioExtractionProgress from './AudioExtractionProgress';
 import useAudioExtractionJob from './useAudioExtractionJob';
+import { activateOutputPanel, isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
 
 interface AudioExtractionDialogProps {
   open: boolean;
@@ -64,6 +65,23 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const outputCount = selectedCount * (multiple && outputMode === 'merge' ? 1 : segmentCount);
   const handleOpenChange = (nextOpen: boolean) => onOpenChange(nextOpen);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    return registerOutputPanel('audio');
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !isActiveOutputPanel('audio')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      handleOpenChange(false);
+    };
+    document.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => document.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, [open, onOpenChange]);
+
   const toggleStream = (streamIndex: number, checked: boolean) => {
     setTrackSelection({
       source: filePath,
@@ -82,6 +100,10 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             className={styles['floatingPanel']}
             style={{ left: 'max(8px, calc(100% - 396px))', top: '48px', transform: 'none' }}
             aria-describedby={undefined}
+            data-output-panel="audio"
+            onPointerDownCapture={() => activateOutputPanel('audio')}
+            onFocusCapture={() => activateOutputPanel('audio')}
+            onEscapeKeyDown={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
           >
             <div data-dialog-drag-handle className={chrome['heading']}>
