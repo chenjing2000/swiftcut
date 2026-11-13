@@ -123,7 +123,7 @@ async function verifyOutput(path: string, plan: CropExportPlan, expectedDuration
   }
   // Pixels have already been rotated into display space. Reject output
   // files that still carry a rotation instruction for the player.
-  const video = videos[0]!;
+  const video = videos[0];
   const metadataRotation = Number(video.tags?.rotate ?? 0);
   if (!Number.isFinite(metadataRotation) || metadataRotation % 360 !== 0
     || video.side_data_list?.some((item) => item.rotation != null && item.rotation % 360 !== 0)) {

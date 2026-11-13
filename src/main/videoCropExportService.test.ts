@@ -250,8 +250,13 @@ describe('Crop Video single-segment service', () => {
     mocks.probe.mockImplementation(async () => ({
       stdout: Buffer.from(JSON.stringify({
         streams: [
-          { codec_type: 'video', codec_name: 'h264', width: 100, height: 100,
-            side_data_list: [{ rotation: 90 }] },
+          {
+            codec_type: 'video',
+            codec_name: 'h264',
+            width: 100,
+            height: 100,
+            side_data_list: [{ rotation: 90 }],
+          },
           { codec_type: 'audio', codec_name: 'aac' },
         ],
         format: { duration: '2' },
