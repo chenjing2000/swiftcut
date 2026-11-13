@@ -365,7 +365,7 @@ export async function startAudioExtraction(args: {
             const first = pieces[0]!.task;
             const extension = first.outputExtension;
             const muxer = mode === 'original' ? first.originalOutputFormat!.muxer : 'mp3';
-            const trackSuffix = selectedStreamIndexes.length > 1 ? `_track_${String(trackIndex + 1).padStart(2, '0')}` : '';
+            const trackSuffix = selectedStreamIndexes.length > 1 ? `_track_${String(first.trackNumber).padStart(Math.max(2, String(audioStreamIndexes.length).length), '0')}` : '';
             const name = `${sourceStem}_segments_merge${trackSuffix}.${extension}`;
             const listPath = join(outputDir, `.${randomUUID()}.ffconcat`);
             concatLists.push(listPath);
@@ -421,8 +421,10 @@ export async function startAudioExtraction(args: {
             }
           }
         } catch (error) {
-          status.error = getErrorMessage(error);
-          logger.error('Failed to merge audio segments', error);
+          if (!job.cancelled) {
+            status.error = getErrorMessage(error);
+            logger.error('Failed to merge audio segments', error);
+          }
         } finally {
           job.cancel = undefined;
           await Promise.allSettled([...mergedTemps.map(({ path }) => unlink(path)), ...concatLists.map((path) => unlink(path))]);

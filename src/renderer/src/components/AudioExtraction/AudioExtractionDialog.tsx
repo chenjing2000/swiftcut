@@ -202,7 +202,10 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 type="button"
                 className={actionStyles['action']}
                 disabled={isStarting}
-                onClick={() => handleOpenChange(false)}
+                onClick={() => {
+                  if (job?.state === 'running' || job?.state === 'paused') cancelExtraction().catch(console.error);
+                  else handleOpenChange(false);
+                }}
               >
                 {t('Cancel')}
               </button>
