@@ -37,6 +37,12 @@ function ExportSheet({
       role="dialog"
       aria-modal="false"
       aria-label={title}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          onClosePress();
+        }
+      }}
       style={{
         width,
         top: position.top,
