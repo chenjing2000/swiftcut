@@ -36,7 +36,7 @@ function ExportSheet({
   }, []);
 
   useEffect(() => {
-    const onResize = () => setPosition((current) => current == null ? current : clampPosition(current.left, current.top));
+    const onResize = () => setPosition((current) => (current == null ? current : clampPosition(current.left, current.top)));
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [clampPosition]);
