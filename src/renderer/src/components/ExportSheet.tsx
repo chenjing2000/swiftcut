@@ -27,7 +27,12 @@ function ExportSheet({
 }) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
-  const { position, headingRef, onPointerDown, onPointerMove, onPointerUp } = useOutputPanelDrag(panelRef);
+  const { position, resetPosition, headingRef, onPointerDown, onPointerMove, onPointerUp } = useOutputPanelDrag(panelRef);
+
+  // ExportSheet stays mounted while hidden, so reset only when reopened.
+  useEffect(() => {
+    if (visible) resetPosition();
+  }, [visible, resetPosition]);
 
   useEffect(() => {
     if (!visible) return undefined;
