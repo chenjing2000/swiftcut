@@ -168,6 +168,29 @@ describe('Crop Video single-segment service', () => {
     expect(getCropExportStatus(jobId)?.outputPaths).toStrictEqual([join(directory, 'clip.crop.mp4')]);
   });
 
+  it('cancels a running concatenation before any final file is committed', async () => {
+    const plan = makePlan();
+    plan.mergedOutputName = 'clip.crop.mp4';
+    plan.tasks = [
+      { start: 1, end: 3, originalIndex: 0, outputName: 'clip.crop.mp4' },
+      { start: 5, end: 7, originalIndex: 1, outputName: 'clip.crop.mp4' },
+    ];
+    mocks.run.mockImplementation(({ ffmpegArgs }) => {
+      writeFileSync(ffmpegArgs.at(-1)!, 'partial output');
+      if (mocks.run.mock.calls.length <= 2) {
+        return { result: Promise.resolve(undefined), cancel: () => undefined };
+      }
+      const { promise, reject } = Promise.withResolvers<unknown>();
+      return { result: promise, cancel: () => reject(new Error('cancelled merge')) };
+    });
+    const jobId = await startCropExport(plan);
+    await vi.waitFor(() => expect(getCropExportStatus(jobId)?.state).toBe('merging'));
+    cancelCropExport(jobId);
+    await expectState(jobId, 'cancelled');
+    expect(getCropExportStatus(jobId)?.outputPaths).toStrictEqual([]);
+    await expect(readdir(directory)).resolves.not.toContain('clip.crop.mp4');
+  });
+
   it('rejects overlapping merge segments before creating a job', async () => {
     const plan = makePlan();
     plan.tasks = [
