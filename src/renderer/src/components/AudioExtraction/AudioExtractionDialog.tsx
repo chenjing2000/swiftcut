@@ -235,6 +235,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             overflow: 'hidden',
           }}
           aria-describedby={undefined}
+          onInteractOutside={(event) => event.preventDefault()}
         >
           <div style={{ flex: '0 0 auto' }}>
             <Dialog.Title>{t('Extract Audio')}</Dialog.Title>

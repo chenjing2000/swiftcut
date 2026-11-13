@@ -4,16 +4,16 @@ import { useCallback, useRef, useState } from 'react';
 /** Shared title-bar dragging for centered Radix dialogs. */
 export default function useCenteredDialogDrag() {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const drag = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | undefined>(undefined);
+  const dragRef = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | undefined>(undefined);
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || !(event.target as HTMLElement).closest('[data-dialog-drag-handle]')) return;
-    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, offsetX: offset.x, offsetY: offset.y };
+    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, offsetX: offset.x, offsetY: offset.y };
     event.currentTarget.setPointerCapture(event.pointerId);
   }, [offset]);
 
   const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const current = drag.current;
+    const { current } = dragRef;
     if (!current || current.pointerId !== event.pointerId) return;
     const { width, height } = event.currentTarget.getBoundingClientRect();
     const maxX = Math.max(0, (window.innerWidth - width) / 2 - 8);
@@ -26,8 +26,8 @@ export default function useCenteredDialogDrag() {
   }, []);
 
   const onPointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (drag.current?.pointerId !== event.pointerId) return;
-    drag.current = undefined;
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    dragRef.current = undefined;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }, []);
 

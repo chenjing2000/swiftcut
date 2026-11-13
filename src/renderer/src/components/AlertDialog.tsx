@@ -11,6 +11,7 @@ export * from '@radix-ui/react-alert-dialog';
 
 export const Overlay = withClass(AlertDialog.Overlay, styles['AlertDialogOverlay']!);
 
+// eslint-disable-next-line react/display-name
 export const Content = forwardRef<HTMLDivElement, AlertDialog.AlertDialogContentProps>(({ className, style, ...props }, ref) => {
   const { offset, onPointerDown, onPointerMove, onPointerUp } = useCenteredDialogDrag();
   return (

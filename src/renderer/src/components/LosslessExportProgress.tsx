@@ -14,12 +14,13 @@ interface Props {
 export default function LosslessExportProgress({ state, text, progress, onCancel, onDismiss }: Props) {
   const { t } = useTranslation();
   const active = state !== 'cancelled';
+  const stateLabel = state === 'cancelled' ? 'Cancelled' : state === 'cancelling' ? 'Cancelling export' : 'Exporting';
   const percent = progress == null ? undefined : Math.round(Math.max(0, Math.min(1, progress)) * 100);
   return (
     <aside className={styles['panel']} role="status" aria-live="polite" aria-label={t('Export Video Settings')}>
       <div className={styles['heading']}>
         <strong>{t('Export Video')}</strong>
-        <span className={styles['status']}>{state === 'cancelled' ? t('Cancelled') : state === 'cancelling' ? t('Cancelling crop export') : t('Exporting')}</span>
+        <span className={styles['status']}>{t(stateLabel)}</span>
       </div>
       <div className={styles['contents']}>
         {active ? (

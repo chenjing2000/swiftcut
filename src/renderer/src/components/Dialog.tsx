@@ -12,6 +12,7 @@ export * from '@radix-ui/react-dialog';
 
 export const Overlay = withClass(Dialog.Overlay, styles['DialogOverlay']!);
 
+// eslint-disable-next-line react/display-name
 export const Content = forwardRef<HTMLDivElement, Dialog.DialogContentProps>(({ className, style, ...props }, ref) => {
   const { offset, onPointerDown, onPointerMove, onPointerUp } = useCenteredDialogDrag();
   return (
