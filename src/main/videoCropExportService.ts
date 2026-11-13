@@ -3,6 +3,7 @@ import { basename, join, parse } from 'node:path';
 import { link, mkdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
 
 import type { CropExportPlan, CropExportTask } from '../common/videoCropTypes.js';
+import { assertOutputFilename, withCollisionSuffix } from '../common/mediaWorkspace.js';
 import { validateCropExportRequest } from '../common/videoCropValidation.js';
 import { runFfprobe, runScopedFfmpeg } from './ffmpeg.js';
 import { buildCropFfmpegArgs } from './videoCropFfmpegArgs.js';
@@ -94,6 +95,46 @@ async function commitWithoutOverwrite(tempPath: string, outputDir: string, outpu
     }
   }
   throw new Error('Cannot reserve crop output filename');
+}
+
+async function commitCropBatch(
+  items: readonly { path: string; task: CropExportTask }[],
+  outputDir: string,
+  onCommitted: (path: string) => void,
+  assertActive: () => void,
+): Promise<void> {
+  const names = items.map((item) => item.task.outputName);
+  if (new Set(names).size !== names.length) throw new Error('Duplicate crop output filenames in batch');
+  names.forEach(assertOutputFilename);
+  for (let attempt = 0; attempt < 10000; attempt += 1) {
+    const targetPaths = names.map((name) => join(outputDir, withCollisionSuffix(name, attempt)));
+    const pathsCreated: string[] = [];
+    try {
+      for (let index = 0; index < items.length; index += 1) {
+        assertActive();
+        const target = targetPaths[index]!;
+        await link(items[index]!.path, target);
+        pathsCreated.push(target);
+      }
+      for (let index = 0; index < items.length; index += 1) {
+        onCommitted(targetPaths[index]!);
+        await unlink(items[index]!.path).catch((error: unknown) => logger.warn('Cannot unlink committed crop temporary file', error));
+      }
+      return;
+    } catch (error) {
+      if (getErrorCode(error) === 'EEXIST') {
+        // A competing export claimed at least one name. Undo only links
+        // created by this batch and try a common suffix for all its files.
+        await Promise.all(pathsCreated.map((target) => unlink(target)));
+        continue;
+      }
+      // Do not conceal already published outputs when an unrelated error
+      // or cancellation interrupts the commit.
+      pathsCreated.forEach(onCommitted);
+      throw error;
+    }
+  }
+  throw new Error('No available crop output filename batch');
 }
 
 interface CropProbeMetadata {
@@ -242,16 +283,12 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
         job.status.outputPaths!.push(finalOutput);
       } else {
         job.status.state = 'committing';
-        for (const item of encoded) {
-          assertNotCancelled(job);
-          const outputPath = await commitWithoutOverwrite(item.path, plan.outputDir, item.task.outputName);
-          // Record every committed file immediately, including when cancellation
-          // arrives during the asynchronous filesystem operation.
+        await commitCropBatch(encoded, plan.outputDir, (outputPath) => {
           job.status.outputPaths!.push(outputPath);
           finalOutput ??= outputPath;
           job.status.outputPath ??= outputPath;
           job.status.progress = 0.9 + (job.status.outputPaths!.length / encoded.length) * 0.1;
-        }
+        }, () => assertNotCancelled(job));
       }
       if (finalOutput == null) throw new Error('Crop export produced no output');
       job.status.outputPath = finalOutput;
