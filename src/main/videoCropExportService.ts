@@ -97,16 +97,16 @@ async function commitWithoutOverwrite(tempPath: string, outputDir: string, outpu
 }
 
 async function probeJson(path: string): Promise<{
-  streams?: { codec_type?: string; codec_name?: string; width?: number; height?: number }[];
+  streams?: { codec_type?: string; codec_name?: string; width?: number; height?: number; tags?: { rotate?: string }; side_data_list?: { rotation?: number }[] }[];
   format?: { duration?: string };
 }> {
   const { stdout } = await runFfprobe([
     '-v', 'error', '-show_entries',
-    'format=duration:stream=codec_type,codec_name,width,height',
+    'format=duration:stream=codec_type,codec_name,width,height:stream_tags=rotate:stream_side_data=rotation',
     '-of', 'json', path,
   ]);
   return JSON.parse(Buffer.from(stdout).toString('utf8')) as {
-    streams?: { codec_type?: string; codec_name?: string; width?: number; height?: number }[];
+    streams?: { codec_type?: string; codec_name?: string; width?: number; height?: number; tags?: { rotate?: string }; side_data_list?: { rotation?: number }[] }[];
     format?: { duration?: string };
   };
 }
@@ -120,6 +120,14 @@ async function verifyOutput(path: string, plan: CropExportPlan, expectedDuration
   if (videos.length !== 1 || videos[0]?.codec_name !== 'h264'
     || videos[0].width !== plan.encodedWidth || videos[0].height !== plan.encodedHeight) {
     throw new Error('Crop video output verification failed');
+  }
+  // Pixels have already been rotated into display space. Reject output
+  // files that still carry a rotation instruction for the player.
+  const video = videos[0]!;
+  const metadataRotation = Number(video.tags?.rotate ?? 0);
+  if (!Number.isFinite(metadataRotation) || metadataRotation % 360 !== 0
+    || video.side_data_list?.some((item) => item.rotation != null && item.rotation % 360 !== 0)) {
+    throw new Error('Crop output contains unexpected display rotation metadata');
   }
   const expectedAudio = plan.output.keepAudio && plan.audioStreamIndex != null ? 1 : 0;
   if (audio.length !== expectedAudio || (expectedAudio === 1 && audio[0]?.codec_name !== 'aac')) {

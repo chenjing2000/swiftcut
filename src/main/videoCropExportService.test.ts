@@ -246,6 +246,23 @@ describe('Crop Video single-segment service', () => {
     await expect(readdir(join(directory, '.swiftcut-crop-tmp'))).resolves.toStrictEqual([]);
   });
 
+  it('rejects output that would be double-rotated by the video player', async () => {
+    mocks.probe.mockImplementation(async () => ({
+      stdout: Buffer.from(JSON.stringify({
+        streams: [
+          { codec_type: 'video', codec_name: 'h264', width: 100, height: 100,
+            side_data_list: [{ rotation: 90 }] },
+          { codec_type: 'audio', codec_name: 'aac' },
+        ],
+        format: { duration: '2' },
+      })),
+    }));
+    const jobId = await startCropExport(makePlan());
+    await expectState(jobId, 'failed');
+    expect(getCropExportStatus(jobId)?.error).toContain('unexpected display rotation metadata');
+    await expect(readdir(directory)).resolves.not.toContain('clip.crop.mp4');
+  });
+
   it('fails verification and never commits an invalid output', async () => {
     mocks.probe.mockImplementation(async () => ({
       stdout: Buffer.from(JSON.stringify({
