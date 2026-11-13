@@ -536,7 +536,6 @@ export async function askForPlaybackRate({ detectedFps, outputPlaybackRate }: { 
 
   const { value, isConfirmed } = await getSwal().Swal.fire<string>({
     title: i18n.t('Change FPS'),
-    customClass: { popup: 'swiftcut-change-fps' },
     input: 'text',
     inputValue: currentFps.toFixed(5),
     text: i18n.t('This option lets you losslessly change the speed at which media players will play back the exported file. For example if you double the FPS, the playback speed will double (and duration will halve), however all the frames will be intact and played back (but faster). Be careful not to set it too high, as the player might not be able to keep up (playback CPU usage will increase proportionally to the speed!)'),
