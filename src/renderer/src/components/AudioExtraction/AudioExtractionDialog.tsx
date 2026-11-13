@@ -79,22 +79,8 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         <Dialog.Portal>
           {/* This settings panel uses the same unobscured floating presentation as Crop Video. */}
           <Dialog.Content
-            style={{
-              width: '380px',
-              left: 'max(8px, calc(100% - 396px))',
-              top: '48px',
-              transform: 'none',
-              minWidth: 'min(320px, calc(100vw - 16px))',
-              maxWidth: 'min(380px, calc(100vw - 16px))',
-              fontSize: '13px',
-              height: 'auto',
-              minHeight: 'min(400px, calc(100vh - 16px))',
-              maxHeight: 'min(800px, calc(100vh - 16px))',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              padding: 0,
-            }}
+            className={styles['floatingPanel']}
+            style={{ left: 'max(8px, calc(100% - 396px))', top: '48px', transform: 'none' }}
             aria-describedby={undefined}
             onInteractOutside={(event) => event.preventDefault()}
           >
@@ -108,15 +94,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 ×
               </button>
             </div>
-            <div
-              style={{
-                flex: '1 1 auto',
-                minHeight: 0,
-                overflowY: 'auto',
-                overscrollBehavior: 'contain',
-                padding: '12px',
-              }}
-            >
+            <div className={chrome['contents']}>
               {!isMp4 && <p role="alert" style={{ color: 'var(--red-10)', marginTop: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
 
               <section style={{ marginBottom: '1.2em' }}>
