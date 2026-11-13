@@ -478,7 +478,7 @@ function App() {
       duration: fileDuration,
       timeRange: config.output.timeRange,
     });
-    if (selected.length !== 1) throw new Error('Phase 3B supports only one time segment');
+    if (selected.length === 0) throw new Error('No valid segments selected');
     const plan = createCropExportPlan({
       sourcePath: filePath,
       outputDir,
@@ -2700,6 +2700,7 @@ function App() {
                         frame={cropFrame}
                         videoFit={videoFit}
                         segments={cutSegments}
+                        selectedSegmentCount={resolveVideoCropSegments({ segments: cutSegments, inverseSegments: inverseCutSegments, inverted: invertCutSegments, duration: fileDuration, timeRange: 'selected' }).length}
                         duration={fileDuration}
                         fullscreen={fullscreen}
                         onToggleFullscreen={toggleFullscreenVideo}

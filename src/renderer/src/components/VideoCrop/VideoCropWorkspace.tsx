@@ -17,6 +17,7 @@ interface Props {
   frame: CropFrameGeometry;
   videoFit: CropViewport['fit'];
   segments: readonly CropSourceSegment[];
+  selectedSegmentCount: number;
   duration: number;
   onClose: () => void;
   onExport: (config: CropVideoConfig) => Promise<void>;
@@ -83,7 +84,7 @@ function CropNumericField({ label, value, onCommit, disabled = false }: {
   );
 }
 
-export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, duration, onClose, onExport, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
+export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, selectedSegmentCount, duration, onClose, onExport, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
   type Handle = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e';
   type Dimension = 'x' | 'y' | 'width' | 'height';
   const { t } = useTranslation();
@@ -94,7 +95,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [lockResizeAspect, setLockResizeAspect] = useState(true);
   const [resizeWidth, setResizeWidth] = useState(fullRect.width);
   const [resizeHeight, setResizeHeight] = useState(fullRect.height);
-  const [timeRange, setTimeRange] = useState<CropTimeRange>(() => getDefaultCropTimeRange(segments, duration));
+  const [timeRange, setTimeRange] = useState<CropTimeRange>(() => selectedSegmentCount > 0 ? 'selected' : getDefaultCropTimeRange(segments, duration));
   const [outputMode, setOutputMode] = useState<CropOutputMode>('merge');
   const [keepAudio, setKeepAudio] = useState(true);
   const [format, setFormat] = useState<'mp4' | 'mkv'>('mp4');
@@ -309,7 +310,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     sw: { left: 0, top: '100%' },
     w: { left: 0, top: '50%' },
   };
-  const multiple = timeRange === 'selected' && segments.filter((segment) => segment.selected && !segment.initial && segment.end != null && segment.end > segment.start).length > 1;
+  const multiple = timeRange === 'selected' && selectedSegmentCount > 1;
 
   const submitExport = async () => {
     if (submitting || !valid || quality === 'custom') return;
@@ -497,9 +498,9 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               </select>
             </label>
             <div className={styles['footer']}>
-              <span className={styles['phaseNote']}>{t('Multi-segment export is available in Phase 3C')}</span>
+              <span className={styles['phaseNote']} />
               <button type="button" onClick={onClose}>{t('Cancel')}</button>
-              <button type="button" disabled={!valid || submitting || quality === 'custom' || multiple} onClick={() => { submitExport().catch(console.error); }}>{t('Export Video')}</button>
+              <button type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export Video')}</button>
             </div>
             <div className={styles['previewRow']}>
               <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
