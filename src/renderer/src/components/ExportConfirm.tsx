@@ -338,6 +338,11 @@ function ExportConfirm({
       )}
     >
       <table className={styles['options']}>
+        <colgroup>
+          <col />
+          <col style={{ width: 160 }} />
+          <col style={{ width: 24 }} />
+        </colgroup>
         <tbody>
           {notices.generic.map((notice) => renderGenericNotice(notice))}
 
@@ -356,7 +361,7 @@ function ExportConfirm({
               {renderNotice(notices.specific['exportMode'])}
             </td>
             <td>
-              <ExportModeButton selectedSegments={segmentsOrInverse.selected} style={{ width: 150, maxWidth: '100%' }} />
+              <ExportModeButton selectedSegments={segmentsOrInverse.selected} style={{ width: 160, maxWidth: '100%' }} />
             </td>
             <td>
               {renderNoticeIcon(notices.specific['exportMode'], rightIconStyle) ?? <HelpIcon onClick={onExportModeHelpPress} />}
@@ -368,7 +373,7 @@ function ExportConfirm({
               {t('Output container format:')}
             </td>
             <td>
-              {renderOutFmt({ width: 150, maxWidth: '100%' })}
+              {renderOutFmt({ width: 160, maxWidth: '100%' })}
             </td>
             <td>
               <HelpIcon onClick={onOutFmtHelpPress} />
@@ -405,6 +410,11 @@ function ExportConfirm({
       <h3 style={{ marginBottom: '.5em' }}>{t('Advanced options')}</h3>
 
       <table className={`${styles['options']} ${styles['advancedOptions']}`}>
+        <colgroup>
+          <col />
+          <col style={{ width: 160 }} />
+          <col style={{ width: 24 }} />
+        </colgroup>
         <tbody>
           <tr>
             <td style={{ paddingTop: '.5em', color: 'var(--gray-11)', fontSize: '.9em' }} colSpan={2}>
