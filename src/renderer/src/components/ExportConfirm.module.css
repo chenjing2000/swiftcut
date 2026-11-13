@@ -22,3 +22,25 @@ table.options td {
 tr.notice-row td {
   padding: 0;
 }
+
+/* Keep lengthy advanced-option labels and controls inside the 380px panel. */
+table.advancedOptions {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+table.advancedOptions td:first-child { width: 52%; overflow-wrap: anywhere; }
+table.advancedOptions td:nth-child(2) { width: 40%; text-align: right; min-width: 0; }
+table.advancedOptions td:last-child { width: 8%; }
+table.advancedOptions td:nth-child(2) select {
+  max-width: 100%;
+  width: 100%;
+  margin-left: 0 !important;
+}
+table.advancedOptions td:nth-child(2) button:not([role="switch"]) {
+  max-width: 100%;
+}
+table.advancedOptions td:nth-child(2) [role="switch"] {
+  transform: scale(.8);
+  transform-origin: right center;
+}
