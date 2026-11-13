@@ -1,9 +1,10 @@
-import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import styles from './ExportSheet.module.css';
 import chrome from './OutputPanelChrome.module.css';
+import useOutputPanelDrag from './useOutputPanelDrag';
 import actionStyles from './OutputActionButtons.module.css';
 
 function ExportSheet({
@@ -24,38 +25,8 @@ function ExportSheet({
   width: CSSProperties['width'],
 }) {
   const { t } = useTranslation();
-  const [position, setPosition] = useState<{ left: number; top: number }>();
-  const dragRef = useRef<{ x: number; y: number; left: number; top: number } | undefined>(undefined);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  const clampPosition = useCallback((left: number, top: number) => {
-    const widthValue = panelRef.current?.offsetWidth ?? 380;
-    const heightValue = panelRef.current?.offsetHeight ?? 300;
-    return {
-      left: Math.max(8, Math.min(left, window.innerWidth - widthValue - 8)),
-      top: Math.max(8, Math.min(top, window.innerHeight - heightValue - 8)),
-    };
-  }, []);
-
-  useEffect(() => {
-    const onResize = () => setPosition((current) => (current == null ? current : clampPosition(current.left, current.top)));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [clampPosition]);
-
-  const onHeaderPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
-    const bounds = panelRef.current?.getBoundingClientRect();
-    if (!bounds) return;
-    dragRef.current = { x: event.clientX, y: event.clientY, left: bounds.left, top: bounds.top };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }, []);
-
-  const onHeaderPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag) return;
-    setPosition(clampPosition(drag.left + event.clientX - drag.x, drag.top + event.clientY - drag.y));
-  }, [clampPosition]);
+  const { position, headingRef, onPointerDown, onPointerMove, onPointerUp } = useOutputPanelDrag(panelRef);
 
   if (!visible) return null;
 
@@ -68,16 +39,18 @@ function ExportSheet({
       aria-label={title}
       style={{
         width,
-        ...(position == null ? { top: 48, right: 16 } : { top: position.top, left: position.left }),
+        top: position.top,
+        left: position.left,
       }}
     >
       <div
+        ref={headingRef}
         className={chrome['heading']}
-        onPointerDown={onHeaderPointerDown}
-        onPointerMove={onHeaderPointerMove}
-        onPointerUp={() => { dragRef.current = undefined; }}
-        onPointerCancel={() => { dragRef.current = undefined; }}
-        onLostPointerCapture={() => { dragRef.current = undefined; }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onLostPointerCapture={onPointerUp}
       >
         <strong>{title}</strong>
         <button type="button" onClick={onClosePress} aria-label={t('Close')}>×</button>

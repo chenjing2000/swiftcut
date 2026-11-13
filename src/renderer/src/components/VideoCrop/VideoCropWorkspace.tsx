@@ -12,6 +12,7 @@ import type { CropSourceSegment } from '../../videoCropSegments';
 
 import styles from './VideoCropWorkspace.module.css';
 import chrome from '../OutputPanelChrome.module.css';
+import useOutputPanelDrag from '../useOutputPanelDrag';
 import actionStyles from '../OutputActionButtons.module.css';
 
 interface Props {
@@ -106,43 +107,19 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [exportError, setExportError] = useState<string>();
   const [previewMode, setPreviewMode] = useState<'edit' | 'output'>('edit');
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const [panelPosition, setPanelPosition] = useState(() => ({
-    left: Math.max(8, window.innerWidth - 396),
-    top: 48,
-  }));
   const [focused, setFocused] = useState(false);
-  const panelDragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | undefined>(undefined);
   const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
-  const headingRef = useRef<HTMLDivElement>(null);
-
-  const clampPanel = useCallback((left: number, top: number) => {
-    const root = document.getElementById('app-root');
-    const bounds = root?.getBoundingClientRect() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
-    const width = panelRef.current?.offsetWidth ?? 380;
-    const height = panelRef.current?.offsetHeight ?? 250;
-    const margin = 8;
-    return {
-      left: clamp(left, bounds.left + margin, Math.max(bounds.left + margin, bounds.right - width - margin)),
-      top: clamp(top, bounds.top + margin, Math.max(bounds.top + margin, bounds.bottom - height - margin)),
-    };
-  }, []);
-
-  useEffect(() => {
-    const onResize = () => setPanelPosition((previous) => clampPanel(previous.left, previous.top));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [clampPanel]);
-
-  const stopPanelDrag = useCallback((pointerId?: number, revert = false) => {
-    const drag = panelDragRef.current;
-    if (!drag || (pointerId != null && drag.pointerId !== pointerId)) return;
-    panelDragRef.current = undefined;
-    const heading = headingRef.current;
-    if (heading?.hasPointerCapture(drag.pointerId)) heading.releasePointerCapture(drag.pointerId);
-    if (revert) setPanelPosition(clampPanel(drag.left, drag.top));
-  }, [clampPanel]);
+  const {
+    position: panelPosition,
+    dragRef: panelDragRef,
+    headingRef,
+    stopDrag: stopPanelDrag,
+    onPointerDown: onPanelPointerDown,
+    onPointerMove: onPanelPointerMove,
+    onPointerUp: onPanelPointerUp,
+  } = useOutputPanelDrag(panelRef);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -398,33 +375,11 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           <div
             ref={headingRef}
             className={chrome['heading']}
-            onPointerDown={(event) => {
-              if (event.button !== 0 || (event.target !== event.currentTarget && (event.target as HTMLElement).closest('button'))) return;
-              panelDragRef.current = {
-                pointerId: event.pointerId,
-                x: event.clientX,
-                y: event.clientY,
-                left: panelPosition.left,
-                top: panelPosition.top,
-              };
-              event.currentTarget.setPointerCapture(event.pointerId);
-              event.preventDefault();
-            }}
-            onPointerMove={(event) => {
-              const drag = panelDragRef.current;
-              if (!drag || drag.pointerId !== event.pointerId) return;
-              if (event.buttons % 2 === 0) {
-                stopPanelDrag(event.pointerId);
-                return;
-              }
-              setPanelPosition(clampPanel(
-                drag.left + event.clientX - drag.x,
-                drag.top + event.clientY - drag.y,
-              ));
-            }}
-            onPointerUp={(event) => stopPanelDrag(event.pointerId)}
-            onPointerCancel={(event) => stopPanelDrag(event.pointerId)}
-            onLostPointerCapture={(event) => stopPanelDrag(event.pointerId)}
+            onPointerDown={onPanelPointerDown}
+            onPointerMove={onPanelPointerMove}
+            onPointerUp={onPanelPointerUp}
+            onPointerCancel={onPanelPointerUp}
+            onLostPointerCapture={onPanelPointerUp}
             role="presentation"
           >
             <strong>{t('Crop Video Settings')}</strong>
