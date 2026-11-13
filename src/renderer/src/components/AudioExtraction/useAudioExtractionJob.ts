@@ -19,6 +19,7 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
   const { t } = useTranslation();
   const [job, setJob] = useState<AudioJobStatus>();
   const [isStarting, setIsStarting] = useState(false);
+  const startingRef = useRef(false);
 
   const pollingJobId = job && (job.state === 'running' || job.state === 'paused') ? job.id : undefined;
   const handledPauseTaskRef = useRef<string | undefined>(undefined);
@@ -82,7 +83,8 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
   }, [pollingJobId, t]);
 
   const startExtraction = async () => {
-    if (!filePath || selectedStreamIndexes.length === 0 || isStarting || job?.state === 'running' || job?.state === 'paused') return false;
+    if (!filePath || selectedStreamIndexes.length === 0 || startingRef.current || job?.state === 'running' || job?.state === 'paused') return false;
+    startingRef.current = true;
     setIsStarting(true);
     setJob(undefined);
     try {
@@ -113,6 +115,7 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
       });
       return false;
     } finally {
+      startingRef.current = false;
       setIsStarting(false);
     }
   };
