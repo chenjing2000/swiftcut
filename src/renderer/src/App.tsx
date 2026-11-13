@@ -181,7 +181,8 @@ function App() {
   const [activeSubtitleStreamIndex, setActiveSubtitleStreamIndex] = useState<number>();
   const [hideCompatPlayer, setHideCompatPlayer] = useState(false);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
-  const [losslessExportState, setLosslessExportState] = useState<'running' | 'cancelling' | 'cancelled' | 'success'>();
+  const [losslessExportState, setLosslessExportState] = useState<'running' | 'finalizing' | 'cancelling' | 'cancelled' | 'success'>();
+  const losslessFinalizingRef = useRef(false);
   const [losslessExportPaths, setLosslessExportPaths] = useState<string[]>([]);
   const losslessCancelRequestedRef = useRef(false);
   const [losslessCustomDirectory, setLosslessCustomDirectory] = useState<{ source: string, value: string }>();
@@ -1171,7 +1172,7 @@ function App() {
   }, [detectedFps, outputPlaybackRate, setOutputPlaybackRate]);
 
   const cancelLosslessExport = useCallback(() => {
-    if (losslessExportState !== 'running') return;
+    if (losslessExportState !== 'running' || losslessFinalizingRef.current) return;
     losslessCancelRequestedRef.current = true;
     setLosslessExportState('cancelling');
     abortFfmpegs();
@@ -1181,7 +1182,7 @@ function App() {
     invariant(filePath != null && outputDir != null);
     let temporaryLosslessDir: string | undefined;
     let exportSucceeded = false;
-    emitEvent({ eventName: 'export-start', path: filePath });
+    let exportStarted = false;
 
     if (numStreamsToCopy === 0) {
       errorToast(i18n.t('No tracks selected for export'));
@@ -1215,6 +1216,9 @@ function App() {
       setStreamsSelectorShown(false);
       setExportConfirmOpen(false);
       losslessCancelRequestedRef.current = false;
+      losslessFinalizingRef.current = false;
+      exportStarted = true;
+      emitEvent({ eventName: 'export-start', path: filePath });
       setLosslessExportPaths([]);
       setLosslessExportState('running');
       setWorking({ text: i18n.t('Exporting') });
@@ -1317,35 +1321,38 @@ function App() {
         ...extraPaths.map((path) => ({ temporaryPath: path, requestedName: basename(path) })),
       ];
       assertNotCancelled();
+      // File publishing is the finalization boundary: do not abort a commit
+      // or report already committed media as a cancelled export.
+      losslessFinalizingRef.current = true;
+      setLosslessExportState('finalizing');
       const committedPaths = await commitMediaOutputs({ outputDir: losslessDirectory, outputs: outputsToCommit });
       if (willMerge) mergedOutFilePath = committedPaths[autoDeleteMergedSegments ? 0 : outFiles.length];
 
       if (areWeCutting) notices.add(i18n.t('Cutpoints may be inaccurate.'));
 
-      // Keep the completion UI consistent with Crop Video: one result panel only.
-
-      if (cleanupChoices.cleanupAfterExport) {
-        const newCleanupChoices = cleanupChoices.askForCleanup ? await askForCleanupChoices() : cleanupChoices;
-        // only if not canceled
-        if (newCleanupChoices) await cleanupFiles(newCleanupChoices);
-      }
-
-      // Use the same single, bottom-right result presentation as Crop Video.
       const exportedPaths = willMerge && mergedOutFilePath != null ? [mergedOutFilePath] : committedPaths;
       invariant(exportedPaths.length > 0);
-      if (!losslessCancelRequestedRef.current) {
-        setLosslessExportPaths(committedPaths);
-        setLosslessExportState('success');
-        exportSucceeded = true;
-      }
-
+      setLosslessExportPaths(committedPaths);
+      setLosslessExportState('success');
+      exportSucceeded = true;
       setExportCount((c) => c + 1);
-
       emitEvent({ eventName: 'export-complete', paths: exportedPaths });
-    } catch (err) {
-      emitEvent({ eventName: 'export-complete' });
 
-      if (losslessCancelRequestedRef.current || isAbortedError(err)) {
+      // Post-export cleanup is separate from media publication: a cleanup
+      // failure must never turn successfully saved media into a failed export.
+      if (cleanupChoices.cleanupAfterExport) {
+        try {
+          const newCleanupChoices = cleanupChoices.askForCleanup ? await askForCleanupChoices() : cleanupChoices;
+          if (newCleanupChoices) await cleanupFiles(newCleanupChoices);
+        } catch (cleanupError) {
+          console.error('Post-export cleanup failed', cleanupError);
+          errorToast(i18n.t('Export finished, but cleanup failed'));
+        }
+      }
+    } catch (err) {
+      if (exportStarted && !exportSucceeded) emitEvent({ eventName: 'export-complete' });
+
+      if (!exportSucceeded && (losslessCancelRequestedRef.current || isAbortedError(err))) {
         losslessCancelRequestedRef.current = true;
         return;
       }
@@ -1379,8 +1386,9 @@ function App() {
       handleExportFailed(err);
     } finally {
       if (temporaryLosslessDir != null) await rm(temporaryLosslessDir, { recursive: true, force: true }).catch(console.error);
-      if (losslessCancelRequestedRef.current) setLosslessExportState('cancelled');
+      if (!exportSucceeded && losslessCancelRequestedRef.current) setLosslessExportState('cancelled');
       else if (!exportSucceeded) setLosslessExportState(undefined);
+      losslessFinalizingRef.current = false;
       setWorking(undefined);
       setProgress(undefined);
     }

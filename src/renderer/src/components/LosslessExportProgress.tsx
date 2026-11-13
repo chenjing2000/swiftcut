@@ -3,7 +3,7 @@ import Button from './Button';
 import styles from './VideoCrop/CropExportProgress.module.css';
 
 interface Props {
-  state: 'running' | 'cancelling' | 'cancelled' | 'success';
+  state: 'running' | 'finalizing' | 'cancelling' | 'cancelled' | 'success';
   outputPaths: string[];
   text: string;
   progress?: number | undefined;
@@ -14,10 +14,10 @@ interface Props {
 /** Lossless and re-encoded exports share the same progress-panel presentation. */
 export default function LosslessExportProgress({ state, text, progress, outputPaths, onCancel, onDismiss }: Props) {
   const { t } = useTranslation();
-  const active = state === 'running' || state === 'cancelling';
-  const stateLabels = { running: 'Exporting', cancelling: 'Cancelling export', cancelled: 'Cancelled', success: 'Export finished' } as const;
+  const active = state === 'running' || state === 'finalizing' || state === 'cancelling';
+  const stateLabels = { running: 'Exporting', finalizing: 'Finalizing export', cancelling: 'Cancelling export', cancelled: 'Cancelled', success: 'Export finished' } as const;
   const stateLabel = stateLabels[state];
-  const displayStates = { running: undefined, cancelling: undefined, cancelled: 'cancelled', success: 'success' } as const;
+  const displayStates = { running: undefined, finalizing: undefined, cancelling: undefined, cancelled: 'cancelled', success: 'success' } as const;
   const displayState = displayStates[state];
   const percent = progress == null ? undefined : Math.round(Math.max(0, Math.min(1, progress)) * 100);
   return (
@@ -35,7 +35,7 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
             </div>
             {percent != null && <progress className={styles['progress']} value={percent} max={100} />}
             <div className={styles['actions']}>
-              <Button disabled={state === 'cancelling'} onClick={onCancel}>{t('Cancel Export')}</Button>
+              <Button disabled={state !== 'running'} onClick={onCancel}>{t('Cancel Export')}</Button>
             </div>
           </>
         ) : (
