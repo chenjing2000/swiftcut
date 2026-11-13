@@ -9,6 +9,9 @@ export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | nul
     left: Math.max(8, window.innerWidth - 396),
     top: 48,
   }));
+  const resetPosition = useCallback(() => {
+    setPosition({ left: Math.max(8, window.innerWidth - 396), top: 48 });
+  }, []);
   const dragRef = useRef<DragStart | undefined>(undefined);
   const headingRef = useRef<HTMLDivElement>(null);
 
@@ -62,5 +65,5 @@ export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | nul
     stopDrag(event.pointerId);
   }, [stopDrag]);
 
-  return { position, dragRef, headingRef, stopDrag, onPointerDown, onPointerMove, onPointerUp };
+  return { position, resetPosition, dragRef, headingRef, stopDrag, onPointerDown, onPointerMove, onPointerUp };
 }
