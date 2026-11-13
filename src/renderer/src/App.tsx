@@ -2849,12 +2849,9 @@ function App() {
                     hasVideo={hasVideo}
                     isRotationSet={isRotationSet}
                     rotation={rotation}
-                    areWeCutting={areWeCutting}
                     increaseRotation={increaseRotation}
                     cleanupFilesDialog={cleanupFilesDialog}
                     captureSnapshot={captureSnapshot}
-                    onExportPress={onExportPress}
-                    segmentsToExport={segmentsToExport}
                     seekAbs={seekAbs}
                     currentSegIndexSafe={currentSegIndexSafe}
                     cutSegments={cutSegments}
