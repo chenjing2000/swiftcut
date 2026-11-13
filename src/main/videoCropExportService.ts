@@ -230,6 +230,7 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
           job.status.progress = 0.9 + (job.status.outputPaths!.length / encoded.length) * 0.1;
         }
       }
+      if (finalOutput == null) throw new Error('Crop export produced no output');
       job.status.outputPath = finalOutput;
       job.status.progress = 1;
       job.status.state = 'success';
