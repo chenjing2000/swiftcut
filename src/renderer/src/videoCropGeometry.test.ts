@@ -49,9 +49,9 @@ describe('crop pixel geometry', () => {
   it('maps rectangles through all quarter turns', () => {
     const crop = { x: 10, y: 20, width: 100, height: 200 };
     expect(visibleRectToFrameRect(crop, frame)).toStrictEqual(crop);
-    expect(visibleRectToFrameRect(crop, { ...frame, rotation: 90 })).toStrictEqual({ x: 20, y: 970, width: 200, height: 100 });
+    expect(visibleRectToFrameRect(crop, { ...frame, rotation: 90 })).toStrictEqual({ x: 1700, y: 10, width: 200, height: 100 });
     expect(visibleRectToFrameRect(crop, { ...frame, rotation: 180 })).toStrictEqual({ x: 1810, y: 860, width: 100, height: 200 });
-    expect(visibleRectToFrameRect(crop, { ...frame, rotation: 270 })).toStrictEqual({ x: 1700, y: 10, width: 200, height: 100 });
+    expect(visibleRectToFrameRect(crop, { ...frame, rotation: 270 })).toStrictEqual({ x: 20, y: 970, width: 200, height: 100 });
   });
 
   it('inverts sample aspect ratio when turned', () => {

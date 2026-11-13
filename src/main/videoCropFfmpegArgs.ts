@@ -12,6 +12,7 @@ export function buildCropFfmpegArgs({
   const { frame, crop, output } = plan;
   // Never rely on implicit metadata-based autorotation. Display-space coordinates
   // from Phase 2 are applied after the source's existing orientation is normalized.
+  // FFprobe Display Matrix positive angles indicate counter-clockwise presentation.
   // For odd X/Y and subsampled input, upsample chroma before crop to preserve the luma origin.
   const filters: string[] = ['format=yuv444p'];
   switch (frame.rotation) {
@@ -19,7 +20,7 @@ export function buildCropFfmpegArgs({
       break;
     }
     case 90: {
-      filters.push('transpose=clock');
+      filters.push('transpose=cclock');
       break;
     }
     case 180: {
@@ -27,7 +28,7 @@ export function buildCropFfmpegArgs({
       break;
     }
     case 270: {
-      filters.push('transpose=cclock');
+      filters.push('transpose=clock');
       break;
     }
     default: {

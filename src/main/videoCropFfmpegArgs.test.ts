@@ -83,11 +83,11 @@ describe('Crop Video FFmpeg args', () => {
     const plan = makePlan();
     plan.frame = { width: 1080, height: 1920, rotation: 90, sarNum: 1, sarDen: 1 };
     const args = getArgs(plan);
-    expect(args[args.indexOf('-vf') + 1]).toContain('format=yuv444p,transpose=clock,crop=');
+    expect(args[args.indexOf('-vf') + 1]).toContain('format=yuv444p,transpose=cclock,crop=');
     plan.frame.rotation = 180;
     expect(getArgs(plan)[args.indexOf('-vf') + 1]).toContain('hflip,vflip');
     plan.frame.rotation = 270;
-    expect(getArgs(plan)[args.indexOf('-vf') + 1]).toContain('transpose=cclock');
+    expect(getArgs(plan)[args.indexOf('-vf') + 1]).toContain('transpose=clock');
   });
 
   it('rejects task mismatch and output path omission', () => {

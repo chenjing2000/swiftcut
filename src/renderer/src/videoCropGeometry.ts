@@ -132,9 +132,9 @@ export function cropPointToScreen(point: CropPoint, frame: CropFrameGeometry, vi
 export function visibleToFramePoint({ x, y }: CropPoint, frame: CropFrameGeometry): CropPoint {
   switch (frame.rotation) {
     case 0: { return { x, y }; }
-    case 90: { return { x: y, y: frame.height - x }; }
+    case 90: { return { x: frame.width - y, y: x }; }
     case 180: { return { x: frame.width - x, y: frame.height - y }; }
-    case 270: { return { x: frame.width - y, y: x }; }
+    case 270: { return { x: y, y: frame.height - x }; }
     default: { throw new Error('Unsupported frame rotation'); }
   }
 }
