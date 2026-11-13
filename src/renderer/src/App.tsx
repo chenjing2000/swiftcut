@@ -2990,7 +2990,7 @@ function App() {
                     onOpenChange={setAudioExtractionDialogOpen}
                     filePath={filePath}
                     streams={audioStreams}
-                    segments={fileDuration > 0 ? resolveVideoCropSegments({
+                    segments={fileDuration != null && fileDuration > 0 ? resolveVideoCropSegments({
                       segments: cutSegments,
                       inverseSegments: inverseCutSegments,
                       inverted: invertCutSegments,
