@@ -50,6 +50,7 @@ import AudioExtractionDialog from './components/AudioExtraction/AudioExtractionD
 import VideoCropWorkspace from './components/VideoCrop/VideoCropWorkspace';
 import CropExportProgress from './components/VideoCrop/CropExportProgress';
 import { createCropExportPlan } from './videoCropExportPlanner';
+import { getMediaOutputDir } from '../../common/mediaWorkspace.js';
 import { resolveVideoCropSegments } from './videoCropSegments';
 import { getSourceDisplayRotation } from './videoCropRotation';
 import type { CropVideoConfig } from '../../common/videoCropTypes.js';
@@ -483,7 +484,7 @@ function App() {
     if (selected.length === 0) throw new Error('No valid segments selected');
     const plan = createCropExportPlan({
       sourcePath: filePath,
-      outputDir,
+      outputDir: getMediaOutputDir(filePath, 'crop'),
       frame: cropFrame,
       videoStreamIndex: activeVideoStream.index,
       ...(config.output.keepAudio && activeAudioStreams[0] != null && { audioStreamIndex: activeAudioStreams[0].index }),
