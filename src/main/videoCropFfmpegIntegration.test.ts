@@ -145,5 +145,4 @@ describe.skipIf(!enabled)('Crop Video real FFmpeg smoke test', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
-
 });

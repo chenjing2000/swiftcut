@@ -5,7 +5,7 @@ import type { CropExportPlan } from '../common/videoCropTypes.js';
 export function buildCropConcatList(paths: readonly string[]): string {
   if (paths.length < 2) throw new Error('At least two segments are required for concatenation');
   return ['ffconcat version 1.0', ...paths.map((path) => {
-    const escaped = resolve(path).replaceAll("'", "'\\''");
+    const escaped = resolve(path).replaceAll("'", String.raw`'\\''`);
     return `file '${escaped}'`;
   }), ''].join('\n');
 }

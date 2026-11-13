@@ -95,7 +95,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [lockResizeAspect, setLockResizeAspect] = useState(true);
   const [resizeWidth, setResizeWidth] = useState(fullRect.width);
   const [resizeHeight, setResizeHeight] = useState(fullRect.height);
-  const [timeRange, setTimeRange] = useState<CropTimeRange>(() => selectedSegmentCount > 0 ? 'selected' : getDefaultCropTimeRange(segments, duration));
+  const [timeRange, setTimeRange] = useState<CropTimeRange>(() => (selectedSegmentCount > 0 ? 'selected' : getDefaultCropTimeRange(segments, duration)));
   const [outputMode, setOutputMode] = useState<CropOutputMode>('merge');
   const [keepAudio, setKeepAudio] = useState(true);
   const [format, setFormat] = useState<'mp4' | 'mkv'>('mp4');
