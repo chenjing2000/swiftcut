@@ -253,7 +253,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       if (!isActiveOutputPanel('crop')) return;
       // Do not steal Escape from unrelated application dialogs.
       const otherDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
-      if (otherDialog && !otherDialog.hasAttribute('data-output-panel')) return;
+      if (otherDialog && !(otherDialog as HTMLElement).dataset['outputPanel']) return;
       if (panelDragRef.current && event.key === 'Escape') {
         stopPanelDrag(undefined, true);
         event.preventDefault();
