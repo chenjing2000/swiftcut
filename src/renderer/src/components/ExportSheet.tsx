@@ -6,6 +6,7 @@ import styles from './ExportSheet.module.css';
 import chrome from './OutputPanelChrome.module.css';
 import useOutputPanelDrag from './useOutputPanelDrag';
 import actionStyles from './OutputActionButtons.module.css';
+import { activateOutputPanel, isActiveOutputPanel, registerOutputPanel } from './outputPanelFocus';
 
 function ExportSheet({
   visible,
@@ -30,13 +31,19 @@ function ExportSheet({
 
   useEffect(() => {
     if (!visible) return undefined;
+    return registerOutputPanel('lossless');
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !panelRef.current?.contains(event.target as Node)) return;
-      event.stopPropagation();
+      if (event.key !== 'Escape' || !isActiveOutputPanel('lossless')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
       onClosePress();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => document.removeEventListener('keydown', onKeyDown, { capture: true });
   }, [visible, onClosePress]);
 
   if (!visible) return null;
@@ -48,6 +55,9 @@ function ExportSheet({
       role="dialog"
       aria-modal="false"
       aria-label={title}
+      data-output-panel="lossless"
+      onPointerDownCapture={() => activateOutputPanel('lossless')}
+      onFocusCapture={() => activateOutputPanel('lossless')}
       style={{
         width,
         top: position.top,
