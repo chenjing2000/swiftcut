@@ -168,6 +168,7 @@ function App() {
   const [streamsSelectorShown, setStreamsSelectorShown] = useState(false);
   const [concatDialogOpen, setConcatDialogOpen] = useState(false);
   const [audioExtractionDialogOpen, setAudioExtractionDialogOpen] = useState(false);
+  const [audioExtractionSource, setAudioExtractionSource] = useState<string>();
   const [cropVideoForFile, setCropVideoForFile] = useState<string>();
   const [cropExportJobId, setCropExportJobId] = useState<string>();
   const [cropExportStatus, setCropExportStatus] = useState<Awaited<ReturnType<typeof mainApi.getCropExportStatus>>>();
@@ -1691,8 +1692,9 @@ function App() {
   const toggleSettings = useCallback(() => setSettingsVisible((val) => !val), []);
   const openAudioExtractionDialog = useCallback(() => {
     if (!checkFileOpened()) return;
+    setAudioExtractionSource(filePath);
     setAudioExtractionDialogOpen(true);
-  }, [checkFileOpened]);
+  }, [checkFileOpened, filePath]);
 
   const seekClosestKeyframe = useCallback((direction: number) => {
     const sigma = detectedFps ? (1 / detectedFps) : 0.1; // because we don't want it to find the keyframe we're currently at.
@@ -2982,7 +2984,7 @@ function App() {
 
                 <LastCommands visible={lastCommandsVisible} onTogglePress={toggleLastCommands} ffmpegCommandLog={ffmpegCommandLog} setFfmpegCommandLog={setFfmpegCommandLog} />
 
-                {filePath && (
+                {filePath && audioExtractionSource === filePath && (
                   <AudioExtractionDialog
                     key={filePath}
                     open={audioExtractionDialogOpen}
