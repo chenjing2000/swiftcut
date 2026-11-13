@@ -190,7 +190,14 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       delete plan.audioStreamIndex;
       plan.tasks = [{ start: 0.2, end: 1.2, originalIndex: 0, outputName: 'crop.mkv' }];
       plan.output.format = 'mkv';
-      const meta = exportCrop(plan, join(dir, 'crop.mkv'));
+      const destination = join(dir, 'crop.mkv');
+      const meta = exportCrop(plan, destination);
+      const outputPts = execFileSync('ffprobe', [
+        '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'frame=best_effort_timestamp_time',
+        '-of', 'csv=p=0', destination,
+      ]).toString('utf8').trim().split(/\r?\n/).map((value) => Number(value)).filter((value) => Number.isFinite(value));
+      const outputIntervals = outputPts.slice(1).map((time, i) => Math.round((time - outputPts[i]!) * 1000));
+      expect(new Set(outputIntervals).size).toBeGreaterThan(1);
       expect(meta.streams.some((stream) => stream.codec_name === 'h264')).toBe(true);
       expect(Number(meta.format.duration)).toBeGreaterThan(0.85);
       expect(Number(meta.format.duration)).toBeLessThan(1.3);
