@@ -33,7 +33,7 @@ const formatTime = (seconds: number) => {
 
 export default function AudioExtractionDialog({ open, onOpenChange, filePath, streams, segments, formatName }: AudioExtractionDialogProps) {
   const { t } = useTranslation();
-  const cancelRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [trackSelection, setTrackSelection] = useState<{ source: string | undefined; indexes: number[] }>();
   // The long-lived job presenter survives source changes. A new source gets
   // its own default track without resetting the currently running job.
@@ -98,13 +98,15 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         <Dialog.Portal>
           {/* This settings panel uses the same unobscured floating presentation as Crop Video. */}
           <Dialog.Content
+            ref={panelRef}
+            tabIndex={-1}
             className={styles['floatingPanel']}
             style={{ left: 'max(8px, calc(100% - 396px))', top: '48px', transform: 'none' }}
             aria-describedby={undefined}
             data-output-panel="audio"
             onOpenAutoFocus={(event) => {
               event.preventDefault();
-              cancelRef.current?.focus();
+              panelRef.current?.focus();
             }}
             onEscapeKeyDown={(event) => event.preventDefault()}
             onInteractOutside={(event) => event.preventDefault()}
@@ -203,7 +205,6 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             </div>
             <div className={chrome['footer']}>
               <button
-                ref={cancelRef}
                 type="button"
                 className={actionStyles['action']}
                 onClick={() => handleOpenChange(false)}
