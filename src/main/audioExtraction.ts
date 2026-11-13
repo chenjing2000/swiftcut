@@ -98,8 +98,9 @@ async function exists(path: string) {
   try {
     await access(path);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (getErrorCode(error) === 'ENOENT') return false;
+    throw error;
   }
 }
 
