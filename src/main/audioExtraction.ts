@@ -1,7 +1,7 @@
 import { basename, dirname, extname, join } from 'node:path';
 import { access, link, mkdir, stat, unlink } from 'node:fs/promises';
-import { findAvailableBatchNames, getMediaOutputDir, getSourceStem } from '../common/mediaWorkspace.js';
 import { randomUUID } from 'node:crypto';
+import { findAvailableBatchNames, getMediaOutputDir, getSourceStem } from '../common/mediaWorkspace.js';
 import { runFfprobe, runScopedFfmpeg } from './ffmpeg.js';
 import logger from './logger.js';
 import type { AudioExtractionMode, Mp3Quality, AudioExtractionSegment } from './audioExtractionUtils.js';
@@ -108,7 +108,7 @@ async function commitWithoutOverwrite(tempPath: string, outputPath: string) {
   try {
     await link(tempPath, outputPath);
   } catch (error) {
-    if (getErrorCode(error) === 'EEXIST') throw new Error('Audio output was claimed by another export; retry the export');
+    if (getErrorCode(error) === 'EEXIST') throw new Error('Audio output was claimed by another export; retry the export', { cause: error });
     throw error;
   }
   await unlink(tempPath).catch((error: unknown) => {

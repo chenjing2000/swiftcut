@@ -19,7 +19,8 @@ export function getMediaWorkspaceDir(sourcePath: string): string {
 export function getMediaOutputDir(sourcePath: string, kind: MediaExportKind): string {
   const workspace = getMediaWorkspaceDir(sourcePath);
   const sep = sourcePath.includes('\\') ? '\\' : '/';
-  return `${workspace}${sep}${kind === 'lossless' ? 'Lossless' : kind === 'audio' ? 'Audio' : 'Croploss'}`;
+  const folderNames = { lossless: 'Lossless', crop: 'Croploss', audio: 'Audio' } as const;
+  return `${workspace}${sep}${folderNames[kind]}`;
 }
 
 export function assertOutputFilename(filename: string): void {
@@ -46,7 +47,8 @@ export function getMediaOutputName({
   let name: string;
   switch (mode) {
     case 'entire': {
-      name = `${stem}_${kind === 'lossless' ? 'lossless' : kind === 'audio' ? 'audio' : 'croploss'}`;
+      const suffixes = { lossless: 'lossless', crop: 'croploss', audio: 'audio' } as const;
+      name = `${stem}_${suffixes[kind]}`;
       break;
     }
     case 'segment': {
