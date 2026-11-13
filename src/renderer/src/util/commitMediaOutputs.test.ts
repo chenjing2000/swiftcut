@@ -60,7 +60,7 @@ describe('safe media output publication', () => {
         { temporaryPath: firstTemp, requestedName: 'new_segment_01.mp4' },
         { temporaryPath: missingTemp, requestedName: 'new_segment_02.mp4' },
       ],
-    })).rejects.toThrow();
+    })).rejects.toThrow('ENOENT');
 
     await expect(fs.readFile(existing, 'utf8')).resolves.toBe('historical user output');
     await expect(fs.readFile(firstTemp, 'utf8')).resolves.toBe('new media');

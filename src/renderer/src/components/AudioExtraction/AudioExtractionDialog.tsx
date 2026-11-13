@@ -69,162 +69,162 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   return (
     <>
       <Dialog.Root modal={false} open={open} onOpenChange={handleOpenChange}>
-      <Dialog.Portal>
-        {/* This settings panel uses the same unobscured floating presentation as Crop Video. */}
-        <Dialog.Content
-          style={{
-            width: '380px',
-            left: 'max(8px, calc(100% - 396px))',
-            top: '48px',
-            transform: 'none',
-            minWidth: 'min(320px, calc(100vw - 16px))',
-            maxWidth: 'min(380px, calc(100vw - 16px))',
-            fontSize: '13px',
-            height: 'min(42rem, 85vh)',
-            maxHeight: '85vh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            padding: 0,
-          }}
-          aria-describedby={undefined}
-          onInteractOutside={(event) => event.preventDefault()}
-        >
-          <div data-dialog-drag-handle className={chrome['heading']}>
-            <Dialog.Title style={{ margin: 0, padding: 0, border: 0, fontSize: '14px', fontWeight: 700 }}>{t('Extract Audio Settings')}</Dialog.Title>
-            <button
-              type="button"
-              aria-label={t('Close')}
-              disabled={isStarting}
-              onClick={() => handleOpenChange(false)}
-              style={{ cursor: isBusy ? 'not-allowed' : 'pointer' }}
-            >
-              ×
-            </button>
-          </div>
-          <div
+        <Dialog.Portal>
+          {/* This settings panel uses the same unobscured floating presentation as Crop Video. */}
+          <Dialog.Content
             style={{
-              flex: '1 1 auto',
-              minHeight: 0,
-              overflowY: 'auto',
-              overscrollBehavior: 'contain',
-              padding: '12px',
+              width: '380px',
+              left: 'max(8px, calc(100% - 396px))',
+              top: '48px',
+              transform: 'none',
+              minWidth: 'min(320px, calc(100vw - 16px))',
+              maxWidth: 'min(380px, calc(100vw - 16px))',
+              fontSize: '13px',
+              height: 'min(42rem, 85vh)',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              padding: 0,
             }}
+            aria-describedby={undefined}
+            onInteractOutside={(event) => event.preventDefault()}
           >
-            <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
-
-            <section style={{ marginBottom: '1.2em' }}>
-              <strong>{t('Input file')}</strong>
-              <div style={{ marginTop: '.35em', overflowWrap: 'anywhere' }}>{filePath ?? t('No media file opened')}</div>
-              {!isMp4 && <p style={{ color: 'var(--red-10)', marginBottom: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
-            </section>
-
-            <section style={{ marginBottom: '1.2em' }}>
-              <strong>{t('Audio tracks')}</strong>
-              {streams.length === 0 ? (
-                <p>{t('No audio tracks found.')}</p>
-              ) : (
-                <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-                  {streams.map((stream, index) => (
-                    <Checkbox
-                      key={stream.index}
-                      checked={selectedStreamIndexes.includes(stream.index)}
-                      onCheckedChange={(checked) => toggleStream(stream.index, checked === true)}
-                      label={t('Track {{number}} · {{codec}} · {{channels}} channels · {{sampleRate}} Hz', {
-                        number: index + 1,
-                        codec: stream.codec_name?.toUpperCase() ?? 'Unknown',
-                        channels: stream.channels ?? '?',
-                        sampleRate: stream.sample_rate ?? '?',
-                      })}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section style={{ marginBottom: '1.2em' }}>
-              <strong>{t('Output mode')}</strong>
-              <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-                <label htmlFor="audio-extraction-mode-original" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                  <input id="audio-extraction-mode-original" type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} disabled={isBusy} onChange={() => setMode('original')} />
-                  {t('Original (no re-encoding)')}
-                </label>
-                <label htmlFor="audio-extraction-mode-mp3" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                  <input id="audio-extraction-mode-mp3" type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} disabled={isBusy} onChange={() => setMode('mp3')} />
-                  {t('MP3 (re-encode)')}
-                </label>
-              </div>
-              {mode === 'original' && (
-                <p style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: 0 }}>
-                  {t('Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.')}
-                </p>
-              )}
-            </section>
-
-            <section style={{ marginBottom: '1.2em', opacity: mode === 'original' ? 0.5 : 1 }}>
-              <strong>{t('MP3 quality')}</strong>
-              <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-                {([
-                  ['vbr', t('VBR (LAME Quality 2) — Recommended')],
-                  ['320k', '320 kbps'],
-                  ['192k', '192 kbps'],
-                ] as const).map(([value, label]) => {
-                  const inputId = `audio-extraction-quality-${value}`;
-                  return (
-                    <label key={value} htmlFor={inputId} style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                      <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} disabled={mode === 'original' || isBusy} onChange={() => setQuality(value)} />
-                      {label}
-                    </label>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section style={{ marginBottom: '1em' }}>
-              <strong>{t('Extraction segments')}</strong>
-              <p style={{ margin: '.35em 0' }}>
-                {t('{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).', {
-                  segments: segmentCount,
-                  tracks: selectedCount,
-                  outputs: outputCount,
-                })}
-              </p>
-              {segments.length === 0 ? (
-                <div>{t('Entire video')}</div>
-              ) : (
-                <div style={{ maxHeight: '8em', overflowY: 'auto', paddingLeft: '1.5em' }}>
-                  {segments.map((segment, index) => (
-                    <div key={`${segment.originalIndex}-${segment.start}-${segment.end}`}>
-                      {t('Segment {{number}}', { number: index + 1 })}: {formatTime(segment.start)} – {formatTime(segment.end)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
-          </div>
-          <div className={chrome['footer']}>
-            <button
-              type="button"
-              className={actionStyles['action']}
-              disabled={isStarting}
-              onClick={() => handleOpenChange(false)}
+            <div data-dialog-drag-handle className={chrome['heading']}>
+              <Dialog.Title style={{ margin: 0, padding: 0, border: 0, fontSize: '14px', fontWeight: 700 }}>{t('Extract Audio Settings')}</Dialog.Title>
+              <button
+                type="button"
+                aria-label={t('Close')}
+                disabled={isStarting}
+                onClick={() => handleOpenChange(false)}
+                style={{ cursor: isBusy ? 'not-allowed' : 'pointer' }}
+              >
+                ×
+              </button>
+            </div>
+            <div
+              style={{
+                flex: '1 1 auto',
+                minHeight: 0,
+                overflowY: 'auto',
+                overscrollBehavior: 'contain',
+                padding: '12px',
+              }}
             >
-              {t('Cancel')}
-            </button>
-            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={() => { beginExtraction().catch(console.error); }}>{t('Extract')}</button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-    {job && (
-      <AudioExtractionProgress
-        job={job}
-        onCancel={() => cancelExtraction()}
-        onDismiss={dismissJob}
-      />
-    )}
+              <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
+
+              <section style={{ marginBottom: '1.2em' }}>
+                <strong>{t('Input file')}</strong>
+                <div style={{ marginTop: '.35em', overflowWrap: 'anywhere' }}>{filePath ?? t('No media file opened')}</div>
+                {!isMp4 && <p style={{ color: 'var(--red-10)', marginBottom: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
+              </section>
+
+              <section style={{ marginBottom: '1.2em' }}>
+                <strong>{t('Audio tracks')}</strong>
+                {streams.length === 0 ? (
+                  <p>{t('No audio tracks found.')}</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
+                    {streams.map((stream, index) => (
+                      <Checkbox
+                        key={stream.index}
+                        checked={selectedStreamIndexes.includes(stream.index)}
+                        onCheckedChange={(checked) => toggleStream(stream.index, checked === true)}
+                        label={t('Track {{number}} · {{codec}} · {{channels}} channels · {{sampleRate}} Hz', {
+                          number: index + 1,
+                          codec: stream.codec_name?.toUpperCase() ?? 'Unknown',
+                          channels: stream.channels ?? '?',
+                          sampleRate: stream.sample_rate ?? '?',
+                        })}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section style={{ marginBottom: '1.2em' }}>
+                <strong>{t('Output mode')}</strong>
+                <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
+                  <label htmlFor="audio-extraction-mode-original" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                    <input id="audio-extraction-mode-original" type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} disabled={isBusy} onChange={() => setMode('original')} />
+                    {t('Original (no re-encoding)')}
+                  </label>
+                  <label htmlFor="audio-extraction-mode-mp3" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                    <input id="audio-extraction-mode-mp3" type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} disabled={isBusy} onChange={() => setMode('mp3')} />
+                    {t('MP3 (re-encode)')}
+                  </label>
+                </div>
+                {mode === 'original' && (
+                  <p style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: 0 }}>
+                    {t('Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.')}
+                  </p>
+                )}
+              </section>
+
+              <section style={{ marginBottom: '1.2em', opacity: mode === 'original' ? 0.5 : 1 }}>
+                <strong>{t('MP3 quality')}</strong>
+                <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
+                  {([
+                    ['vbr', t('VBR (LAME Quality 2) — Recommended')],
+                    ['320k', '320 kbps'],
+                    ['192k', '192 kbps'],
+                  ] as const).map(([value, label]) => {
+                    const inputId = `audio-extraction-quality-${value}`;
+                    return (
+                      <label key={value} htmlFor={inputId} style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
+                        <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} disabled={mode === 'original' || isBusy} onChange={() => setQuality(value)} />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section style={{ marginBottom: '1em' }}>
+                <strong>{t('Extraction segments')}</strong>
+                <p style={{ margin: '.35em 0' }}>
+                  {t('{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).', {
+                    segments: segmentCount,
+                    tracks: selectedCount,
+                    outputs: outputCount,
+                  })}
+                </p>
+                {segments.length === 0 ? (
+                  <div>{t('Entire video')}</div>
+                ) : (
+                  <div style={{ maxHeight: '8em', overflowY: 'auto', paddingLeft: '1.5em' }}>
+                    {segments.map((segment, index) => (
+                      <div key={`${segment.originalIndex}-${segment.start}-${segment.end}`}>
+                        {t('Segment {{number}}', { number: index + 1 })}: {formatTime(segment.start)} – {formatTime(segment.end)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
+            </div>
+            <div className={chrome['footer']}>
+              <button
+                type="button"
+                className={actionStyles['action']}
+                disabled={isStarting}
+                onClick={() => handleOpenChange(false)}
+              >
+                {t('Cancel')}
+              </button>
+              <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={() => { beginExtraction().catch(console.error); }}>{t('Extract')}</button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+      {job && (
+        <AudioExtractionProgress
+          job={job}
+          onCancel={() => cancelExtraction()}
+          onDismiss={dismissJob}
+        />
+      )}
     </>
   );
 }
