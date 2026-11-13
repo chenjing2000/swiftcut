@@ -50,7 +50,7 @@ import AudioExtractionDialog from './components/AudioExtraction/AudioExtractionD
 import VideoCropWorkspace from './components/VideoCrop/VideoCropWorkspace';
 import CropExportProgress from './components/VideoCrop/CropExportProgress';
 import { createCropExportPlan } from './videoCropExportPlanner';
-import { getMediaOutputDir } from '../../common/mediaWorkspace.js';
+import { getMediaOutputDir, getMediaOutputName } from '../../common/mediaWorkspace.js';
 import { resolveVideoCropSegments } from './videoCropSegments';
 import { getSourceDisplayRotation } from './videoCropRotation';
 import type { CropVideoConfig } from '../../common/videoCropTypes.js';
@@ -178,6 +178,8 @@ function App() {
   const [activeSubtitleStreamIndex, setActiveSubtitleStreamIndex] = useState<number>();
   const [hideCompatPlayer, setHideCompatPlayer] = useState(false);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
+  const [losslessCustomDirectory, setLosslessCustomDirectory] = useState<{ source: string, value: string }>();
+  const [losslessCustomFilename, setLosslessCustomFilename] = useState<{ source: string, value: string }>();
   const [cacheBuster, setCacheBuster] = useState(0);
   const [currentFileExportCount, setCurrentFileExportCount] = useState(0);
 
@@ -1145,6 +1147,26 @@ function App() {
   const closeExportConfirm = useCallback(() => setExportConfirmOpen(false), []);
 
   const willMerge = segmentsToExport.length > 1 && autoMerge;
+  const defaultLosslessDirectory = filePath == null ? '' : getMediaOutputDir(filePath, 'lossless');
+  const losslessDirectory = filePath != null && losslessCustomDirectory?.source === filePath ? losslessCustomDirectory.value : defaultLosslessDirectory;
+  const losslessExtension = filePath == null ? 'mp4' : getOutFileExtension({ outFormat: fileFormat, filePath }).replace(/^\./, '');
+  const defaultLosslessFilename = filePath == null ? '' : getMediaOutputName({
+    sourcePath: filePath,
+    kind: 'lossless',
+    mode: segmentsToChaptersOnly ? 'chapters' : willMerge ? 'merge' : (!areWeCutting ? 'entire' : 'segment'),
+    extension: losslessExtension,
+    ...((areWeCutting && !willMerge && !segmentsToChaptersOnly) && { segmentIndex: 1, segmentCount: Math.max(1, segmentsToExport.length) }),
+  });
+  const losslessFilename = filePath != null && losslessCustomFilename?.source === filePath ? losslessCustomFilename.value : defaultLosslessFilename;
+  const openLosslessExport = useCallback(() => {
+    if (!filePath) return;
+    setExportConfirmOpen(true);
+    setStreamsSelectorShown(false);
+  }, [filePath]);
+  const chooseLosslessDirectory = useCallback(async () => {
+    const selected = await askForOutDir(losslessDirectory);
+    if (selected && filePath) setLosslessCustomDirectory({ source: filePath, value: selected });
+  }, [losslessDirectory, filePath]);
 
   const onExportConfirm = useCallback(async () => {
     invariant(filePath != null && outputDir != null);
@@ -1349,16 +1371,7 @@ function App() {
     }
   }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutFileTemplateOrDefault, generateCutFileNames, cutMultiple, outputDir, customOutDir, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, enableOverwriteOutput, exportConfirmEnabled, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, simpleMode, prefersReducedMotion, cleanupChoices, hideAllNotifications, segmentsOrInverse.selected, t, cutMergedFileTemplateOrDefault, segmentsToChapters, invertCutSegments, generateCutMergedFileNames, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, openCutFinishedDialog, handleExportFailed]);
 
-  const onExportPress = useCallback(async () => {
-    if (!filePath) return;
-
-    if (!exportConfirmEnabled || exportConfirmOpen) {
-      await onExportConfirm();
-    } else {
-      setExportConfirmOpen(true);
-      setStreamsSelectorShown(false);
-    }
-  }, [filePath, exportConfirmEnabled, exportConfirmOpen, onExportConfirm]);
+  const onExportPress = useCallback(() => openLosslessExport(), [openLosslessExport]);
 
   const captureSnapshot = useCallback(async () => {
     if (!filePath || workingRef.current) return;
@@ -2475,7 +2488,7 @@ function App() {
         },
       ] as const),
       // all main actions (no arguments):
-      ...Object.entries({ extractAudio: openAudioExtractionDialog, cropVideo: openCropVideo }).map(([key, fn]) => [
+      ...Object.entries({ extractAudio: openAudioExtractionDialog, cropVideo: openCropVideo, openLosslessExport }).map(([key, fn]) => [
         key,
         async () => {
           fn();
@@ -2523,7 +2536,7 @@ function App() {
       ipcActions.forEach(([key, action]) => ipcRenderer.off(key, action));
       ipcRenderer.off('apiAction', tryApiAction);
     };
-  }, [checkFileOpened, customOutDir, detectedFps, filePath, getFrameCount, getKeyboardAction, goToTimecodeDirect, handleError, importEdlFile, loadCutSegments, mainActions, openAudioExtractionDialog, openCropVideo, promptDownloadMediaUrlWrapper, selectedSegments, toggleKeyboardShortcuts, tryExportEdlFile, userOpenFiles]);
+  }, [checkFileOpened, customOutDir, detectedFps, filePath, getFrameCount, getKeyboardAction, goToTimecodeDirect, handleError, importEdlFile, loadCutSegments, mainActions, openAudioExtractionDialog, openCropVideo, openLosslessExport, promptDownloadMediaUrlWrapper, selectedSegments, toggleKeyboardShortcuts, tryExportEdlFile, userOpenFiles]);
 
   const handleBatchFilesDrop = useCallback<DragEventHandler<HTMLDivElement>>(async (ev) => {
     ev.preventDefault();
