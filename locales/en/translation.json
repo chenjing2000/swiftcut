@@ -1005,12 +1005,12 @@
   "Crop export cancelled": "Crop export cancelled",
   "Partially completed": "Partially completed",
   "Completed": "Completed",
-  "Crop export progress": "Crop export progress",
-  "Crop segments completed": "Crop segments completed",
+  "Crop export progress": "Export progress: {{percent}}%",
+  "Crop segments completed": "Segments completed: {{completed}}/{{total}}",
   "Cancelling crop export": "Cancelling crop export",
   "Cancel Export": "Cancel Export",
-  "Crop partially saved files": "Crop partially saved files",
+  "Crop partially saved files": "{{count}} file(s) saved. Completed files were preserved.",
   "Crop exported files": "Crop exported files",
-  "Crop cleanup warning": "Crop cleanup warning",
+  "Crop cleanup warning": "Temporary files could not be fully cleaned: {{details}}",
   "Dismiss": "Dismiss"
 }
