@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import styles from './ExportSheet.module.css';
+import chrome from './OutputPanelChrome.module.css';
 import actionStyles from './OutputActionButtons.module.css';
 
 function ExportSheet({
@@ -61,7 +62,7 @@ function ExportSheet({
   return (
     <div
       ref={panelRef}
-      className={styles['panel']}
+      className={`${chrome['panel']} ${styles['panel']}`}
       role="dialog"
       aria-modal="false"
       aria-label={title}
@@ -71,7 +72,7 @@ function ExportSheet({
       }}
     >
       <div
-        className={styles['heading']}
+        className={chrome['heading']}
         onPointerDown={onHeaderPointerDown}
         onPointerMove={onHeaderPointerMove}
         onPointerUp={() => { dragRef.current = undefined; }}
@@ -81,8 +82,8 @@ function ExportSheet({
         <strong>{title}</strong>
         <button type="button" onClick={onClosePress} aria-label={t('Close')}>×</button>
       </div>
-      <div className={styles['contents']}>{children}</div>
-      <div className={styles['footer']}>
+      <div className={`${chrome['contents']} ${styles['contents']}`}>{children}</div>
+      <div className={chrome['footer']}>
         {renderBottom?.()}
         <button className={actionStyles['action']} type="button" onClick={onClosePress}>{t('Cancel')}</button>
         {renderButton()}

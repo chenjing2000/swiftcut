@@ -11,6 +11,7 @@ import { getDefaultCropTimeRange } from '../../videoCropSegments';
 import type { CropSourceSegment } from '../../videoCropSegments';
 
 import styles from './VideoCropWorkspace.module.css';
+import chrome from '../OutputPanelChrome.module.css';
 import actionStyles from '../OutputActionButtons.module.css';
 
 interface Props {
@@ -390,13 +391,13 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
         <section
           ref={panelRef}
           aria-label={t('Crop Video Settings')}
-          className={styles['panel']}
+          className={`${chrome['panel']} ${styles['panel']}`}
           style={{ left: panelPosition.left, top: panelPosition.top, visibility: fullscreen ? 'hidden' : undefined, pointerEvents: fullscreen ? 'none' : undefined }}
           onPointerDown={() => setFocused(false)}
         >
           <div
             ref={headingRef}
-            className={styles['heading']}
+            className={chrome['heading']}
             onPointerDown={(event) => {
               if (event.button !== 0 || (event.target !== event.currentTarget && (event.target as HTMLElement).closest('button'))) return;
               panelDragRef.current = {
@@ -429,7 +430,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             <strong>{t('Crop Video Settings')}</strong>
             <button type="button" aria-label={t('Close')} onPointerDown={(event) => event.stopPropagation()} onClick={onClose}>×</button>
           </div>
-          <div className={styles['contents']}>
+          <div className={`${chrome['contents']} ${styles['contents']}`}>
             <div className={styles['sectionTitle']}>
               <strong>{t('Crop Region')}</strong>
               <button type="button" onClick={() => { setRect(fullRect); if (!resize) { setResizeWidth(fullRect.width); setResizeHeight(fullRect.height); } }}>{t('Reset')}</button>
@@ -502,7 +503,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
               <button type="button" aria-pressed={previewMode === 'output'} onClick={() => setPreviewMode('output')}>{t('Preview Output')}</button>
             </div>
-            <div className={styles['footer']}>
+            <div className={`${chrome['footer']} ${styles['footer']}`}>
               <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
               <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
             </div>

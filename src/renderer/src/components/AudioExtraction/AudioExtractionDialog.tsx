@@ -5,6 +5,7 @@ import mainApi from '../../mainApi';
 import { showErrorNotification } from '../../notifications/notificationStore';
 import * as Dialog from '../Dialog';
 import actionStyles from '../OutputActionButtons.module.css';
+import chrome from '../OutputPanelChrome.module.css';
 import { dangerColor, primaryTextColor, saveColor, warningColor } from '../../colors';
 import Checkbox from '../Checkbox';
 import type { FFprobeStream } from '../../../../common/ffprobe';
@@ -241,27 +242,14 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           aria-describedby={undefined}
           onInteractOutside={(event) => event.preventDefault()}
         >
-          <div
-            data-dialog-drag-handle
-            style={{
-              flex: '0 0 auto',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '10px 12px',
-              borderBottom: '1px solid var(--gray-6)',
-              userSelect: 'none',
-              touchAction: 'none',
-              cursor: 'move',
-            }}
-          >
+          <div data-dialog-drag-handle className={chrome['heading']}>
             <Dialog.Title style={{ margin: 0, padding: 0, border: 0, fontSize: '14px', fontWeight: 700 }}>{t('Extract Audio Settings')}</Dialog.Title>
             <button
               type="button"
               aria-label={t('Close')}
               disabled={isBusy}
               onClick={() => handleOpenChange(false)}
-              style={{ border: 0, background: 'transparent', color: 'inherit', fontSize: '18px', cursor: isBusy ? 'not-allowed' : 'pointer', padding: 0 }}
+              style={{ cursor: isBusy ? 'not-allowed' : 'pointer' }}
             >
               ×
             </button>
@@ -407,7 +395,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               </section>
             )}
           </div>
-          <div style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '10px 12px', borderTop: '1px solid var(--gray-6)' }}>
+          <div className={chrome['footer']}>
             <button
               type="button"
               className={actionStyles['action']}
