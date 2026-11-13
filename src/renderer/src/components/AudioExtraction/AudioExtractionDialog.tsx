@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import * as Dialog from '../Dialog';
@@ -39,6 +39,12 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
     ? trackSelection.indexes : (streams[0] ? [streams[0].index] : []);
   const [mode, setMode] = useState<AudioExtractionMode>('original');
   const [timeRange, setTimeRange] = useState<'selected' | 'entire'>(segments.length > 0 ? 'selected' : 'entire');
+  // The settings component remains mounted while closed so the audio job can
+  // outlive the window. Reset file-dependent defaults only on source changes.
+  useEffect(() => {
+    setTimeRange(segments.length > 0 ? 'selected' : 'entire');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filePath]);
   const [outputMode, setOutputMode] = useState<'merge' | 'separate'>('merge');
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
 
