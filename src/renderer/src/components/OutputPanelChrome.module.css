@@ -13,6 +13,9 @@
   color: var(--gray-12);
   font-size: 13px;
 }
+/* Programmatic focus belongs to the panel, not an action control. */
+.panel:focus { outline: none; }
+
 .heading {
   display: flex;
   align-items: center;
