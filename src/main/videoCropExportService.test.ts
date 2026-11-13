@@ -125,6 +125,81 @@ describe('Crop Video single-segment service', () => {
     await expect(readdir(directory)).resolves.not.toContain('clip.crop.mp4');
   });
 
+  it('exports two selected segments separately with deterministic filenames', async () => {
+    const plan = makePlan();
+    plan.output.outputMode = 'separate';
+    plan.tasks = [
+      { start: 1, end: 3, originalIndex: 0, outputName: 'clip.crop-001.mp4' },
+      { start: 5, end: 7, originalIndex: 1, outputName: 'clip.crop-002.mp4' },
+    ];
+    const jobId = await startCropExport(plan);
+    await expectState(jobId, 'success');
+    const status = getCropExportStatus(jobId)!;
+    expect(status.completedSegments).toBe(2);
+    expect(status.outputPaths).toStrictEqual([
+      join(directory, 'clip.crop-001.mp4'),
+      join(directory, 'clip.crop-002.mp4'),
+    ]);
+    expect(mocks.run).toHaveBeenCalledTimes(2);
+  });
+
+  it('joins two encoded segments using stream copy and verifies combined duration', async () => {
+    const plan = makePlan();
+    plan.mergedOutputName = 'clip.crop.mp4';
+    plan.tasks = [
+      { start: 1, end: 3, originalIndex: 0, outputName: 'clip.crop.mp4' },
+      { start: 5, end: 7, originalIndex: 1, outputName: 'clip.crop.mp4' },
+    ];
+    mocks.probe.mockImplementation(async (args) => ({
+      stdout: Buffer.from(JSON.stringify({
+        streams: [
+          { codec_type: 'video', codec_name: 'h264', width: 100, height: 100 },
+          { codec_type: 'audio', codec_name: 'aac' },
+        ],
+        format: { duration: args.at(-1)?.includes('merged.') ? '4' : '2' },
+      })),
+    }));
+    const jobId = await startCropExport(plan);
+    await expectState(jobId, 'success');
+    expect(mocks.run).toHaveBeenCalledTimes(3);
+    const args = mocks.run.mock.calls[2]![0].ffmpegArgs;
+    expect(args).toContain('concat');
+    expect(args).toContain('copy');
+    expect(getCropExportStatus(jobId)?.outputPaths).toStrictEqual([join(directory, 'clip.crop.mp4')]);
+  });
+
+  it('rejects overlapping merge segments before creating a job', async () => {
+    const plan = makePlan();
+    plan.tasks = [
+      { start: 1, end: 4, originalIndex: 0, outputName: 'clip.crop.mp4' },
+      { start: 3, end: 5, originalIndex: 1, outputName: 'clip.crop.mp4' },
+    ];
+    await expect(startCropExport(plan)).rejects.toThrow('Overlapping crop segments');
+  });
+
+  it('cancels the second segment and does not commit incomplete batch outputs', async () => {
+    const plan = makePlan();
+    plan.output.outputMode = 'separate';
+    plan.tasks = [
+      { start: 1, end: 3, originalIndex: 0, outputName: 'clip.crop-001.mp4' },
+      { start: 5, end: 7, originalIndex: 1, outputName: 'clip.crop-002.mp4' },
+    ];
+    mocks.run.mockImplementation(({ ffmpegArgs }) => {
+      writeFileSync(ffmpegArgs.at(-1)!, 'partial data');
+      if (mocks.run.mock.calls.length === 1) {
+        return { result: Promise.resolve(undefined), cancel: () => undefined };
+      }
+      const { promise, reject } = Promise.withResolvers<unknown>();
+      return { result: promise, cancel: () => reject(new Error('cancelled')) };
+    });
+    const jobId = await startCropExport(plan);
+    await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledTimes(2));
+    cancelCropExport(jobId);
+    await expectState(jobId, 'cancelled');
+    await expect(readdir(directory)).resolves.not.toContain('clip.crop-001.mp4');
+    await expect(readdir(directory)).resolves.not.toContain('clip.crop-002.mp4');
+  });
+
   it('fails verification and never commits an invalid output', async () => {
     mocks.probe.mockImplementation(async () => ({
       stdout: Buffer.from(JSON.stringify({
