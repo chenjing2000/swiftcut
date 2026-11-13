@@ -7,6 +7,7 @@ import { join } from 'node:path';
 
 import type { CropExportPlan } from '../common/videoCropTypes.js';
 import { buildCropFfmpegArgs } from './videoCropFfmpegArgs.js';
+import { getSourceDisplayRotation } from '../renderer/src/videoCropRotation.js';
 
 const enabled = process.env['SWIFTCUT_CROP_FFMPEG_TEST'] === '1';
 
@@ -117,6 +118,36 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       const video = meta.streams.find((stream) => stream.codec_type === 'video');
       expect(video).toMatchObject({ width: 72, height: 82, sample_aspect_ratio: '3:4' });
       expect(video?.codec_name).toBe('h264');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reads real MP4 display-matrix rotation and produces upright cropped video', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'crop-display-matrix-'));
+    try {
+      const base = join(dir, 'base.mp4');
+      const rotated = join(dir, 'rotated.mp4');
+      runFfmpeg(['-f', 'lavfi', '-i', 'testsrc2=size=160x120:rate=25:duration=2',
+        '-c:v', 'libx264', '-y', base]);
+      runFfmpeg(['-display_rotation', '90', '-i', base, '-c', 'copy', '-y', rotated]);
+      const raw = execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', rotated]);
+      const metadata = JSON.parse(raw.toString('utf8')) as {
+        streams: { side_data_list?: { side_data_type: string; rotation?: number }[] }[];
+      };
+      const rotation = getSourceDisplayRotation(metadata.streams[0]);
+      expect(rotation).toBe(90);
+      const plan = planFor(rotated, dir);
+      delete plan.audioStreamIndex;
+      plan.frame.rotation = 90;
+      plan.crop = { x: 9, y: 11, width: 71, height: 81 };
+      plan.outputWidth = 71;
+      plan.outputHeight = 81;
+      plan.encodedWidth = 72;
+      plan.encodedHeight = 82;
+      const meta = exportCrop(plan, join(dir, 'upright.mp4'));
+      expect(meta.streams.find((stream) => stream.codec_type === 'video'))
+        .toMatchObject({ codec_name: 'h264', width: 72, height: 82 });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
