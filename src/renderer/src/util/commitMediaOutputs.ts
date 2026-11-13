@@ -1,7 +1,7 @@
 import { join } from './path';
+import { assertOutputFilename, findAvailableBatchNames } from '../../../common/mediaWorkspace.js';
 
 const { link, stat, unlink } = window.require('node:fs/promises');
-import { assertOutputFilename, findAvailableBatchNames } from '../../../common/mediaWorkspace.js';
 
 function getErrorCode(error: unknown): unknown {
   return typeof error === 'object' && error != null && 'code' in error ? error.code : undefined;
@@ -28,9 +28,9 @@ export async function commitMediaOutputs({
     });
     const committed: string[] = [];
     try {
-      for (let index = 0; index < candidates.length; index += 1) {
+      for (const [index, output] of outputs.entries()) {
         const target = join(outputDir, candidates[index]!);
-        await link(outputs[index]!.temporaryPath, target);
+        await link(output.temporaryPath, target);
         committed.push(target);
       }
       await Promise.all(outputs.map(({ temporaryPath }) => unlink(temporaryPath)));
