@@ -159,3 +159,14 @@
     transition-duration: 0ms;
   }
 }
+
+/* Export Video Help messages and other notification bodies use 13px text. */
+.toastCard,
+.modalContent {
+  font-size: 13px;
+}
+.toastCard .message,
+.modalContent .message {
+  font-size: 13px;
+  text-align: left;
+}
