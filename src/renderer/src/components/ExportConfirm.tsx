@@ -1,6 +1,6 @@
 import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
-import { FaExclamationTriangle, FaFolderOpen, FaInfoCircle, FaRegCheckCircle } from 'react-icons/fa';
+import { FaExclamationTriangle, FaInfoCircle, FaRegCheckCircle } from 'react-icons/fa';
 import i18n from 'i18next';
 import { useTranslation, Trans } from 'react-i18next';
 import { IoIosHelpCircle } from 'react-icons/io';
@@ -24,6 +24,7 @@ import type { AvoidNegativeTs, PreserveMetadata } from '../../../common/types';
 import TextInput from './TextInput';
 import type { UseSegments } from '../hooks/useSegments';
 import ExportSheet from './ExportSheet';
+import LosslessOutputFields from './LosslessOutputFields';
 import type { LossyMode } from '../../../main';
 import AnimatedTr from './AnimatedTr';
 import type { Frame } from '../ffmpeg';
@@ -410,13 +411,13 @@ function ExportConfirm({
 
           <tr>
             <td colSpan={3}>
-              <div style={{ display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr) 28px', alignItems: 'center', gap: '8px', width: '100%' }}>
-                <label htmlFor="lossless-output-directory">{t('Directory')}</label>
-                <input id="lossless-output-directory" type="text" value={outputDir ?? ''} onChange={(event) => onOutputDirChange(event.target.value)} style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', textOverflow: 'clip' }} />
-                <button type="button" title={t('Choose directory')} aria-label={t('Choose directory')} onClick={onChooseOutputDir} style={{ padding: 3 }}><FaFolderOpen /></button>
-                <label htmlFor="lossless-output-filename">{t('Filename')}</label>
-                <input id="lossless-output-filename" type="text" value={outputFilename} onChange={(event) => onOutputFilenameChange(event.target.value)} style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', textOverflow: 'clip' }} />
-              </div>
+              <LosslessOutputFields
+                directory={outputDir}
+                filename={outputFilename}
+                onDirectoryChange={onOutputDirChange}
+                onFilenameChange={onOutputFilenameChange}
+                onChooseDirectory={onChooseOutputDir}
+              />
             </td>
           </tr>
         </tbody>
