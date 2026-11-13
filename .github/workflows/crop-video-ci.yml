@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - feature/crop-video
-      - feature/media-workspace-export-ui
   workflow_dispatch:
 
 jobs:
