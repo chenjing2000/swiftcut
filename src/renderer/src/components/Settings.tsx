@@ -1,12 +1,11 @@
 import type { CSSProperties, ChangeEventHandler, TdHTMLAttributes } from 'react';
 import { memo, useCallback, useMemo } from 'react';
-import { FaYinYang, FaKeyboard, FaGlobe, FaBroom, FaCogs, FaHashtag, FaClock, FaFolder, FaFile, FaTimes } from 'react-icons/fa';
+import { FaYinYang, FaKeyboard, FaGlobe, FaCogs, FaHashtag, FaClock, FaFolder, FaFile, FaTimes } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import invariant from 'tiny-invariant';
 
 import Row from './AnimatedTr';
 import CaptureFormatButton from './CaptureFormatButton';
-import AutoExportToggler from './AutoExportToggler';
 import Switch from './Switch';
 import useUserSettings from '../hooks/useUserSettings';
 import { askForFfPath } from '../dialogs';
@@ -58,21 +57,19 @@ const detailsStyle: CSSProperties = { opacity: 0.75, fontSize: '.9em', marginTop
 function Settings({
   onTunerRequested,
   onKeyboardShortcutsDialogRequested,
-  askForCleanupChoices,
   toggleStoreProjectInWorkingDir,
   showAdvancedSettings,
   setShowAdvancedSettings,
 }: {
   onTunerRequested: (type: TunerType) => void,
   onKeyboardShortcutsDialogRequested: () => void,
-  askForCleanupChoices: () => Promise<unknown>,
   toggleStoreProjectInWorkingDir: () => Promise<void>,
   showAdvancedSettings: boolean,
   setShowAdvancedSettings: (v: boolean) => void,
 }) {
   const { t } = useTranslation();
 
-  const { customOutDir, keyframeCut, toggleKeyframeCut, timecodeFormat, setTimecodeFormat, invertCutSegments, setInvertCutSegments, askBeforeClose, setAskBeforeClose, enableImportChapters, setEnableImportChapters, enableAskForFileOpenAction, setEnableAskForFileOpenAction, autoSaveProjectFile, setAutoSaveProjectFile, invertTimelineScroll, setInvertTimelineScroll, language, setLanguage, hideNotifications, setHideNotifications, hideOsNotifications, setHideOsNotifications, autoLoadTimecode, setAutoLoadTimecode, enableAutoHtml5ify, setEnableAutoHtml5ify, customFfPath, setCustomFfPath, storeProjectInWorkingDir, mouseWheelZoomModifierKey, setMouseWheelZoomModifierKey, mouseWheelFrameSeekModifierKey, setMouseWheelFrameSeekModifierKey, mouseWheelKeyframeSeekModifierKey, setMouseWheelKeyframeSeekModifierKey, segmentMouseModifierKey, setSegmentMouseModifierKey, captureFrameMethod, setCaptureFrameMethod, captureFrameQuality, setCaptureFrameQuality, captureFrameFileNameFormat, setCaptureFrameFileNameFormat, enableNativeHevc, setEnableNativeHevc, allowNetworkConnections, setAllowNetworkConnections, allowMultipleInstances, setAllowMultipleInstances, preferStrongColors, setPreferStrongColors, theme, setTheme, videoFit, setVideoFit, treatInputFileModifiedTimeAsStart, setTreatInputFileModifiedTimeAsStart, treatOutputFileModifiedTimeAsStart, setTreatOutputFileModifiedTimeAsStart, storeWindowBounds, setStoreWindowBounds, reducedMotion, setReducedMotion, ffmpegHwaccel, setFfmpegHwaccel } = useUserSettings();
+  const { customOutDir, timecodeFormat, setTimecodeFormat, invertCutSegments, setInvertCutSegments, askBeforeClose, setAskBeforeClose, enableImportChapters, setEnableImportChapters, enableAskForFileOpenAction, setEnableAskForFileOpenAction, autoSaveProjectFile, setAutoSaveProjectFile, invertTimelineScroll, setInvertTimelineScroll, language, setLanguage, hideNotifications, setHideNotifications, hideOsNotifications, setHideOsNotifications, autoLoadTimecode, setAutoLoadTimecode, enableAutoHtml5ify, setEnableAutoHtml5ify, customFfPath, setCustomFfPath, storeProjectInWorkingDir, mouseWheelZoomModifierKey, setMouseWheelZoomModifierKey, mouseWheelFrameSeekModifierKey, setMouseWheelFrameSeekModifierKey, mouseWheelKeyframeSeekModifierKey, setMouseWheelKeyframeSeekModifierKey, segmentMouseModifierKey, setSegmentMouseModifierKey, captureFrameMethod, setCaptureFrameMethod, captureFrameQuality, setCaptureFrameQuality, captureFrameFileNameFormat, setCaptureFrameFileNameFormat, enableNativeHevc, setEnableNativeHevc, allowNetworkConnections, setAllowNetworkConnections, allowMultipleInstances, setAllowMultipleInstances, preferStrongColors, setPreferStrongColors, theme, setTheme, videoFit, setVideoFit, storeWindowBounds, setStoreWindowBounds, reducedMotion, setReducedMotion, ffmpegHwaccel, setFfmpegHwaccel } = useUserSettings();
 
   const onLangChange = useCallback<ChangeEventHandler<HTMLSelectElement>>((e) => {
     const { value } = e.target;
@@ -246,75 +243,6 @@ function Settings({
             </OutDirSelector>
           </td>
         </Row>
-
-        {showAdvancedSettings && (
-          <Row>
-            <KeyCell>{t('Set file modification date/time of output files to:')}</KeyCell>
-            <td>
-              <Select value={typeof treatOutputFileModifiedTimeAsStart === 'boolean' ? String(treatOutputFileModifiedTimeAsStart) : 'disabled'} onChange={(e) => setTreatOutputFileModifiedTimeAsStart(e.target.value === 'disabled' ? null : (e.target.value === 'true'))}>
-                <option value="disabled">{t('Current time')}</option>
-                <option value="true">{t('Source file\'s time plus segment start cut time')}</option>
-                <option value="false">{t('Source file\'s time minus segment end cut time')}</option>
-              </Select>
-            </td>
-          </Row>
-        )}
-
-        {showAdvancedSettings && (
-          <Row>
-            <KeyCell>{t('Treat source file modification date/time as:')}</KeyCell>
-            <td>
-              <Select disabled={treatOutputFileModifiedTimeAsStart == null} value={String(treatInputFileModifiedTimeAsStart)} onChange={(e) => setTreatInputFileModifiedTimeAsStart((e.target.value === 'true'))}>
-                <option value="true">{t('Start of video')}</option>
-                <option value="false">{t('End of video')}</option>
-              </Select>
-            </td>
-          </Row>
-        )}
-
-        <Row>
-          <KeyCell>
-            {t('Keyframe cut mode')}<br />
-            <div style={detailsStyle}>
-              {keyframeCut ? (
-                <>
-                  <b>{t('Keyframe cut')}</b>: {t('Cut at the preceding keyframe (not accurate time.) Equiv to')}:<br />
-                  <code className="highlighted">ffmpeg -ss N -i input.mp4</code>
-                </>
-              ) : (
-                <>
-                  <b>{t('Normal cut')}</b>: {t('Accurate time but could leave an empty portion at the beginning of the video. Equiv to')}:<br />
-                  <code className="highlighted">ffmpeg -i input -ss N</code>
-                </>
-              )}
-            </div>
-          </KeyCell>
-          <td>
-            <Switch checked={keyframeCut} onCheckedChange={() => toggleKeyframeCut()} />
-          </td>
-        </Row>
-
-        <Row>
-          <KeyCell>{t('Cleanup files after export?')}</KeyCell>
-          <td>
-            <Button onClick={askForCleanupChoices}><FaBroom style={{ verticalAlign: 'middle', marginRight: '.3em' }} />{t('Change preferences')}</Button>
-          </td>
-        </Row>
-
-        {showAdvancedSettings && (
-          <Row>
-            <KeyCell>
-              {t('Extract unprocessable tracks to separate files or discard them?')}<br />
-              <div style={detailsStyle}>
-                {t('(data tracks such as GoPro GPS, telemetry etc. are not copied over by default because ffmpeg cannot cut them, thus they will cause the media duration to stay the same after cutting video/audio)')}
-              </div>
-            </KeyCell>
-            <td>
-              <AutoExportToggler />
-            </td>
-          </Row>
-        )}
-
 
         <Header title={t('Snapshots and frame extraction')} />
 
