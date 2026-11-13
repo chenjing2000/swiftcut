@@ -1136,7 +1136,7 @@ function App() {
   const willMerge = segmentsToExport.length > 1 && autoMerge;
   const defaultLosslessDirectory = filePath == null ? '' : getMediaOutputDir(filePath, 'lossless');
   const losslessDirectory = filePath != null && losslessCustomDirectory?.source === filePath ? losslessCustomDirectory.value : defaultLosslessDirectory;
-  const losslessExtension = filePath == null ? 'mp4' : (getOutFileExtension({ outFormat: fileFormat ?? detectedFileFormat ?? 'mp4', filePath }) ?? (parsePath(filePath).ext ?? '.mp4')).replace(/^\./, '');
+  const losslessExtension = filePath == null ? 'mp4' : (getOutFileExtension({ isCustomFormatSelected, outFormat: fileFormat ?? detectedFileFormat ?? 'mp4', filePath }) ?? (parsePath(filePath).ext ?? '.mp4')).replace(/^\./, '');
   const defaultLosslessMode = (() => {
     if (segmentsToChaptersOnly) return 'chapters' as const;
     if (willMerge) return 'merge' as const;
