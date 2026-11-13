@@ -48,7 +48,7 @@ interface AudioJob {
 
 const jobs = new Map<string, AudioJob>();
 const MAX_RETAINED_COMPLETED_JOBS = 30;
-const validQualities = new Set<Mp3Quality>(['vbr', '320k', '192k']);
+const validQualities = new Set<Mp3Quality>(['vbr', '128k', '192k', '320k']);
 
 function getErrorCode(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error

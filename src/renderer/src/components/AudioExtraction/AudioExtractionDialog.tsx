@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import * as Dialog from '../Dialog';
 import actionStyles from '../OutputActionButtons.module.css';
 import chrome from '../OutputPanelChrome.module.css';
+import styles from './AudioExtractionDialog.module.css';
 import Checkbox from '../Checkbox';
 import type { FFprobeStream } from '../../../../common/ffprobe';
 import type { SegmentToExport } from '../../types';
@@ -36,10 +37,14 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   // its own default track without resetting the currently running job.
   const selectedStreamIndexes = trackSelection != null && trackSelection.source === filePath
     ? trackSelection.indexes : (streams[0] ? [streams[0].index] : []);
-  const [mode, setMode] = useState<AudioExtractionMode>('mp3');
+  const [mode, setMode] = useState<AudioExtractionMode>('original');
+  const [timeRange, setTimeRange] = useState<'selected' | 'entire'>(segments.length > 0 ? 'selected' : 'entire');
+  const [outputMode, setOutputMode] = useState<'merge' | 'separate'>('merge');
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
 
-  const { job, isStarting, isBusy, startExtraction, cancelExtraction, dismissJob } = useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments });
+  const effectiveSegments = timeRange === 'selected' ? segments : [];
+  const multiple = timeRange === 'selected' && segments.length > 1;
+  const { job, isStarting, isBusy, startExtraction, cancelExtraction, dismissJob } = useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments: effectiveSegments, outputMode });
 
   const isMp4 = useMemo(() => {
     const extensionIsMp4 = filePath?.toLowerCase().endsWith('.mp4') ?? false;
@@ -48,16 +53,15 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   }, [filePath, formatName]);
 
   const selectedCount = selectedStreamIndexes.length;
-  const segmentCount = Math.max(segments.length, 1);
-  const outputCount = selectedCount * segmentCount;
+  const segmentCount = Math.max(effectiveSegments.length, 1);
+  const outputCount = selectedCount * (multiple && outputMode === 'merge' ? 1 : segmentCount);
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && isStarting) return;
     onOpenChange(nextOpen);
   };
 
   const beginExtraction = async () => {
-    const started = await startExtraction();
-    if (started) onOpenChange(false);
+    await startExtraction();
   };
 
   const toggleStream = (streamIndex: number, checked: boolean) => {
@@ -114,13 +118,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 padding: '12px',
               }}
             >
-              <Dialog.Description>{t('Extract selected audio tracks from the selected segments of the currently opened MP4 file. Each track and segment combination will be saved as a separate audio file.')}</Dialog.Description>
-
-              <section style={{ marginBottom: '1.2em' }}>
-                <strong>{t('Input file')}</strong>
-                <div style={{ marginTop: '.35em', overflowWrap: 'anywhere' }}>{filePath ?? t('No media file opened')}</div>
-                {!isMp4 && <p style={{ color: 'var(--red-10)', marginBottom: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
-              </section>
+              {!isMp4 && <p role="alert" style={{ color: 'var(--red-10)', marginTop: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
 
               <section style={{ marginBottom: '1.2em' }}>
                 <strong>{t('Audio tracks')}</strong>
@@ -145,42 +143,34 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 )}
               </section>
 
-              <section style={{ marginBottom: '1.2em' }}>
-                <strong>{t('Output mode')}</strong>
-                <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-                  <label htmlFor="audio-extraction-mode-original" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                    <input id="audio-extraction-mode-original" type="radio" name="audio-extraction-mode" value="original" checked={mode === 'original'} disabled={isBusy} onChange={() => setMode('original')} />
-                    {t('Original (no re-encoding)')}
-                  </label>
-                  <label htmlFor="audio-extraction-mode-mp3" style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                    <input id="audio-extraction-mode-mp3" type="radio" name="audio-extraction-mode" value="mp3" checked={mode === 'mp3'} disabled={isBusy} onChange={() => setMode('mp3')} />
-                    {t('MP3 (re-encode)')}
-                  </label>
-                </div>
-                {mode === 'original' && (
-                  <p style={{ color: 'var(--gray-11)', fontSize: '.9em', marginBottom: 0 }}>
-                    {t('Original mode copies each selected audio stream without decoding or re-encoding. The output container is selected automatically from the source codec. Segment boundaries may align to audio packet boundaries.')}
-                  </p>
-                )}
-              </section>
-
-              <section style={{ marginBottom: '1.2em', opacity: mode === 'original' ? 0.5 : 1 }}>
-                <strong>{t('MP3 quality')}</strong>
-                <div style={{ display: 'grid', gap: '.5em', marginTop: '.6em' }}>
-                  {([
-                    ['vbr', t('VBR (LAME Quality 2) — Recommended')],
-                    ['320k', '320 kbps'],
-                    ['192k', '192 kbps'],
-                  ] as const).map(([value, label]) => {
-                    const inputId = `audio-extraction-quality-${value}`;
-                    return (
-                      <label key={value} htmlFor={inputId} style={{ display: 'flex', alignItems: 'center', gap: '.55em' }}>
-                        <input id={inputId} type="radio" name="audio-extraction-quality" value={value} checked={quality === value} disabled={mode === 'original' || isBusy} onChange={() => setQuality(value)} />
-                        {label}
-                      </label>
-                    );
-                  })}
-                </div>
+              <section style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: '1.2em' }}>
+                <strong>{t('Export')}</strong>
+                <label className={styles['row']} htmlFor="audio-time-range"><span>{t('Time range')}</span>
+                  <select id="audio-time-range" value={timeRange} disabled={isBusy} onChange={(event) => setTimeRange(event.target.value as 'selected' | 'entire')}>
+                    <option value="selected" disabled={segments.length === 0}>{t('Selected segments')}</option>
+                    <option value="entire">{t('Entire video')}</option>
+                  </select>
+                </label>
+                <label className={styles['row']} htmlFor="audio-output-mode"><span>{t('Output mode')}</span>
+                  <select id="audio-output-mode" value={outputMode} disabled={!multiple || isBusy} onChange={(event) => setOutputMode(event.target.value as 'merge' | 'separate')}>
+                    <option value="merge">{t('Merge into one file')}</option>
+                    <option value="separate">{t('Export separately')}</option>
+                  </select>
+                </label>
+                <label className={styles['row']} htmlFor="audio-output-format"><span>{t('Output format')}</span>
+                  <select id="audio-output-format" value={mode} disabled={isBusy} onChange={(event) => setMode(event.target.value as AudioExtractionMode)}>
+                    <option value="original">{t('Original format')}</option>
+                    <option value="mp3">{t('MP3 (re-encode)')}</option>
+                  </select>
+                </label>
+                <label className={styles['row']} htmlFor="audio-mp3-quality"><span>{t('MP3 quality')}</span>
+                  <select id="audio-mp3-quality" value={quality} disabled={mode === 'original' || isBusy} onChange={(event) => setQuality(event.target.value as Mp3Quality)}>
+                    <option value="vbr">{t('VBR (LAME Quality 2)')}</option>
+                    <option value="128k">128 kbps</option>
+                    <option value="192k">192 kbps</option>
+                    <option value="320k">320 kbps</option>
+                  </select>
+                </label>
               </section>
 
               <section style={{ marginBottom: '1em' }}>
@@ -192,11 +182,11 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                     outputs: outputCount,
                   })}
                 </p>
-                {segments.length === 0 ? (
+                {effectiveSegments.length === 0 ? (
                   <div>{t('Entire video')}</div>
                 ) : (
                   <div style={{ maxHeight: '8em', overflowY: 'auto', paddingLeft: '1.5em' }}>
-                    {segments.map((segment, index) => (
+                    {effectiveSegments.map((segment, index) => (
                       <div key={`${segment.originalIndex}-${segment.start}-${segment.end}`}>
                         {t('Segment {{number}}', { number: index + 1 })}: {formatTime(segment.start)} – {formatTime(segment.end)}
                       </div>
@@ -216,7 +206,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               >
                 {t('Cancel')}
               </button>
-              <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={() => { beginExtraction().catch(console.error); }}>{t('Extract')}</button>
+              <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (timeRange === 'selected' && segments.length === 0)} onClick={() => { beginExtraction().catch(console.error); }}>{t('Extract')}</button>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

@@ -11,10 +11,11 @@ interface Params {
   mode: AudioExtractionMode;
   quality: Mp3Quality;
   segments: SegmentToExport[];
+  outputMode: 'merge' | 'separate';
 }
 
 /** Keeps extraction lifecycle and polling out of the settings presentation. */
-export default function useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments }: Params) {
+export default function useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments, outputMode }: Params) {
   const { t } = useTranslation();
   const [job, setJob] = useState<AudioJobStatus>();
   const [isStarting, setIsStarting] = useState(false);
@@ -90,6 +91,7 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
         mode,
         streamIndexes: selectedStreamIndexes,
         quality,
+        outputMode,
         segments: segments.map(({ start, end }) => ({ start, end })),
       });
       setJob({

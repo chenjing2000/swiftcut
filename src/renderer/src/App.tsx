@@ -1215,7 +1215,7 @@ function App() {
       }
 
       setStreamsSelectorShown(false);
-      setExportConfirmOpen(false);
+      // Keep export settings visible while the job progresses, just like Crop Video.
       losslessCancelRequestedRef.current = false;
       losslessFinalizingRef.current = false;
       exportStarted = true;

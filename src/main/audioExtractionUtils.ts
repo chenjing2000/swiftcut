@@ -1,4 +1,4 @@
-export type Mp3Quality = 'vbr' | '320k' | '192k';
+export type Mp3Quality = 'vbr' | '128k' | '192k' | '320k';
 
 export type AudioExtractionMode = 'original' | 'mp3';
 
