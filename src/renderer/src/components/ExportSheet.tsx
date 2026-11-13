@@ -1,10 +1,9 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import styles from './ExportSheet.module.css';
-import CloseButton from './CloseButton';
 
-// TODO use Dialog component instead, but we need to first remove usage of sweetalert2 inside export confirm because they don't play well together
 function ExportSheet({
   visible,
   children,
@@ -13,67 +12,81 @@ function ExportSheet({
   onClosePress,
   title,
   width,
-} : {
+}: {
   visible: boolean,
   renderBottom?: (() => ReactNode | null) | undefined,
-  renderButton: (() => ReactNode | null),
+  renderButton: () => ReactNode | null,
   children: ReactNode,
   onClosePress: () => void,
   title: string,
   width: CSSProperties['width'],
 }) {
-  // https://stackoverflow.com/questions/33454533/cant-scroll-to-top-of-flex-item-that-is-overflowing-container
+  const { t } = useTranslation();
+  const [position, setPosition] = useState<{ left: number; top: number }>();
+  const dragRef = useRef<{ x: number; y: number; left: number; top: number }>();
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const clampPosition = useCallback((left: number, top: number) => {
+    const widthValue = panelRef.current?.offsetWidth ?? 380;
+    const heightValue = panelRef.current?.offsetHeight ?? 300;
+    return {
+      left: Math.max(8, Math.min(left, window.innerWidth - widthValue - 8)),
+      top: Math.max(8, Math.min(top, window.innerHeight - heightValue - 8)),
+    };
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setPosition((current) => current == null ? current : clampPosition(current.left, current.top));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [clampPosition]);
+
+  const onHeaderPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
+    const bounds = panelRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    dragRef.current = { x: event.clientX, y: event.clientY, left: bounds.left, top: bounds.top };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, []);
+
+  const onHeaderPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    setPosition(clampPosition(drag.left + event.clientX - drag.x, drag.top + event.clientY - drag.y));
+  }, [clampPosition]);
+
+  if (!visible) return null;
+
   return (
-    <>
-      <AnimatePresence>
-        {visible && (
-          <motion.div
-            key="0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={styles['sheet']}
-            transition={{ duration: 0.3, ease: ['easeOut'] }}
-          >
-            <div className={styles['box']} style={{ width }}>
-              <h1 style={{ fontSize: '1.4em', marginTop: 0, marginBottom: '.5em' }}>{title}</h1>
-
-              <CloseButton type="submit" style={{ top: 0, right: 0 }} onClick={onClosePress} />
-
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {visible && (
-          <div key="0" style={{ position: 'fixed', right: 0, bottom: 0, display: 'flex', alignItems: 'center', margin: 5 }}>
-            {renderBottom != null && (
-              <motion.div
-                initial={{ opacity: 0, translateX: 50 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: 50 }}
-                transition={{ duration: 0.4, ease: ['easeOut'] }}
-                style={{ display: 'flex', alignItems: 'flex-end', background: 'var(--gray-2)', borderRadius: '.5em', padding: '.3em' }}
-              >
-                {renderBottom?.()}
-              </motion.div>
-            )}
-
-            <motion.div
-              style={{ transformOrigin: 'bottom right' }}
-              initial={{ scale: 0.7, opacity: 1 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.7, opacity: 0 }}
-              transition={{ duration: 0.4, ease: ['easeOut'] }}
-            >
-              {renderButton()}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </>
+    <div
+      ref={panelRef}
+      className={styles['panel']}
+      role="dialog"
+      aria-modal="false"
+      aria-label={title}
+      style={{
+        width,
+        ...(position == null ? { top: 8, right: 8 } : { top: position.top, left: position.left }),
+      }}
+    >
+      <div
+        className={styles['heading']}
+        onPointerDown={onHeaderPointerDown}
+        onPointerMove={onHeaderPointerMove}
+        onPointerUp={() => { dragRef.current = undefined; }}
+        onPointerCancel={() => { dragRef.current = undefined; }}
+        onLostPointerCapture={() => { dragRef.current = undefined; }}
+      >
+        <strong>{title}</strong>
+        <button type="button" onClick={onClosePress} aria-label={t('Close')}>×</button>
+      </div>
+      <div className={styles['contents']}>{children}</div>
+      <div className={styles['footer']}>
+        {renderBottom?.()}
+        <button type="button" onClick={onClosePress}>{t('Cancel')}</button>
+        {renderButton()}
+      </div>
+    </div>
   );
 }
 
