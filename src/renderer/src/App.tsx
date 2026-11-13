@@ -49,6 +49,7 @@ import OutputFormatSelect from './components/OutputFormatSelect';
 import AudioExtractionDialog from './components/AudioExtraction/AudioExtractionDialog';
 import VideoCropWorkspace from './components/VideoCrop/VideoCropWorkspace';
 import CropExportProgress from './components/VideoCrop/CropExportProgress';
+import LosslessExportProgress from './components/LosslessExportProgress';
 import { createCropExportPlan } from './videoCropExportPlanner';
 import { assertOutputFilename, getMediaOutputDir, getMediaOutputName, getSourceStem } from '../../common/mediaWorkspace.js';
 import { commitMediaOutputs } from './util/commitMediaOutputs';
@@ -70,7 +71,7 @@ import {
   getTimecodeFromStreams, createChaptersFromSegments,
   RefuseOverwriteError, extractSubtitleTrackToSegments,
   mapRecommendedDefaultFormat,
-  getFfCommandLine,
+  getFfCommandLine, abortFfmpegs,
 } from './ffmpeg';
 import { shouldCopyStreamByDefault, getAudioStreams, getRealVideoStreams, isAudioDefinitelyNotSupported, willPlayerProperlyHandleVideo, doesPlayerSupportHevcPlayback, getSubtitleStreams, enableVideoTrack, enableAudioTrack, canHtml5PlayerPlayStreams, isMatroska } from './util/streams';
 import { needsHvc1Tag } from './util/metadata';
@@ -180,6 +181,8 @@ function App() {
   const [activeSubtitleStreamIndex, setActiveSubtitleStreamIndex] = useState<number>();
   const [hideCompatPlayer, setHideCompatPlayer] = useState(false);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
+  const [losslessExportState, setLosslessExportState] = useState<'running' | 'cancelling' | 'cancelled'>();
+  const losslessCancelRequestedRef = useRef(false);
   const [losslessCustomDirectory, setLosslessCustomDirectory] = useState<{ source: string, value: string }>();
   const [losslessCustomFilename, setLosslessCustomFilename] = useState<{ source: string, value: string }>();
   const [cacheBuster, setCacheBuster] = useState(0);
@@ -1166,6 +1169,13 @@ function App() {
     if (rate != null) setOutputPlaybackRate(rate);
   }, [detectedFps, outputPlaybackRate, setOutputPlaybackRate]);
 
+  const cancelLosslessExport = useCallback(() => {
+    if (losslessExportState !== 'running') return;
+    losslessCancelRequestedRef.current = true;
+    setLosslessExportState('cancelling');
+    abortFfmpegs();
+  }, [losslessExportState]);
+
   const onExportConfirm = useCallback(async () => {
     invariant(filePath != null && outputDir != null);
     let temporaryLosslessDir: string | undefined;
@@ -1202,7 +1212,12 @@ function App() {
 
       setStreamsSelectorShown(false);
       setExportConfirmOpen(false);
+      losslessCancelRequestedRef.current = false;
+      setLosslessExportState('running');
       setWorking({ text: i18n.t('Exporting') });
+      const assertNotCancelled = () => {
+        if (losslessCancelRequestedRef.current) throw new DOMException('Lossless export cancelled', 'AbortError');
+      };
       temporaryLosslessDir = pathJoin(losslessDirectory, '.swiftcut-lossless-tmp', window.crypto.randomUUID());
       await mkdir(temporaryLosslessDir, { recursive: true });
 
@@ -1240,6 +1255,7 @@ function App() {
         chapters: chaptersToAdd,
         detectedFps,
       });
+      assertNotCancelled();
 
       let mergedOutFilePath: string | undefined;
 
@@ -1260,6 +1276,7 @@ function App() {
           preserveMetadataOnMerge,
           mergedOutFilePath,
         });
+        assertNotCancelled();
 
         // don't delete existing files that were not created by SwiftCut now (due to overwrite disabled) https://github.com/mifi/lossless-cut/issues/2436
         const createdOutFiles = outFiles.flatMap((f) => (f.created ? [f.path] : []));
@@ -1286,6 +1303,7 @@ function App() {
         }
       }
 
+      assertNotCancelled();
       const outputsToCommit = [
         ...(!willMerge || !autoDeleteMergedSegments ? outFiles.map((file, index) => ({
           temporaryPath: file.path,
@@ -1294,6 +1312,7 @@ function App() {
         ...(willMerge && mergedOutFilePath != null ? [{ temporaryPath: mergedOutFilePath, requestedName: losslessFilename }] : []),
         ...extraPaths.map((path) => ({ temporaryPath: path, requestedName: basename(path) })),
       ];
+      assertNotCancelled();
       const committedPaths = await commitMediaOutputs({ outputDir: losslessDirectory, outputs: outputsToCommit });
       if (willMerge) mergedOutFilePath = committedPaths[autoDeleteMergedSegments ? 0 : outFiles.length];
 
@@ -1322,7 +1341,10 @@ function App() {
     } catch (err) {
       emitEvent({ eventName: 'export-complete' });
 
-      if (isAbortedError(err)) return;
+      if (losslessCancelRequestedRef.current || isAbortedError(err)) {
+        losslessCancelRequestedRef.current = true;
+        return;
+      }
 
       showOsNotification(i18n.t('Failed to export'));
 
@@ -1353,6 +1375,7 @@ function App() {
       handleExportFailed(err);
     } finally {
       if (temporaryLosslessDir != null) await rm(temporaryLosslessDir, { recursive: true, force: true }).catch(console.error);
+      setLosslessExportState(losslessCancelRequestedRef.current ? 'cancelled' : undefined);
       setWorking(undefined);
       setProgress(undefined);
     }
@@ -2983,7 +3006,16 @@ function App() {
 
                 {/* This should probably be last, so that it's always on top */}
                 <AnimatePresence>
-                  {working && <Working text={working.text} progress={progress} onAbortClick={abortWorking} />}
+                  {working && !losslessExportState && <Working text={working.text} progress={progress} onAbortClick={abortWorking} />}
+                  {losslessExportState && (
+                    <LosslessExportProgress
+                      state={losslessExportState}
+                      text={working?.text ?? i18n.t('Exporting')}
+                      progress={progress}
+                      onCancel={cancelLosslessExport}
+                      onDismiss={() => setLosslessExportState(undefined)}
+                    />
+                  )}
                 </AnimatePresence>
 
                 <GenericDialog dialog={genericDialog} onOpenChange={(open) => !open && closeGenericDialog()} />
