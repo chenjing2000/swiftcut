@@ -356,7 +356,7 @@ function ExportConfirm({
               {renderNotice(notices.specific['exportMode'])}
             </td>
             <td>
-              <ExportModeButton selectedSegments={segmentsOrInverse.selected} style={{ height: '1.8em' }} />
+              <ExportModeButton selectedSegments={segmentsOrInverse.selected} style={{ width: 150, maxWidth: '100%' }} />
             </td>
             <td>
               {renderNoticeIcon(notices.specific['exportMode'], rightIconStyle) ?? <HelpIcon onClick={onExportModeHelpPress} />}
@@ -368,7 +368,7 @@ function ExportConfirm({
               {t('Output container format:')}
             </td>
             <td>
-              {renderOutFmt({ height: '1.8em', maxWidth: 150 })}
+              {renderOutFmt({ width: 150, maxWidth: '100%' })}
             </td>
             <td>
               <HelpIcon onClick={onOutFmtHelpPress} />
