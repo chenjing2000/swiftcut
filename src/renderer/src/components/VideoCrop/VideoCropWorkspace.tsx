@@ -247,6 +247,9 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
+      // A different floating dialog owns its keyboard events while it is focused.
+      const otherDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
+      if (otherDialog && otherDialog !== panelRef.current) return;
       if (panelDragRef.current && event.key === 'Escape') {
         stopPanelDrag(undefined, true);
         event.preventDefault();
