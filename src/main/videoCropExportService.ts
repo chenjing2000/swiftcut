@@ -9,7 +9,7 @@ import { buildCropFfmpegArgs } from './videoCropFfmpegArgs.js';
 import { buildCropConcatArgs, buildCropConcatList } from './videoCropConcat.js';
 import logger from './logger.js';
 
-export type CropExportState = 'preparing' | 'encoding' | 'merging' | 'verifying' | 'committing' | 'success' | 'failed' | 'cancelled';
+export type CropExportState = 'preparing' | 'encoding' | 'merging' | 'verifying' | 'committing' | 'cleaning' | 'success' | 'partial_success' | 'failed' | 'cancelled';
 
 export interface CropExportStatus {
   id: string;
@@ -20,11 +20,14 @@ export interface CropExportStatus {
   completedSegments?: number;
   totalSegments?: number;
   error?: string;
+  interruption?: 'cancelled' | 'failed';
+  cleanupWarning?: string;
 }
 
 interface CropJob {
   status: CropExportStatus;
   cancelled: boolean;
+  acceptingCancellation: boolean;
   cancelProcess?: () => void;
 }
 
@@ -40,7 +43,7 @@ function assertNotCancelled(job: CropJob) {
 }
 
 function pruneJobs() {
-  const completed = [...jobs].filter(([, job]) => ['success', 'failed', 'cancelled'].includes(job.status.state));
+  const completed = [...jobs].filter(([, job]) => ['success', 'partial_success', 'failed', 'cancelled'].includes(job.status.state));
   const excess = completed.slice(0, Math.max(0, completed.length - MAX_COMPLETED));
   for (const [id] of excess) jobs.delete(id);
 }
@@ -52,7 +55,7 @@ export function getCropExportStatus(id: string): CropExportStatus | undefined {
 
 export function cancelCropExport(id: string): void {
   const job = jobs.get(id);
-  if (job && !['success', 'failed', 'cancelled'].includes(job.status.state)) {
+  if (job?.acceptingCancellation) {
     job.cancelled = true;
     job.cancelProcess?.();
   }
@@ -156,6 +159,7 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
   const job: CropJob = {
     status: { id, state: 'preparing', progress: 0, outputPaths: [], completedSegments: 0, totalSegments: plan.tasks.length },
     cancelled: false,
+    acceptingCancellation: true,
   };
   pruneJobs();
   jobs.set(id, job);
@@ -225,6 +229,8 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
         for (const item of encoded) {
           assertNotCancelled(job);
           const outputPath = await commitWithoutOverwrite(item.path, plan.outputDir, item.task.outputName);
+          // Record every committed file immediately, including when cancellation
+          // arrives during the asynchronous filesystem operation.
           job.status.outputPaths!.push(outputPath);
           finalOutput ??= outputPath;
           job.status.progress = 0.9 + (job.status.outputPaths!.length / encoded.length) * 0.1;
@@ -232,20 +238,42 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
       }
       if (finalOutput == null) throw new Error('Crop export produced no output');
       job.status.outputPath = finalOutput;
-      job.status.progress = 1;
-      job.status.state = 'success';
+      // Once every output is committed, cancellation must not turn a successful
+      // export into a reported failure while its temporary directory is cleaned.
+      job.acceptingCancellation = false;
     } catch (error) {
       if (job.cancelled) {
-        job.status.state = 'cancelled';
+        job.status.interruption = 'cancelled';
+        job.status.error = 'Crop export cancelled';
       } else {
-        job.status.state = 'failed';
+        job.status.interruption = 'failed';
         job.status.error = error instanceof Error ? error.message : String(error);
         logger.error('Crop video export failed', error);
       }
     } finally {
+      // The renderer must never see a terminal state before temporary files
+      // have been cleaned (or a cleanup failure has been reported).
+      job.acceptingCancellation = false;
       delete job.cancelProcess;
-      await rm(workDir, { recursive: true, force: true })
-        .catch((error: unknown) => logger.warn('Failed to clean crop export temporary directory', error));
+      job.status.state = 'cleaning';
+      try {
+        await rm(workDir, { recursive: true, force: true });
+      } catch (error) {
+        job.status.cleanupWarning = error instanceof Error ? error.message : String(error);
+        logger.warn('Failed to clean crop export temporary directory', error);
+        if (!job.status.interruption) {
+          job.status.interruption = 'failed';
+          job.status.error = 'Crop export finished, but temporary file cleanup failed';
+        }
+      }
+      const committed = job.status.outputPaths?.length ?? 0;
+      if (job.status.interruption) {
+        job.status.state = committed > 0 ? 'partial_success'
+          : (job.status.interruption === 'cancelled' ? 'cancelled' : 'failed');
+      } else {
+        job.status.state = 'success';
+        job.status.progress = 1;
+      }
     }
   };
   run().catch((error: unknown) => {
