@@ -459,6 +459,12 @@ export default ({ app, mainWindow, isStoreBuild, openExternal }: {
             mainWindow.webContents.send('cropVideo');
           },
         },
+        {
+          label: esc(t('Export Video')),
+          click() {
+            mainWindow.webContents.send('openLosslessExport');
+          },
+        },
       ],
     },
     {
