@@ -27,9 +27,6 @@ import ExportSheet from './ExportSheet';
 import LosslessOutputFields from './LosslessOutputFields';
 import type { LossyMode } from '../../../main';
 import AnimatedTr from './AnimatedTr';
-import type { Frame } from '../ffmpeg';
-import type { FindNearestKeyframeTime } from '../hooks/useKeyframes';
-import { troubleshootingUrl } from '../../../common/constants';
 import mainApi from '../mainApi';
 
 
@@ -43,7 +40,7 @@ const HelpIcon = ({ onClick, style }: { onClick: () => void, style?: CSSProperti
 function ShiftTimes({ values, num, setNum }: { values: number[], num: number, setNum: (n: number) => void }) {
   const { t } = useTranslation();
   return (
-    <Select value={num} onChange={(e) => setNum(Number(e.target.value))} style={{ height: 20, marginLeft: 5 }}>
+    <Select value={num} onChange={(e) => setNum(Number(e.target.value))} style={{ marginLeft: 0 }}>
       {values.map((v) => <option key={v} value={v}>{t('{{numFrames}} frames', { numFrames: v >= 0 ? `+${v}` : v, count: v })}</option>)}
     </Select>
   );
@@ -137,8 +134,6 @@ function ExportConfirm({
   setEncBitrate,
   outputPlaybackRate,
   lossyMode,
-  neighbouringKeyFrames,
-  findNearestKeyFrameTime,
 } : {
   areWeCutting: boolean,
   segmentsToExport: SegmentToExport[],
@@ -168,8 +163,6 @@ function ExportConfirm({
   setEncBitrate: Dispatch<SetStateAction<number | undefined>>,
   outputPlaybackRate: number,
   lossyMode: LossyMode | undefined,
-  neighbouringKeyFrames: Frame[],
-  findNearestKeyFrameTime: FindNearestKeyframeTime,
 }) {
   const { t } = useTranslation();
 
@@ -188,17 +181,6 @@ function ExportConfirm({
 
   // some thumbnail streams (png,jpg etc) cannot always be cut correctly, so we warn if they try to.
   const areWeCuttingProblematicStreams = areWeCutting && mainCopiedThumbnailStreams.length > 0;
-
-  const haveSegmentWithProblematicKeyframe = useMemo(() => {
-    if (neighbouringKeyFrames.length === 0) return false; // we don't know
-    return segmentsToExport.some(({ start, end }) => {
-      const nearestPreviousKeyframeTime = findNearestKeyFrameTime({ time: start, direction: -1 }) ?? 0;
-      const segmentDuration = end - start;
-      const estimatedExportedSegmentDuration = end - nearestPreviousKeyframeTime;
-      // if estimated actual output length of segment is more than 1.5 times the intended segment duration, then we consider it problematic and warn the user about it.
-      return estimatedExportedSegmentDuration > segmentDuration * 1.5;
-    });
-  }, [neighbouringKeyFrames.length, segmentsToExport, findNearestKeyFrameTime]);
 
   const notices = useMemo(() => {
     const specific: Record<'exportMode' | 'problematicStreams' | 'movFastStart' | 'preserveMovData' | 'smartCut' | 'cutMode' | 'avoidNegativeTs', Notice | undefined> = {
@@ -244,9 +226,6 @@ function ExportConfirm({
       if (outputPlaybackRate !== 1) {
         generic.push({ warning: true, text: t('Adjusting the output FPS and cutting at the same time will cause incorrect cuts. Consider instead doing it in two separate steps.') });
       }
-      if (keyframesEnabled && haveSegmentWithProblematicKeyframe) {
-        generic.push({ warning: true, text: t('A segment may result in an unexpectedly long output file length after exporting, because your video file doesn\'t have any keyframes near the start time of the segment you\'re trying to cut.'), url: troubleshootingUrl });
-      }
     }
 
     return {
@@ -254,7 +233,7 @@ function ExportConfirm({
       specific,
       totalNum: generic.filter((n) => n.warning).length + Object.values(specific).filter((n) => n?.warning).length,
     };
-  }, [effectiveExportMode, areWeCuttingProblematicStreams, mainCopiedThumbnailStreams, isMov, isIpod, movFastStart, t, preserveMovData, areWeCutting, needSmartCut, isEncoding, keyframeCut, simpleMode, willMerge, avoidNegativeTs, outFormat, outputPlaybackRate, keyframesEnabled, haveSegmentWithProblematicKeyframe, hvc1NeededStreams]);
+  }, [effectiveExportMode, areWeCuttingProblematicStreams, mainCopiedThumbnailStreams, isMov, isIpod, movFastStart, t, preserveMovData, areWeCutting, needSmartCut, isEncoding, keyframeCut, simpleMode, willMerge, avoidNegativeTs, outFormat, outputPlaybackRate, hvc1NeededStreams]);
 
   const exportModeDescription = useMemo(() => ({
     segments_to_chapters: t('Don\'t cut the file, but instead export an unmodified original which has chapters generated from segments'),
@@ -425,7 +404,7 @@ function ExportConfirm({
 
       <h3 style={{ marginBottom: '.5em' }}>{t('Advanced options')}</h3>
 
-      <table className={styles['options']}>
+      <table className={`${styles['options']} ${styles['advancedOptions']}`}>
         <tbody>
           <tr>
             <td style={{ paddingTop: '.5em', color: 'var(--gray-11)', fontSize: '.9em' }} colSpan={2}>
@@ -518,7 +497,7 @@ function ExportConfirm({
                   {t('Preserve metadata')}
                 </td>
                 <td>
-                  <Select value={preserveMetadata} onChange={(e) => setPreserveMetadata(e.target.value as PreserveMetadata)} style={{ height: 20, marginLeft: 5 }}>
+                  <Select value={preserveMetadata} onChange={(e) => setPreserveMetadata(e.target.value as PreserveMetadata)} style={{ marginLeft: 0 }}>
                     <option value={'default' satisfies PreserveMetadata}>{t('Default')}</option>
                     <option value={'none' satisfies PreserveMetadata}>{t('None')}</option>
                     <option value={'nonglobal' satisfies PreserveMetadata}>{t('Non-global')}</option>
@@ -630,7 +609,7 @@ function ExportConfirm({
                     {renderNotice(notices.specific['avoidNegativeTs'])}
                   </td>
                   <td>
-                    <Select value={avoidNegativeTs} onChange={(e) => setAvoidNegativeTs(e.target.value as AvoidNegativeTs)} style={{ height: 20, marginLeft: 5 }}>
+                    <Select value={avoidNegativeTs} onChange={(e) => setAvoidNegativeTs(e.target.value as AvoidNegativeTs)} style={{ marginLeft: 0 }}>
                       <option value={'auto' satisfies AvoidNegativeTs}>auto</option>
                       <option value={'make_zero' satisfies AvoidNegativeTs}>make_zero</option>
                       <option value={'make_non_negative' satisfies AvoidNegativeTs}>make_non_negative</option>
