@@ -66,7 +66,7 @@ function ExportSheet({
       aria-label={title}
       style={{
         width,
-        ...(position == null ? { top: 8, right: 8 } : { top: position.top, left: position.left }),
+        ...(position == null ? { top: 48, right: 16 } : { top: position.top, left: position.left }),
       }}
     >
       <div

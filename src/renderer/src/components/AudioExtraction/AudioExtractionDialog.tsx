@@ -225,6 +225,9 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         <Dialog.Content
           style={{
             width: '380px',
+            left: 'max(8px, calc(100% - 396px))',
+            top: '48px',
+            transform: 'none',
             minWidth: 'min(320px, calc(100vw - 16px))',
             maxWidth: 'min(380px, calc(100vw - 16px))',
             fontSize: '13px',
@@ -238,7 +241,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           onInteractOutside={(event) => event.preventDefault()}
         >
           <div style={{ flex: '0 0 auto' }}>
-            <Dialog.Title>{t('Extract Audio')}</Dialog.Title>
+            <Dialog.Title>{t('Extract Audio Settings')}</Dialog.Title>
           </div>
           <div
             style={{
@@ -385,8 +388,8 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           <div style={{ flex: '0 0 auto' }}>
             <Dialog.ButtonRow>
               {job?.state === 'running' && <DialogButton onClick={cancelExtraction}>{t('Cancel extraction')}</DialogButton>}
-              <DialogButton disabled={isBusy} onClick={() => handleOpenChange(false)}>{t('Cancel')}</DialogButton>
               <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract')}</DialogButton>
+              <DialogButton disabled={isBusy} onClick={() => handleOpenChange(false)}>{t('Cancel')}</DialogButton>
             </Dialog.ButtonRow>
           </div>
           <Dialog.CloseButton />

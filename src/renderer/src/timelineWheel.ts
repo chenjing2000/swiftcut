@@ -47,5 +47,6 @@ export function getTimelineWheelAction({ pixelX, pixelY, modifiers, isPinch, whe
 
   if (isPressed(mouseWheelFrameSeekModifierKey)) return { type: 'frameSeek', direction: unit };
   if (isPressed(mouseWheelKeyframeSeekModifierKey)) return { type: 'keyframeSeek', direction: unit };
-  return { type: 'seek', amount: direction * delta * wheelSensitivity * 0.2 };
+  // Unmodified wheel scrolling must not seek the video timeline.
+  return { type: 'none' };
 }

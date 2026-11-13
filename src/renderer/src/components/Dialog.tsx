@@ -20,7 +20,7 @@ export const Content = forwardRef<HTMLDivElement, Dialog.DialogContentProps>(({ 
       ref={ref}
       {...props}
       className={[styles['DialogContent'], className].filter(Boolean).join(' ')}
-      style={{ ...style, left: `calc(50% + ${offset.x}px)`, top: `calc(50% + ${offset.y}px)` }}
+      style={{ ...style, left: `calc(${style?.left ?? '50%'} + ${offset.x}px)`, top: `calc(${style?.top ?? '50%'} + ${offset.y}px)` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
