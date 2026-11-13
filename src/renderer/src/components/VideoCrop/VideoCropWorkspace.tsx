@@ -13,7 +13,7 @@ import type { CropSourceSegment } from '../../videoCropSegments';
 import styles from './VideoCropWorkspace.module.css';
 import chrome from '../OutputPanelChrome.module.css';
 import useOutputPanelDrag from '../useOutputPanelDrag';
-import { activateOutputPanel, isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
+import { isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
 import actionStyles from '../OutputActionButtons.module.css';
 
 interface Props {
@@ -333,7 +333,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   return (
     <>
       {previewMode === 'edit' && (
-        <div className={styles['overlay']}>
+        <div className={styles['overlay']} data-output-panel="crop">
           <div
             ref={surfaceRef}
             className={styles['surface']}
@@ -343,7 +343,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               width: layout.drawnWidth,
               height: layout.drawnHeight,
             }}
-            onPointerDownCapture={() => activateOutputPanel('crop')}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -379,8 +378,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           aria-label={t('Crop Video Settings')}
           data-output-panel="crop"
           className={`${chrome['panel']} ${styles['panel']}`}
-          onPointerDownCapture={() => activateOutputPanel('crop')}
-          onFocusCapture={() => activateOutputPanel('crop')}
           style={{ left: panelPosition.left, top: panelPosition.top, visibility: fullscreen ? 'hidden' : undefined, pointerEvents: fullscreen ? 'none' : undefined }}
           onPointerDown={() => setFocused(false)}
         >
