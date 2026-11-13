@@ -2847,9 +2847,6 @@ function App() {
                     setZoom={zoomAbs}
                     timelineToggleComfortZoom={timelineToggleComfortZoom}
                     hasVideo={hasVideo}
-                    isRotationSet={isRotationSet}
-                    rotation={rotation}
-                    increaseRotation={increaseRotation}
                     cleanupFilesDialog={cleanupFilesDialog}
                     captureSnapshot={captureSnapshot}
                     seekAbs={seekAbs}
@@ -2877,12 +2874,9 @@ function App() {
                     hasAudio={hasAudio}
                     keyframesEnabled={keyframesEnabled}
                     toggleShowKeyframes={toggleShowKeyframes}
-                    detectedFps={detectedFps}
                     toggleLoopSelectedSegments={toggleLoopSelectedSegments}
                     isFileOpened={isFileOpened}
                     darkMode={darkMode}
-                    outputPlaybackRate={outputPlaybackRate}
-                    setOutputPlaybackRate={setOutputPlaybackRate}
                     formatTimecode={formatTimecode}
                     parseTimecode={parseTimecode}
                     playbackRate={playbackRate}
