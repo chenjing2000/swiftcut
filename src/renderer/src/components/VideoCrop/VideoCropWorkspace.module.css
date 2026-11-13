@@ -23,7 +23,6 @@
 .resizeRow .radio { margin-right: auto; }
 .resizeRow .numberField { width: 74px; gap: 3px; }
 .resizeRow .numberField input { width: 100%; }
-.footer { padding-top: 8px; }
 .previewRow { display: flex; gap: 4px; }
 .previewRow button { flex: 1; border: 1px solid var(--gray-7); border-radius: 5px; padding: 5px; }
 .previewRow button[aria-pressed="true"] { background: var(--accent-5); border-color: var(--accent-9); }
