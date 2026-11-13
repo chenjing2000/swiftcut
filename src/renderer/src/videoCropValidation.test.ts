@@ -21,18 +21,30 @@ describe('Crop Video validation', () => {
         rect: { x: 0, y: 0, width: 100, height: 100 },
         aspectPreset: 'free',
         output: {
-          resize: false, width: 100, height: 100, lockAspect: true,
-          quality: 'high', encoder: 'libx264', crf: 18, preset: 'medium',
-          pixelFormat: 'yuv420p', format: 'mp4', keepAudio: false,
-          timeRange: 'entire', outputMode: 'merge',
+          resize: false,
+          width: 100,
+          height: 100,
+          lockAspect: true,
+          quality: 'high',
+          encoder: 'libx264',
+          crf: 18,
+          preset: 'medium',
+          pixelFormat: 'yuv420p',
+          format: 'mp4',
+          keepAudio: false,
+          timeRange: 'entire',
+          outputMode: 'merge',
         },
       },
       segments: [{ start: 0, end: 12.05, originalIndex: 0 }],
     };
     expect(validateCropExportRequest(request).some(({ field }) => field === 'segments')).toBe(true);
     expect(validateCropExportRequest({ ...request, sourceDurationTolerance: 0.1 })).toStrictEqual([]);
-    expect(validateCropExportRequest({ ...request, sourceDurationTolerance: 0.1,
-      segments: [{ start: 0, end: 12.25, originalIndex: 0 }] })
+    expect(validateCropExportRequest({
+      ...request,
+      sourceDurationTolerance: 0.1,
+      segments: [{ start: 0, end: 12.25, originalIndex: 0 }],
+    })
       .some(({ field }) => field === 'segments')).toBe(true);
   });
 
