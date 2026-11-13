@@ -114,7 +114,6 @@ function ExportConfirm({
   visible,
   onClosePress,
   onExportConfirm,
-  onCleanupPreferences,
   onChangeOutputFps,
   onIncreaseRotation,
   outputRotation,
@@ -146,7 +145,6 @@ function ExportConfirm({
   visible: boolean,
   onClosePress: () => void,
   onExportConfirm: () => void,
-  onCleanupPreferences: () => Promise<unknown>,
   onChangeOutputFps: () => void,
   onIncreaseRotation: () => void,
   outputRotation: number,
@@ -174,7 +172,7 @@ function ExportConfirm({
 }) {
   const { t } = useTranslation();
 
-  const { keyframeCut, toggleKeyframeCut, preserveMovData, setPreserveMovData, preserveMetadata, setPreserveMetadata, preserveChapters, setPreserveChapters, movFastStart, setMovFastStart, avoidNegativeTs, setAvoidNegativeTs, segmentsToChapters, setSegmentsToChapters, preserveMetadataOnMerge, setPreserveMetadataOnMerge, enableSmartCut, setEnableSmartCut, effectiveExportMode, ffmpegExperimental, setFfmpegExperimental, cutFromAdjustmentFrames, setCutFromAdjustmentFrames, cutToAdjustmentFrames, setCutToAdjustmentFrames, simpleMode, keyframesEnabled, treatInputFileModifiedTimeAsStart, setTreatInputFileModifiedTimeAsStart, treatOutputFileModifiedTimeAsStart, setTreatOutputFileModifiedTimeAsStart } = useUserSettings();
+  const { keyframeCut, toggleKeyframeCut, preserveMovData, setPreserveMovData, preserveMetadata, setPreserveMetadata, preserveChapters, setPreserveChapters, movFastStart, setMovFastStart, avoidNegativeTs, setAvoidNegativeTs, segmentsToChapters, setSegmentsToChapters, preserveMetadataOnMerge, setPreserveMetadataOnMerge, enableSmartCut, setEnableSmartCut, effectiveExportMode, ffmpegExperimental, setFfmpegExperimental, cutFromAdjustmentFrames, setCutFromAdjustmentFrames, cutToAdjustmentFrames, setCutToAdjustmentFrames, simpleMode, keyframesEnabled, treatInputFileModifiedTimeAsStart, setTreatInputFileModifiedTimeAsStart, treatOutputFileModifiedTimeAsStart, setTreatOutputFileModifiedTimeAsStart, cleanupChoices, setCleanupChoices } = useUserSettings();
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -694,9 +692,28 @@ function ExportConfirm({
               </AnimatedTr>
               <AnimatedTr>
                 <td>{t('Cleanup files after export?')}</td>
-                <td><button type="button" onClick={() => { onCleanupPreferences().catch(console.error); }}>{t('Change preferences')}</button></td>
+                <td><Switch checked={cleanupChoices.cleanupAfterExport ?? false} onCheckedChange={(checked) => setCleanupChoices((previous) => ({ ...previous, cleanupAfterExport: checked }))} /></td>
                 <td />
               </AnimatedTr>
+              {cleanupChoices.cleanupAfterExport && (
+                <>
+                  <AnimatedTr>
+                    <td>{t('Ask before cleanup')}</td>
+                    <td><Switch checked={cleanupChoices.askForCleanup} onCheckedChange={(checked) => setCleanupChoices((previous) => ({ ...previous, askForCleanup: checked }))} /></td>
+                    <td />
+                  </AnimatedTr>
+                  <AnimatedTr>
+                    <td>{t('Close current file after export')}</td>
+                    <td><Switch checked={cleanupChoices.closeFile} onCheckedChange={(checked) => setCleanupChoices((previous) => ({ ...previous, closeFile: checked }))} /></td>
+                    <td />
+                  </AnimatedTr>
+                  <AnimatedTr>
+                    <td>{t('Move temporary files to trash')}</td>
+                    <td><Switch checked={cleanupChoices.trashTmpFiles} onCheckedChange={(checked) => setCleanupChoices((previous) => ({ ...previous, trashTmpFiles: checked }))} /></td>
+                    <td />
+                  </AnimatedTr>
+                </>
+              )}
             </>
           )}
         </tbody>
