@@ -32,8 +32,8 @@ describe('media workspace', () => {
   });
 
   it('rejects unsafe filenames and malformed indexes', () => {
-    expect(() => assertOutputFilename('..\\evil.mp4')).toThrow();
-    expect(() => assertOutputFilename('CON.mp4')).toThrow();
-    expect(() => getMediaOutputName({ sourcePath: '/a/a.mp4', kind: 'crop', mode: 'segment', extension: 'mp4', segmentIndex: 0, segmentCount: 3 })).toThrow();
+    expect(() => assertOutputFilename(String.raw`..\evil.mp4`)).toThrow('Invalid output filename');
+    expect(() => assertOutputFilename('CON.mp4')).toThrow('Invalid output filename');
+    expect(() => getMediaOutputName({ sourcePath: '/a/a.mp4', kind: 'crop', mode: 'segment', extension: 'mp4', segmentIndex: 0, segmentCount: 3 })).toThrow('Invalid segment index');
   });
 });
