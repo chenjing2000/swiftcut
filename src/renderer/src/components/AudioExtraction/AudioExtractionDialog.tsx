@@ -32,9 +32,11 @@ const formatTime = (seconds: number) => {
 
 export default function AudioExtractionDialog({ open, onOpenChange, filePath, streams, segments, formatName }: AudioExtractionDialogProps) {
   const { t } = useTranslation();
-  const [selectedStreamIndexes, setSelectedStreamIndexes] = useState<number[]>(() => (
-    streams.length > 0 ? [streams[0]!.index] : []
-  ));
+  const [trackSelection, setTrackSelection] = useState<{ source: string | undefined; indexes: number[] }>();
+  // The long-lived job presenter survives source changes. A new source gets
+  // its own default track without resetting the currently running job.
+  const selectedStreamIndexes = trackSelection?.source === filePath
+    ? trackSelection.indexes : (streams[0] ? [streams[0].index] : []);
   const [mode, setMode] = useState<AudioExtractionMode>('mp3');
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
 
@@ -60,9 +62,11 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   };
 
   const toggleStream = (streamIndex: number, checked: boolean) => {
-    setSelectedStreamIndexes((current) => {
-      if (checked) return current.includes(streamIndex) ? current : [...current, streamIndex];
-      return current.filter((index) => index !== streamIndex);
+    setTrackSelection({
+      source: filePath,
+      indexes: checked
+        ? (selectedStreamIndexes.includes(streamIndex) ? selectedStreamIndexes : [...selectedStreamIndexes, streamIndex])
+        : selectedStreamIndexes.filter((index) => index !== streamIndex),
     });
   };
 

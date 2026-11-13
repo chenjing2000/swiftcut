@@ -2984,9 +2984,8 @@ function App() {
 
                 <LastCommands visible={lastCommandsVisible} onTogglePress={toggleLastCommands} ffmpegCommandLog={ffmpegCommandLog} setFfmpegCommandLog={setFfmpegCommandLog} />
 
-                {filePath && audioExtractionSource === filePath && (
+                {audioExtractionSource != null && (
                   <AudioExtractionDialog
-                    key={filePath}
                     open={audioExtractionDialogOpen}
                     onOpenChange={setAudioExtractionDialogOpen}
                     filePath={filePath}
