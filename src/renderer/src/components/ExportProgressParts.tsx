@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import styles from './VideoCrop/CropExportProgress.module.css';
 
 /** Shared visual elements; export jobs retain their own state and cancellation logic. */
-export function ExportProgressHeader({ title, label, state }: { title: ReactNode; label: ReactNode; state?: string }) {
+export function ExportProgressHeader({ title, label, state }: { title: ReactNode; label: ReactNode; state?: string | undefined }) {
   return (
     <div className={styles['heading']}>
       <strong>{title}</strong>

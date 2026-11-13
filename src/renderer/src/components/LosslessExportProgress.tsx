@@ -15,7 +15,7 @@ interface Props {
 /** Lossless and re-encoded exports share the same progress-panel presentation. */
 export default function LosslessExportProgress({ state, text, progress, outputPaths, onCancel, onDismiss }: Props) {
   const { t } = useTranslation();
-  const active = state === 'running' || state === 'finalizing' || state === 'cancelling';
+  const active = ['running', 'finalizing', 'cancelling'].includes(state);
   const stateLabels = { running: 'Exporting', finalizing: 'Finalizing export', cancelling: 'Cancelling export', cancelled: 'Cancelled', success: 'Export finished' } as const;
   const stateLabel = stateLabels[state];
   const displayStates = { running: undefined, finalizing: undefined, cancelling: undefined, cancelled: 'cancelled', success: 'success' } as const;
