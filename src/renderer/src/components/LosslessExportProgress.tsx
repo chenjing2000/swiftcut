@@ -42,7 +42,6 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
               <>
                 <p>{t('{{count}} output file(s) saved.', { count: outputPaths.length })}</p>
                 <div className={styles['outputs']}>
-                  <div className={styles['outputHeading']}>{t('Crop exported files')}</div>
                   <ul className={styles['paths']}>
                     {outputPaths.map((path) => <li key={path} title={path}>{path}</li>)}
                   </ul>
