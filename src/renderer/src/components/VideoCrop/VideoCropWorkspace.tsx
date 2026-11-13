@@ -13,6 +13,7 @@ import type { CropSourceSegment } from '../../videoCropSegments';
 import styles from './VideoCropWorkspace.module.css';
 import chrome from '../OutputPanelChrome.module.css';
 import useOutputPanelDrag from '../useOutputPanelDrag';
+import { activateOutputPanel, isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
 import actionStyles from '../OutputActionButtons.module.css';
 
 interface Props {
@@ -120,6 +121,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     onPointerMove: onPanelPointerMove,
     onPointerUp: onPanelPointerUp,
   } = useOutputPanelDrag(panelRef);
+
+  useEffect(() => registerOutputPanel('crop'), []);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -247,16 +250,18 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      // A different floating dialog owns its keyboard events while it is focused.
+      if (!isActiveOutputPanel('crop')) return;
+      // Do not steal Escape from unrelated application dialogs.
       const otherDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
-      if (otherDialog && otherDialog !== panelRef.current) return;
+      if (otherDialog && !otherDialog.hasAttribute('data-output-panel')) return;
       if (panelDragRef.current && event.key === 'Escape') {
         stopPanelDrag(undefined, true);
         event.preventDefault();
         event.stopImmediatePropagation();
         return;
       }
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement) return;
+      if (panelRef.current?.contains(event.target as Node)
+        && (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement)) return;
       if (event.key === 'Escape') {
         if (fullscreen) return; // Let Chromium exit the native video fullscreen.
         if (pointerDragRef.current) pointerDragRef.current = undefined;
@@ -338,6 +343,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               width: layout.drawnWidth,
               height: layout.drawnHeight,
             }}
+            onPointerDownCapture={() => activateOutputPanel('crop')}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -371,7 +377,10 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
         <section
           ref={panelRef}
           aria-label={t('Crop Video Settings')}
+          data-output-panel="crop"
           className={`${chrome['panel']} ${styles['panel']}`}
+          onPointerDownCapture={() => activateOutputPanel('crop')}
+          onFocusCapture={() => activateOutputPanel('crop')}
           style={{ left: panelPosition.left, top: panelPosition.top, visibility: fullscreen ? 'hidden' : undefined, pointerEvents: fullscreen ? 'none' : undefined }}
           onPointerDown={() => setFocused(false)}
         >
