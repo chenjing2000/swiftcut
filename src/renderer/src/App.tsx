@@ -1254,6 +1254,7 @@ function App() {
         paramsByFile,
         chapters: chaptersToAdd,
         detectedFps,
+        isCancelled: () => losslessCancelRequestedRef.current,
       });
       assertNotCancelled();
 
