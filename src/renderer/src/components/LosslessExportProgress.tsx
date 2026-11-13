@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import Button from './Button';
+import { ExportOutputPaths, ExportProgressHeader } from './ExportProgressParts';
 import styles from './VideoCrop/CropExportProgress.module.css';
 
 interface Props {
@@ -22,10 +23,7 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
   const percent = progress == null ? undefined : Math.round(Math.max(0, Math.min(1, progress)) * 100);
   return (
     <aside className={styles['panel']} role="status" aria-live="polite" aria-label={t('Export Video Settings')}>
-      <div className={styles['heading']}>
-        <strong>{t('Export Video')}</strong>
-        <span className={styles['status']} data-state={displayState}>{t(stateLabel)}</span>
-      </div>
+      <ExportProgressHeader title={t('Export Video')} label={t(stateLabel)} state={displayState} />
       <div className={styles['contents']}>
         {active ? (
           <>
@@ -43,11 +41,7 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
             {state === 'success' ? (
               <>
                 <p>{t('{{count}} output file(s) saved.', { count: outputPaths.length })}</p>
-                <div className={styles['outputs']}>
-                  <ul className={styles['paths']}>
-                    {outputPaths.map((path) => <li key={path} title={path}>{path}</li>)}
-                  </ul>
-                </div>
+                <ExportOutputPaths paths={outputPaths} />
               </>
             ) : <p>{t('Cancelled')}</p>}
             <div className={styles['actions']}><Button onClick={onDismiss}>{t('Dismiss')}</Button></div>
