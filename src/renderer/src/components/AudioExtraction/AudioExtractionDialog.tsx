@@ -262,7 +262,9 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               disabled={isBusy}
               onClick={() => handleOpenChange(false)}
               style={{ border: 0, background: 'transparent', color: 'inherit', fontSize: '18px', cursor: isBusy ? 'not-allowed' : 'pointer', padding: 0 }}
-            >×</button>
+            >
+              ×
+            </button>
           </div>
           <div
             style={{
@@ -414,7 +416,9 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 if (job?.state === 'running' || job?.state === 'paused') cancelExtraction().catch(console.error);
                 else handleOpenChange(false);
               }}
-            >{t('Cancel')}</button>
+            >
+              {t('Cancel')}
+            </button>
             <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract')}</button>
           </div>
         </Dialog.Content>
