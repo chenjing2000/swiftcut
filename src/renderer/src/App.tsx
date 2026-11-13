@@ -1706,7 +1706,7 @@ function App() {
   const openAudioExtractionDialog = useCallback(() => {
     if (!checkFileOpened()) return;
     setAudioExtractionDialogOpen(true);
-  }, [checkFileOpened, filePath]);
+  }, [checkFileOpened]);
 
   const seekClosestKeyframe = useCallback((direction: number) => {
     const sigma = detectedFps ? (1 / detectedFps) : 0.1; // because we don't want it to find the keyframe we're currently at.
@@ -2997,19 +2997,19 @@ function App() {
                 <LastCommands visible={lastCommandsVisible} onTogglePress={toggleLastCommands} ffmpegCommandLog={ffmpegCommandLog} setFfmpegCommandLog={setFfmpegCommandLog} />
 
                 <AudioExtractionDialog
-                    open={audioExtractionDialogOpen}
-                    onOpenChange={setAudioExtractionDialogOpen}
-                    filePath={filePath}
-                    streams={audioStreams}
-                    segments={fileDuration != null && fileDuration > 0 ? resolveVideoCropSegments({
-                      segments: cutSegments,
-                      inverseSegments: inverseCutSegments,
-                      inverted: invertCutSegments,
-                      duration: fileDuration,
-                      timeRange: 'selected',
-                    }) : []}
-                    formatName={mainFileFormat?.format_name}
-                  />
+                  open={audioExtractionDialogOpen}
+                  onOpenChange={setAudioExtractionDialogOpen}
+                  filePath={filePath}
+                  streams={audioStreams}
+                  segments={fileDuration != null && fileDuration > 0 ? resolveVideoCropSegments({
+                    segments: cutSegments,
+                    inverseSegments: inverseCutSegments,
+                    inverted: invertCutSegments,
+                    duration: fileDuration,
+                    timeRange: 'selected',
+                  }) : []}
+                  formatName={mainFileFormat?.format_name}
+                />
 
                 <Dialog.Root open={settingsVisible} onOpenChange={toggleSettings}>
                   <Dialog.Portal>
