@@ -96,3 +96,21 @@ separately. Existing source media, historical outputs, and non-task files
 must never be deleted by task-temp cleanup. Lossless publication rolls back
 links created by an incomplete output batch; an unexpected temporary-file
 cleanup failure after publication does not turn saved media into a failed job.
+
+
+## Output settings behavior
+
+All three Output settings windows remain open when their main action starts;
+only an explicit Cancel, close button, or Escape closes the settings window.
+Extract Audio retains its own right-bottom task progress panel; the settings
+dialog may stay open at the same time.
+
+Audio extraction adopts Crop Video's selected-segments versus entire-source
+time range and its merge-versus-separate output mode. Merge is relevant only
+with two or more selected segments, and creates one
+`<source>_segments_merge.<ext>` per selected audio track (with
+`_track_XX` when multiple tracks are selected). Individual intermediate
+segment files are temporary and are removed after merging. Output format
+defaults to Original format (stream copy); MP3 (re-encode) offers VBR
+(LAME Quality 2), 128 kbps, 192 kbps, and 320 kbps. The format and quality
+controls use matching right-aligned dropdown widths.
