@@ -105,20 +105,20 @@ async function commitCropBatch(
 ): Promise<void> {
   const names = items.map((item) => item.task.outputName);
   if (new Set(names).size !== names.length) throw new Error('Duplicate crop output filenames in batch');
-  names.forEach(assertOutputFilename);
+  names.forEach((name) => assertOutputFilename(name));
   for (let attempt = 0; attempt < 10000; attempt += 1) {
     const targetPaths = names.map((name) => join(outputDir, withCollisionSuffix(name, attempt)));
     const pathsCreated: string[] = [];
     try {
-      for (let index = 0; index < items.length; index += 1) {
+      for (const [index, item] of items.entries()) {
         assertActive();
         const target = targetPaths[index]!;
-        await link(items[index]!.path, target);
+        await link(item.path, target);
         pathsCreated.push(target);
       }
-      for (let index = 0; index < items.length; index += 1) {
+      for (const [index, item] of items.entries()) {
         onCommitted(targetPaths[index]!);
-        await unlink(items[index]!.path).catch((error: unknown) => logger.warn('Cannot unlink committed crop temporary file', error));
+        await unlink(item.path).catch((error: unknown) => logger.warn('Cannot unlink committed crop temporary file', error));
       }
       return;
     } catch (error) {
@@ -130,7 +130,7 @@ async function commitCropBatch(
       }
       // Do not conceal already published outputs when an unrelated error
       // or cancellation interrupts the commit.
-      pathsCreated.forEach(onCommitted);
+      pathsCreated.forEach((created) => onCommitted(created));
       throw error;
     }
   }
