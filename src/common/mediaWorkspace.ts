@@ -24,7 +24,7 @@ export function getMediaOutputDir(sourcePath: string, kind: MediaExportKind): st
 
 export function assertOutputFilename(filename: string): void {
   if (!filename || filename === '.' || filename === '..'
-    || (/[\\/:*?"<>|]/.test(filename) || Array.from(filename).some((character) => character.codePointAt(0)! < 32))
+    || (/[\\/:*?"<>|]/.test(filename) || [...filename].some((character) => character.codePointAt(0)! < 32))
     || /[. ]$/.test(filename)
     || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(filename)) {
     throw new Error('Invalid output filename');
