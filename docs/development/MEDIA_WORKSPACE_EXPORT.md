@@ -82,12 +82,17 @@ Inspect all three Output settings panels interactively before merging.
 
 The three settings windows share the same panel chrome and action button
 styles. Crop and Export also share the same floating-title drag hook.
-Audio extraction keeps its Radix Dialog shell, with the same visible title
-and footer appearance. Crop and lossless export share display-only progress
-headers and output path lists while maintaining separate execution engines.
+Audio extraction keeps its Radix Dialog settings shell, with the same visible
+title and footer appearance. Its running and completed jobs now appear in an
+independent bottom-right progress panel, even when the settings popup is closed
+or a different source is opened. Crop, lossless, and audio progress panels share
+display-only headers and output path lists while maintaining independent jobs.
+The audio failure prompt retains its pause, continue, and cancel behavior.
 
 Lossless validation must precede the `export-start` event. Once media files
 have been published, finalization must not report a later cancellation or
 cleanup error as a failed export. Post-export cleanup errors are reported
 separately. Existing source media, historical outputs, and non-task files
-must never be deleted by task-temp cleanup.
+must never be deleted by task-temp cleanup. Lossless publication rolls back
+links created by an incomplete output batch; an unexpected temporary-file
+cleanup failure after publication does not turn saved media into a failed job.

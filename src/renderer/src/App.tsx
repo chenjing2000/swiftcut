@@ -2991,7 +2991,6 @@ function App() {
                     filePath={filePath}
                     streams={audioStreams}
                     segments={segmentsToExport}
-                    fileDuration={fileDuration}
                     formatName={mainFileFormat?.format_name}
                   />
                 )}

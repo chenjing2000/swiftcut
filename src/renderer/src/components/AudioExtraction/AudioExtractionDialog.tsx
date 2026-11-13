@@ -18,7 +18,6 @@ interface AudioExtractionDialogProps {
   filePath: string | undefined;
   streams: FFprobeStream[];
   segments: SegmentToExport[];
-  fileDuration: number | undefined;
   formatName: string | undefined;
 }
 
