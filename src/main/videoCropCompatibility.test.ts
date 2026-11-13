@@ -152,7 +152,7 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       const frameTimes = execFileSync('ffprobe', [
         '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'frame=best_effort_timestamp_time',
         '-of', 'csv=p=0', source,
-      ]).toString('utf8').trim().split(/\r?\n/).map(Number).filter(Number.isFinite);
+      ]).toString('utf8').trim().split(/\r?\n/).map((value) => Number(value)).filter((value) => Number.isFinite(value));
       const intervals = frameTimes.slice(1).map((time, i) => Math.round((time - frameTimes[i]!) * 1000));
       expect(new Set(intervals).size).toBeGreaterThan(1);
       const plan = planFor(source, dir);
