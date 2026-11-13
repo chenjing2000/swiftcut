@@ -85,7 +85,6 @@ const defaultKeyBindings: KeyBinding[] = [
 
   { keys: 'Enter', action: 'labelCurrentSegment' },
 
-  { keys: 'KeyE', action: 'export' },
   { keys: 'ShiftLeft+Slash', action: 'toggleKeyboardShortcuts' },
 
   { keys: 'AltLeft+ArrowUp', action: 'increaseVolume' },
@@ -237,8 +236,12 @@ async function tryCreateStore({ customStoragePath }: { customStoragePath: string
         ...(customStoragePath != null && { cwd: customStoragePath }),
       });
       const savedBindings = store.get('keyBindings') as KeyBinding[];
+      const supportedBindings = savedBindings.filter(({ action }) => action !== 'export');
       if (usesLegacyDefaultKeyBindings(savedBindings)) {
         store.set('keyBindings', defaultKeyBindings);
+      } else if (supportedBindings.length !== savedBindings.length) {
+        // Keep every unrelated user shortcut; only remove the retired export action.
+        store.set('keyBindings', supportedBindings);
       }
       return;
     } catch (err) {
