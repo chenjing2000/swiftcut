@@ -33,13 +33,23 @@ export async function commitMediaOutputs({
         await link(output.temporaryPath, target);
         committed.push(target);
       }
-      await Promise.all(outputs.map(({ temporaryPath }) => unlink(temporaryPath)));
+      // Publication is complete once every hard link has been created.
+      // Failure to delete a task-owned temporary link must not mark already
+      // published user files as a failed export.
+      const cleanup = await Promise.allSettled(outputs.map(({ temporaryPath }) => unlink(temporaryPath)));
+      for (const outcome of cleanup) {
+        if (outcome.status === 'rejected') console.warn('Cannot remove published temporary media link', outcome.reason);
+      }
       return committed;
     } catch (error) {
-      // A concurrent writer raced the planning check. Remove only links created
-      // by this invocation before choosing another entire-batch sequence.
+      // Roll back only files linked by this invocation. A failure during a
+      // batch must not strand anonymous partial outputs or replace old ones.
+      const rollback = await Promise.allSettled(committed.map((target) => unlink(target)));
+      const rollbackFailure = rollback.find((result) => result.status === 'rejected');
+      if (rollbackFailure?.status === 'rejected') {
+        throw new Error(`Output batch rollback failed; files may remain: ${committed.join(', ')}`, { cause: rollbackFailure.reason });
+      }
       if (getErrorCode(error) !== 'EEXIST') throw error;
-      await Promise.all(committed.map((target) => unlink(target)));
     }
   }
   throw new Error('No available output filename batch');

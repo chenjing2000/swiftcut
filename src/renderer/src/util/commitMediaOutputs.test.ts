@@ -46,6 +46,28 @@ describe('safe media output publication', () => {
     await expect(fs.readFile(files[1]!, 'utf8')).resolves.toBe('new 2');
   });
 
+  it('rolls back links from an interrupted batch without removing existing outputs', async () => {
+    const { commitMediaOutputs } = await import('./commitMediaOutputs.js');
+    const existing = path.join(root, 'existing.mp4');
+    const firstTemp = path.join(root, 'temp-first.mp4');
+    const missingTemp = path.join(root, 'missing-second.mp4');
+    await fs.writeFile(existing, 'historical user output');
+    await fs.writeFile(firstTemp, 'new media');
+
+    await expect(commitMediaOutputs({
+      outputDir: root,
+      outputs: [
+        { temporaryPath: firstTemp, requestedName: 'new_segment_01.mp4' },
+        { temporaryPath: missingTemp, requestedName: 'new_segment_02.mp4' },
+      ],
+    })).rejects.toThrow();
+
+    await expect(fs.readFile(existing, 'utf8')).resolves.toBe('historical user output');
+    await expect(fs.readFile(firstTemp, 'utf8')).resolves.toBe('new media');
+    await expect(fs.stat(path.join(root, 'new_segment_01.mp4'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.stat(path.join(root, 'new_segment_02.mp4'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('rejects a directory traversal filename without writing output', async () => {
     const { commitMediaOutputs } = await import('./commitMediaOutputs.js');
     const staged = path.join(root, 'staged.mp4');
