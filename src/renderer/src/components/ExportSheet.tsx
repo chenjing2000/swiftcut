@@ -6,7 +6,7 @@ import styles from './ExportSheet.module.css';
 import chrome from './OutputPanelChrome.module.css';
 import useOutputPanelDrag from './useOutputPanelDrag';
 import actionStyles from './OutputActionButtons.module.css';
-import { activateOutputPanel, isActiveOutputPanel, registerOutputPanel } from './outputPanelFocus';
+import { isActiveOutputPanel, registerOutputPanel } from './outputPanelFocus';
 
 function ExportSheet({
   visible,
@@ -56,8 +56,6 @@ function ExportSheet({
       aria-modal="false"
       aria-label={title}
       data-output-panel="lossless"
-      onPointerDownCapture={() => activateOutputPanel('lossless')}
-      onFocusCapture={() => activateOutputPanel('lossless')}
       style={{
         width,
         top: position.top,
