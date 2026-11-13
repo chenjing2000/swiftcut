@@ -482,6 +482,7 @@ function App() {
       throw new Error('A crop video export is already running');
     }
     cropExportStartingRef.current = true;
+    let started = false;
     try {
       const selected = resolveVideoCropSegments({
         segments: cutSegments,
@@ -504,8 +505,9 @@ function App() {
       const jobId = await mainApi.startCropExport(plan);
       setCropExportJobId(jobId);
       setCropExportStatus({ id: jobId, state: 'preparing', progress: 0 });
+      started = true;
     } finally {
-      cropExportStartingRef.current = false;
+      if (!started) cropExportStartingRef.current = false;
     }
   }, [filePath, cropFrame, fileDuration, activeVideoStream, cropExportStatus, cutSegments, inverseCutSegments, invertCutSegments, activeAudioStreams]);
 
@@ -514,7 +516,12 @@ function App() {
     let active = true;
     const update = async () => {
       const result = await mainApi.getCropExportStatus(cropExportJobId);
-      if (active && result != null) setCropExportStatus(result);
+      if (active && result != null) {
+        setCropExportStatus(result);
+        if (['success', 'partial_success', 'failed', 'cancelled'].includes(result.state)) {
+          cropExportStartingRef.current = false;
+        }
+      }
     };
     update().catch(console.error);
     const interval = setInterval(() => { update().catch(console.error); }, 300);
@@ -797,6 +804,7 @@ function App() {
     setActiveSubtitleStreamIndex(undefined);
     setHideCompatPlayer(false);
     setExportConfirmOpen(false);
+    setAudioExtractionDialogOpen(false);
     setOutputPlaybackRateState(1);
   }, [videoRef, setCommandedTime, setPlaybackRate, setPreviewFilePath, setUsingDummyVideo, setPlaying, playingRef, setPlaybackMode, cutSegmentsHistory, setDetectedFileFormat, setCopyStreamIdsByFile, setThumbnails, setSubtitlesByStreamId, setOutputPlaybackRateState]);
 
