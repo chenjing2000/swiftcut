@@ -11,7 +11,7 @@ export function activateOutputPanel(panel: OutputPanel) {
 
 function activateFromEvent(event: Event) {
   const panel = event.target instanceof Element
-    ? (event.target.closest('[data-output-panel]') as HTMLElement | null)?.dataset['outputPanel']
+    ? event.target.closest('[data-output-panel]')?.dataset['outputPanel']
     : undefined;
   if (panel != null && openPanels.includes(panel as OutputPanel)) {
     activateOutputPanel(panel as OutputPanel);
