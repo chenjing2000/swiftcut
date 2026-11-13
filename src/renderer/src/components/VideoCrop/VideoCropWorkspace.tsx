@@ -1,5 +1,5 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 
@@ -112,6 +112,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLElement>(null);
   const {
     position: panelPosition,
     dragRef: panelDragRef,
@@ -123,6 +124,10 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   } = useOutputPanelDrag(panelRef);
 
   useEffect(() => registerOutputPanel('crop'), []);
+
+  useLayoutEffect(() => {
+    titleRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -391,7 +396,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             onLostPointerCapture={onPanelPointerUp}
             role="presentation"
           >
-            <strong>{t('Crop Video Settings')}</strong>
+            <strong ref={titleRef} tabIndex={-1}>{t('Crop Video Settings')}</strong>
             <button type="button" aria-label={t('Close')} onPointerDown={(event) => event.stopPropagation()} onClick={onClose}>×</button>
           </div>
           <div className={`${chrome['contents']} ${styles['contents']}`}>
