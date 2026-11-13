@@ -70,7 +70,7 @@ async function getOutputPath(outputDir: string, outputName: string) {
   if (!name || !ext || basename(outputName) !== outputName) throw new Error('Invalid crop output filename');
   // Using hard links for the final commit eliminates TOCTOU overwrites.
   for (let attempt = 0; attempt < 10000; attempt += 1) {
-    const suffix = attempt === 0 ? '' : `_${attempt}`;
+    const suffix = attempt === 0 ? '' : ` (${attempt})`;
     const candidate = join(outputDir, `${name}${suffix}${ext}`);
     try {
       await stat(candidate);
