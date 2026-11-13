@@ -122,34 +122,41 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
     }
   });
 
-  it('reads real MP4 display-matrix rotation and produces upright cropped video', () => {
+  it.each([90, -90] as const)('matches displayed pixels for MP4 display rotation %i', (matrixRotation) => {
     const dir = mkdtempSync(join(tmpdir(), 'crop-display-matrix-'));
     try {
       const base = join(dir, 'base.mp4');
       const rotated = join(dir, 'rotated.mp4');
-      runFfmpeg(['-f', 'lavfi', '-i', 'testsrc2=size=160x120:rate=25:duration=2',
+      // Four distinct corners make a clockwise/anticlockwise mismatch observable.
+      runFfmpeg(['-f', 'lavfi', '-i', 'color=c=black:s=160x120:r=25:d=2',
+        '-vf', [
+          'drawbox=x=0:y=0:w=60:h=45:color=red:t=fill',
+          'drawbox=x=100:y=0:w=60:h=45:color=green:t=fill',
+          'drawbox=x=0:y=75:w=60:h=45:color=blue:t=fill',
+          'drawbox=x=100:y=75:w=60:h=45:color=yellow:t=fill',
+        ].join(','),
         '-c:v', 'libx264', '-y', base]);
-      runFfmpeg(['-display_rotation', '90', '-i', base, '-c', 'copy', '-y', rotated]);
+      runFfmpeg(['-display_rotation', String(matrixRotation), '-i', base, '-c', 'copy', '-y', rotated]);
       const raw = execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', rotated]);
       const metadata = JSON.parse(raw.toString('utf8')) as {
         streams: { side_data_list?: { side_data_type: string; rotation?: number }[] }[];
       };
       const rotation = metadata.streams[0]?.side_data_list?.find((item) => item.side_data_type === 'Display Matrix')?.rotation;
-      expect(rotation).toBe(90);
+      expect(rotation).toBe(matrixRotation);
+
       const plan = planFor(rotated, dir);
       delete plan.audioStreamIndex;
-      plan.frame.rotation = 90;
-      plan.crop = { x: 9, y: 11, width: 71, height: 81 };
-      plan.outputWidth = 71;
-      plan.outputHeight = 81;
-      plan.encodedWidth = 72;
-      plan.encodedHeight = 82;
+      plan.frame.rotation = matrixRotation === 90 ? 90 : 270;
+      plan.crop = { x: 0, y: 0, width: 120, height: 160 };
+      plan.outputWidth = 120;
+      plan.outputHeight = 160;
+      plan.encodedWidth = 120;
+      plan.encodedHeight = 160;
       const upright = join(dir, 'upright.mp4');
       const meta = exportCrop(plan, upright);
       expect(meta.streams.find((stream) => stream.codec_type === 'video'))
-        .toMatchObject({ codec_name: 'h264', width: 72, height: 82 });
-      // Crucial: rotate the pixels ONCE; the output must not inherit the
-      // input Display Matrix or a player will rotate the result a second time.
+        .toMatchObject({ codec_name: 'h264', width: 120, height: 160 });
+
       const outputRaw = execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', upright]);
       const outputMeta = JSON.parse(outputRaw.toString('utf8')) as {
         streams: { tags?: { rotate?: string }; side_data_list?: { side_data_type: string; rotation?: number }[] }[];
@@ -157,6 +164,17 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       const outputStream = outputMeta.streams[0]!;
       expect(outputStream.side_data_list?.some((item) => item.side_data_type === 'Display Matrix' && item.rotation !== 0) ?? false).toBe(false);
       expect(Number(outputStream.tags?.rotate ?? 0)).toBe(0);
+
+      const rgbFrame = (path: string) => execFileSync('ffmpeg', [
+        '-hide_banner', '-loglevel', 'error', '-i', path,
+        '-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-',
+      ], { maxBuffer: 1024 * 1024, timeout: 60_000 });
+      const expected = rgbFrame(rotated); // FFmpeg's display-matrix autorotation is the reference.
+      const actual = rgbFrame(upright);
+      expect(actual.length).toBe(expected.length);
+      let difference = 0;
+      for (let i = 0; i < actual.length; i += 1) difference += Math.abs(actual[i]! - expected[i]!);
+      expect(difference / actual.length).toBeLessThan(15);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
