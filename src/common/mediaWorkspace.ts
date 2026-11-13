@@ -1,5 +1,5 @@
-/** Pure path and filename rules shared by renderer and main process.
- * Directory creation is deliberately handled by each export service. */
+// Pure path and filename rules shared by renderer and main process.
+// Directory creation is deliberately handled by each export service.
 export type MediaExportKind = 'lossless' | 'crop';
 export type MediaExportMode = 'entire' | 'segment' | 'merge' | 'chapters';
 
@@ -24,7 +24,7 @@ export function getMediaOutputDir(sourcePath: string, kind: MediaExportKind): st
 
 export function assertOutputFilename(filename: string): void {
   if (!filename || filename === '.' || filename === '..'
-    || /[\\/:*?"<>|\x00-\x1f]/.test(filename)
+    || (/[\\/:*?"<>|]/.test(filename) || Array.from(filename).some((character) => character.codePointAt(0)! < 32))
     || /[. ]$/.test(filename)
     || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(filename)) {
     throw new Error('Invalid output filename');
@@ -45,26 +45,30 @@ export function getMediaOutputName({
   if (!/^[a-zA-Z0-9]+$/.test(extension)) throw new Error('Invalid output extension');
   let name: string;
   switch (mode) {
-    case 'entire':
+    case 'entire': {
       name = `${stem}_${kind === 'lossless' ? 'lossless' : 'croploss'}`;
       break;
+    }
     case 'segment': {
-      if (segmentIndex == null || segmentCount == null || !Number.isInteger(segmentIndex)
-        || !Number.isInteger(segmentCount) || segmentCount < 1 || segmentIndex < 1 || segmentIndex > segmentCount) {
+      if (segmentIndex == null || segmentCount == null || !Number.isSafeInteger(segmentIndex)
+        || !Number.isSafeInteger(segmentCount) || segmentCount < 1 || segmentIndex < 1 || segmentIndex > segmentCount) {
         throw new Error('Invalid segment index');
       }
       const width = Math.max(2, String(segmentCount).length);
       name = `${stem}_segment_${String(segmentIndex).padStart(width, '0')}`;
       break;
     }
-    case 'merge':
+    case 'merge': {
       name = `${stem}_segments_merge`;
       break;
-    case 'chapters':
+    }
+    case 'chapters': {
       name = `${stem}_chapters`;
       break;
-    default:
+    }
+    default: {
       throw new Error('Invalid export mode');
+    }
   }
   const filename = `${name}.${extension}`;
   assertOutputFilename(filename);
@@ -73,7 +77,7 @@ export function getMediaOutputName({
 
 export function withCollisionSuffix(filename: string, attempt: number): string {
   assertOutputFilename(filename);
-  if (!Number.isInteger(attempt) || attempt < 0) throw new Error('Invalid collision sequence');
+  if (!Number.isSafeInteger(attempt) || attempt < 0) throw new Error('Invalid collision sequence');
   const dot = filename.lastIndexOf('.');
   if (dot <= 0) throw new Error('Missing output extension');
   return `${filename.slice(0, dot)}${attempt === 0 ? '' : ` (${attempt})`}${filename.slice(dot)}`;
@@ -87,7 +91,7 @@ export async function findAvailableBatchNames(
   if (names.length === 0 || new Set(names).size !== names.length) throw new Error('Invalid export batch');
   for (let attempt = 0; attempt < 10000; attempt += 1) {
     const candidates = names.map((name) => withCollisionSuffix(name, attempt));
-    if ((await Promise.all(candidates.map(exists))).every((present) => !present)) return candidates;
+    if ((await Promise.all(candidates.map((candidate) => exists(candidate)))).every((present) => !present)) return candidates;
   }
   throw new Error('No available export filenames');
 }
