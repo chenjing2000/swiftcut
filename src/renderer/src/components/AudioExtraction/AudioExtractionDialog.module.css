@@ -1,6 +1,7 @@
 /* Radix handles dismissal and dragging; this class keeps the Audio settings
    window's dimensions and scroll boundaries consistent with other Output panels. */
-.floatingPanel {
+/* Override generic Radix dialog size rules without changing other dialogs. */
+.floatingPanel.floatingPanel {
   width: min(380px, calc(100vw - 16px));
   min-width: min(320px, calc(100vw - 16px));
   max-width: min(380px, calc(100vw - 16px));
