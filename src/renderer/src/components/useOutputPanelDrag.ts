@@ -31,10 +31,10 @@ export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | nul
   }, [clampPosition]);
 
   const stopDrag = useCallback((pointerId?: number, revert = false) => {
-    const current = dragRef.current;
+    const { current } = dragRef;
     if (!current || (pointerId != null && current.pointerId !== pointerId)) return;
     dragRef.current = undefined;
-    const heading = headingRef.current;
+    const { current: heading } = headingRef;
     if (heading?.hasPointerCapture(current.pointerId)) heading.releasePointerCapture(current.pointerId);
     if (revert) setPosition(clampPosition(current.left, current.top));
   }, [clampPosition]);
@@ -49,9 +49,9 @@ export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | nul
   }, [panelRef]);
 
   const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const current = dragRef.current;
+    const { current } = dragRef;
     if (!current || current.pointerId !== event.pointerId) return;
-    if ((event.buttons & 1) === 0) {
+    if (event.buttons % 2 === 0) {
       stopDrag(event.pointerId);
       return;
     }

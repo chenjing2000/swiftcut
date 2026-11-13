@@ -276,7 +276,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     };
     document.addEventListener('keydown', keydown, { capture: true });
     return () => document.removeEventListener('keydown', keydown, { capture: true });
-  }, [bounds.height, bounds.width, focused, fullscreen, onClose, stopPanelDrag]);
+  }, [bounds.height, bounds.width, focused, fullscreen, onClose, panelDragRef, stopPanelDrag]);
 
   const handles: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
   const handleStyles: Record<string, CSSProperties> = {
