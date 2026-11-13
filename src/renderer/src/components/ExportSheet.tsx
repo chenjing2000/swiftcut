@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import styles from './ExportSheet.module.css';
@@ -30,7 +30,7 @@ function ExportSheet({
   const { position, resetPosition, headingRef, onPointerDown, onPointerMove, onPointerUp } = useOutputPanelDrag(panelRef);
 
   // ExportSheet stays mounted while hidden, so reset only when reopened.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (visible) resetPosition();
   }, [visible, resetPosition]);
 
