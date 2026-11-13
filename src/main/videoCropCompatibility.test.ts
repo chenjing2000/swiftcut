@@ -144,9 +144,17 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
     const dir = mkdtempSync(join(tmpdir(), 'crop-vfr-'));
     try {
       const source = join(dir, 'vfr.mkv');
+      // Insert a regular time gap every four frames: the resulting PTS spacing
+      // alternates between 1/30 and 2/30 of a second (genuine VFR).
       runFfmpeg(['-f', 'lavfi', '-i', 'testsrc2=size=160x120:rate=30:duration=3',
-        '-vf', "select='not(mod(n,3))',setpts=N/(10*TB)", '-fps_mode', 'vfr',
+        '-vf', 'setpts=(N+floor(N/4))/(30*TB)', '-fps_mode', 'vfr',
         '-c:v', 'mpeg4', '-y', source]);
+      const frameTimes = execFileSync('ffprobe', [
+        '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'frame=best_effort_timestamp_time',
+        '-of', 'csv=p=0', source,
+      ]).toString('utf8').trim().split(/\\r?\\n/).map(Number).filter(Number.isFinite);
+      const intervals = frameTimes.slice(1).map((time, i) => Math.round((time - frameTimes[i]!) * 1000));
+      expect(new Set(intervals).size).toBeGreaterThan(1);
       const plan = planFor(source, dir);
       delete plan.audioStreamIndex;
       plan.tasks = [{ start: 0.2, end: 1.2, originalIndex: 0, outputName: 'crop.mkv' }];
