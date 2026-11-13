@@ -1085,7 +1085,7 @@ function App() {
       setWorking(undefined);
       setProgress(undefined);
     }
-  }, [workingRef, ensureWritableOutDir, customOutDir, setWorking, segmentsToChapters, concatFiles, ffmpegExperimental, preserveMovData, movFastStart, preserveMetadataOnMerge, closeBatch, enableOverwriteOutput, hideAllNotifications, t, showOsNotification, openConcatFinishedDialog, handleConcatFailed]);
+  }, [workingRef, ensureWritableOutDir, customOutDir, setWorking, segmentsToChapters, concatFiles, ffmpegExperimental, preserveMovData, movFastStart, preserveMetadataOnMerge, closeBatch, hideAllNotifications, t, showOsNotification, openConcatFinishedDialog, handleConcatFailed]);
 
   const cleanupFiles = useCallback(async (cleanupChoices2: CleanupChoicesType) => {
     // Store paths before we reset state
@@ -1137,10 +1137,15 @@ function App() {
   const defaultLosslessDirectory = filePath == null ? '' : getMediaOutputDir(filePath, 'lossless');
   const losslessDirectory = filePath != null && losslessCustomDirectory?.source === filePath ? losslessCustomDirectory.value : defaultLosslessDirectory;
   const losslessExtension = filePath == null ? 'mp4' : (getOutFileExtension({ outFormat: fileFormat ?? detectedFileFormat ?? 'mp4', filePath }) ?? (parsePath(filePath).ext ?? '.mp4')).replace(/^\./, '');
+  const defaultLosslessMode = (() => {
+    if (segmentsToChaptersOnly) return 'chapters' as const;
+    if (willMerge) return 'merge' as const;
+    return areWeCutting ? 'segment' as const : 'entire' as const;
+  })();
   const defaultLosslessFilename = filePath == null ? '' : getMediaOutputName({
     sourcePath: filePath,
     kind: 'lossless',
-    mode: segmentsToChaptersOnly ? 'chapters' : willMerge ? 'merge' : (!areWeCutting ? 'entire' : 'segment'),
+    mode: defaultLosslessMode,
     extension: losslessExtension,
     ...((areWeCutting && !willMerge && !segmentsToChaptersOnly) && { segmentIndex: 1, segmentCount: Math.max(1, segmentsToExport.length) }),
   });
@@ -1258,8 +1263,6 @@ function App() {
         if (autoDeleteMergedSegments) await tryDeleteFiles(createdOutFiles);
       }
 
-
-
       invariant(mainFileFormat != null);
       // https://github.com/mifi/lossless-cut/issues/329
       if (isIphoneHevc(mainFileFormat, mainStreams)) warnings.add(i18n.t('There is a known issue with cutting iPhone HEVC videos. The output file may not work in all players.'));
@@ -1350,7 +1353,7 @@ function App() {
       setWorking(undefined);
       setProgress(undefined);
     }
-  }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutMultiple, outputDir, customOutDir, losslessDirectory, losslessFilename, losslessExtension, losslessCustomFilename, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, enableOverwriteOutput, exportConfirmEnabled, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, simpleMode, prefersReducedMotion, cleanupChoices, hideAllNotifications, segmentsOrInverse.selected, t, segmentsToChapters, invertCutSegments, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, openCutFinishedDialog, handleExportFailed]);
+  }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutMultiple, outputDir, losslessDirectory, losslessFilename, losslessExtension, losslessCustomFilename, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, simpleMode, prefersReducedMotion, cleanupChoices, hideAllNotifications, segmentsOrInverse.selected, t, segmentsToChapters, invertCutSegments, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, openCutFinishedDialog, handleExportFailed]);
 
   const onExportPress = useCallback(() => openLosslessExport(), [openLosslessExport]);
 
