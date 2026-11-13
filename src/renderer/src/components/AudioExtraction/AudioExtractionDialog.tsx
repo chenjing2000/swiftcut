@@ -221,10 +221,13 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay />
+        {/* This settings panel uses the same unobscured floating presentation as Crop Video. */}
         <Dialog.Content
           style={{
-            width: '44em',
+            width: '380px',
+            minWidth: 'min(320px, calc(100vw - 16px))',
+            maxWidth: 'min(380px, calc(100vw - 16px))',
+            fontSize: '13px',
             height: 'min(42rem, 85vh)',
             maxHeight: '85vh',
             display: 'flex',
@@ -381,8 +384,8 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           <div style={{ flex: '0 0 auto' }}>
             <Dialog.ButtonRow>
               {job?.state === 'running' && <DialogButton onClick={cancelExtraction}>{t('Cancel extraction')}</DialogButton>}
-              <DialogButton disabled={isBusy} onClick={() => handleOpenChange(false)}>{t('Close')}</DialogButton>
-              <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract Audio')} ({outputCount})</DialogButton>
+              <DialogButton disabled={isBusy} onClick={() => handleOpenChange(false)}>{t('Cancel')}</DialogButton>
+              <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract')}</DialogButton>
             </Dialog.ButtonRow>
           </div>
           <Dialog.CloseButton />

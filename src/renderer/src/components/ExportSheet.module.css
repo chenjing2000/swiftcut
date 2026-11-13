@@ -53,3 +53,5 @@
 .footer button {
   white-space: nowrap;
 }
+
+.heading strong { font-size: 14px; }

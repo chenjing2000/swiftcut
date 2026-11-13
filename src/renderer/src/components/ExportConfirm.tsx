@@ -351,7 +351,7 @@ function ExportConfirm({
     <ExportSheet
       width="380px"
       visible={visible}
-      title={t('Export Video')}
+      title={t('Export Video Settings')}
       onClosePress={onClosePress}
       renderButton={() => (
         <ExportButton segmentsToExport={segmentsToExport} areWeCutting={areWeCutting} onClick={withBlur(() => onExportConfirm())} />

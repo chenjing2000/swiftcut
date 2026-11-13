@@ -497,13 +497,13 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
                 <option value="mp4">MP4</option><option value="mkv">MKV</option>
               </select>
             </label>
-            <div className={styles['footer']}>
-              <button type="button" onClick={onClose}>{t('Cancel')}</button>
-              <button type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export Video')}</button>
-            </div>
             <div className={styles['previewRow']}>
               <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
               <button type="button" aria-pressed={previewMode === 'output'} onClick={() => setPreviewMode('output')}>{t('Preview Output')}</button>
+            </div>
+            <div className={styles['footer']}>
+              <button type="button" onClick={onClose}>{t('Cancel')}</button>
+              <button className={styles['primaryButton']} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
             </div>
             {!valid && <p>{t('Invalid crop region')}</p>}
             {exportError && <p role="alert">{exportError}</p>}

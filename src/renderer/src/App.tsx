@@ -1152,6 +1152,8 @@ function App() {
   const losslessFilename = filePath != null && losslessCustomFilename?.source === filePath ? losslessCustomFilename.value : defaultLosslessFilename;
   const openLosslessExport = useCallback(() => {
     if (!filePath) return;
+    setLosslessCustomDirectory(undefined);
+    setLosslessCustomFilename(undefined);
     setExportConfirmOpen(true);
     setStreamsSelectorShown(false);
   }, [filePath]);
@@ -2901,7 +2903,7 @@ function App() {
                 <Dialog.Root open={streamsSelectorShown} onOpenChange={setStreamsSelectorShown}>
                   <Dialog.Portal>
                     <Dialog.Overlay />
-                    <Dialog.Content style={{ width: '80em' }}>
+                    <Dialog.Content style={{ width: '400px' }}>
                       <Dialog.Title>{t('Tracks')}</Dialog.Title>
                       <Dialog.Description>{t('Click to select which tracks to keep when exporting:')}</Dialog.Description>
 
