@@ -1,6 +1,6 @@
 // eslint-disable-next-line import-js/no-extraneous-dependencies
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -191,6 +191,7 @@ describe('Audio extraction task service', () => {
   });
 
   test('does not overwrite an existing Original-mode output file', async () => {
+    await mkdir(join(testDirectory, 'lecture', 'Audio'), { recursive: true });
     const existingPath = join(testDirectory, 'lecture', 'Audio', 'lecture_audio.m4a');
     await writeFile(existingPath, 'keep original content');
 
@@ -226,12 +227,13 @@ describe('Audio extraction task service', () => {
     cancelAudioExtraction(id);
     await waitForJob(id, 'cancelled');
 
-    const files = await readdir(testDirectory);
+    const files = await readdir(join(testDirectory, 'lecture', 'Audio'));
     expect(files.some((file) => file.endsWith('.tmp.m4a'))).toBe(false);
     expect(mocks.logger.error).not.toHaveBeenCalled();
   });
 
   test('does not overwrite an existing output file', async () => {
+    await mkdir(join(testDirectory, 'lecture', 'Audio'), { recursive: true });
     const existingPath = join(testDirectory, 'lecture', 'Audio', 'lecture_audio.mp3');
     await writeFile(existingPath, 'keep existing content');
 
@@ -273,7 +275,7 @@ describe('Audio extraction task service', () => {
     const pausedStatus = getAudioExtractionStatus(id)!;
     expect(pausedStatus.tasks.map((task) => task.state)).toStrictEqual(['failed', 'pending']);
     expect(pausedStatus.tasks[0]!.error).toContain('mock encoder failure');
-    const filesWhilePaused = await readdir(testDirectory);
+    const filesWhilePaused = await readdir(join(testDirectory, 'lecture', 'Audio'));
     expect(filesWhilePaused.some((file) => file.endsWith('.tmp.mp3'))).toBe(false);
 
     resumeAudioExtraction(id);
@@ -307,7 +309,7 @@ describe('Audio extraction task service', () => {
     expect(status.tasks.map((task) => task.state)).toStrictEqual(['failed', 'skipped']);
     expect(status.outputPaths).toHaveLength(0);
     expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(1);
-    const files = await readdir(testDirectory);
+    const files = await readdir(join(testDirectory, 'lecture', 'Audio'));
     expect(files.some((file) => file.endsWith('.tmp.mp3'))).toBe(false);
   });
 
@@ -343,7 +345,7 @@ describe('Audio extraction task service', () => {
     expect(status.error).toBeUndefined();
     expect(mocks.logger.error).not.toHaveBeenCalled();
     expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(1);
-    const files = await readdir(testDirectory);
+    const files = await readdir(join(testDirectory, 'lecture', 'Audio'));
     expect(files.some((file) => file.endsWith('.tmp.mp3'))).toBe(false);
   });
 
@@ -391,7 +393,7 @@ describe('Audio extraction task service', () => {
     expect(cancelSecondTask).toHaveBeenCalledTimes(1);
     expect(mocks.runScopedFfmpeg).toHaveBeenCalledTimes(2);
 
-    const files = await readdir(testDirectory);
+    const files = await readdir(join(testDirectory, 'lecture', 'Audio'));
     expect(files.some((file) => file.endsWith('.tmp.mp3'))).toBe(false);
   });
 

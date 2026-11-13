@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import mainApi from '../../mainApi';
 import { showErrorNotification } from '../../notifications/notificationStore';
 import * as Dialog from '../Dialog';
-import { DialogButton } from '../Button';
+import actionStyles from '../OutputActionButtons.module.css';
 import { dangerColor, primaryTextColor, saveColor, warningColor } from '../../colors';
 import Checkbox from '../Checkbox';
 import type { FFprobeStream } from '../../../../common/ffprobe';
@@ -406,14 +406,16 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             )}
           </div>
           <div style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '10px 12px', borderTop: '1px solid var(--gray-6)' }}>
-            <DialogButton
+            <button
+              type="button"
+              className={actionStyles['action']}
               disabled={isStarting}
               onClick={() => {
                 if (job?.state === 'running' || job?.state === 'paused') cancelExtraction().catch(console.error);
                 else handleOpenChange(false);
               }}
-            >{t('Cancel')}</DialogButton>
-            <DialogButton primary disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract')}</DialogButton>
+            >{t('Cancel')}</button>
+            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy} onClick={startExtraction}>{t('Extract')}</button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

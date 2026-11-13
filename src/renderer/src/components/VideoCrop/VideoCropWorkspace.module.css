@@ -30,7 +30,5 @@
 .previewRow button[aria-pressed="true"] { background: var(--accent-5); border-color: var(--accent-9); }
 
 .heading strong { font-size: 14px; }
-.primaryButton { background: var(--cyan-9); color: white; border: 1px solid var(--cyan-9); border-radius: 5px; padding: 5px 12px; cursor: pointer; }
-.primaryButton:disabled { opacity: .5; cursor: not-allowed; }
 .previewRow button { background: var(--gray-3); color: var(--gray-12); }
 .previewRow button:hover { filter: brightness(1.08); }

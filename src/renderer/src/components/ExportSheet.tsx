@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import styles from './ExportSheet.module.css';
+import actionStyles from './OutputActionButtons.module.css';
 
 function ExportSheet({
   visible,
@@ -83,7 +84,7 @@ function ExportSheet({
       <div className={styles['contents']}>{children}</div>
       <div className={styles['footer']}>
         {renderBottom?.()}
-        <button type="button" onClick={onClosePress}>{t('Cancel')}</button>
+        <button className={actionStyles['action']} type="button" onClick={onClosePress}>{t('Cancel')}</button>
         {renderButton()}
       </div>
     </div>
