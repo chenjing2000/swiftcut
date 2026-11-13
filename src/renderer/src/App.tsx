@@ -51,6 +51,7 @@ import VideoCropWorkspace from './components/VideoCrop/VideoCropWorkspace';
 import CropExportProgress from './components/VideoCrop/CropExportProgress';
 import { createCropExportPlan } from './videoCropExportPlanner';
 import { resolveVideoCropSegments } from './videoCropSegments';
+import { getSourceDisplayRotation } from './videoCropRotation';
 import type { CropVideoConfig } from '../../common/videoCropTypes.js';
 import * as Dialog from './components/Dialog';
 
@@ -355,7 +356,7 @@ function App() {
 
   // 360 means we don't modify rotation gtrgt
   const isRotationSet = rotation !== 360;
-  const effectiveRotation = useMemo(() => (isRotationSet ? rotation : (activeVideoStream?.tags?.rotate ? parseInt(activeVideoStream.tags.rotate, 10) : undefined)), [isRotationSet, activeVideoStream, rotation]);
+  const effectiveRotation = useMemo(() => (isRotationSet ? rotation : getSourceDisplayRotation(activeVideoStream)), [isRotationSet, activeVideoStream, rotation]);
 
   const cropFrame = useMemo(() => {
     if (activeVideoStream?.width == null || activeVideoStream.height == null) return undefined;
