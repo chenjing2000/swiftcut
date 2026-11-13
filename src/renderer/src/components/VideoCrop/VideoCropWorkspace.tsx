@@ -112,7 +112,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
   const {
     position: panelPosition,
     dragRef: panelDragRef,
@@ -126,7 +125,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   useEffect(() => registerOutputPanel('crop'), []);
 
   useLayoutEffect(() => {
-    cancelRef.current?.focus();
+    panelRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -380,6 +379,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       {createPortal(
         <section
           ref={panelRef}
+          tabIndex={-1}
           aria-label={t('Crop Video Settings')}
           data-output-panel="crop"
           className={`${chrome['panel']} ${styles['panel']}`}
@@ -477,7 +477,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             {exportError && <p role="alert">{exportError}</p>}
           </div>
           <div className={chrome['footer']}>
-            <button ref={cancelRef} className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
+            <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
             <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
           </div>
         </section>,
