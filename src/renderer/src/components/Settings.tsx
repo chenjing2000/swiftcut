@@ -72,7 +72,7 @@ function Settings({
 }) {
   const { t } = useTranslation();
 
-  const { customOutDir, keyframeCut, toggleKeyframeCut, timecodeFormat, setTimecodeFormat, invertCutSegments, setInvertCutSegments, askBeforeClose, setAskBeforeClose, enableImportChapters, setEnableImportChapters, enableAskForFileOpenAction, setEnableAskForFileOpenAction, autoSaveProjectFile, setAutoSaveProjectFile, invertTimelineScroll, setInvertTimelineScroll, language, setLanguage, hideNotifications, setHideNotifications, hideOsNotifications, setHideOsNotifications, autoLoadTimecode, setAutoLoadTimecode, enableAutoHtml5ify, setEnableAutoHtml5ify, customFfPath, setCustomFfPath, storeProjectInWorkingDir, mouseWheelZoomModifierKey, setMouseWheelZoomModifierKey, mouseWheelFrameSeekModifierKey, setMouseWheelFrameSeekModifierKey, mouseWheelKeyframeSeekModifierKey, setMouseWheelKeyframeSeekModifierKey, segmentMouseModifierKey, setSegmentMouseModifierKey, captureFrameMethod, setCaptureFrameMethod, captureFrameQuality, setCaptureFrameQuality, captureFrameFileNameFormat, setCaptureFrameFileNameFormat, enableNativeHevc, setEnableNativeHevc, allowNetworkConnections, setAllowNetworkConnections, allowMultipleInstances, setAllowMultipleInstances, preferStrongColors, setPreferStrongColors, theme, setTheme, videoFit, setVideoFit, treatInputFileModifiedTimeAsStart, setTreatInputFileModifiedTimeAsStart, treatOutputFileModifiedTimeAsStart, setTreatOutputFileModifiedTimeAsStart, exportConfirmEnabled, toggleExportConfirmEnabled, storeWindowBounds, setStoreWindowBounds, reducedMotion, setReducedMotion, ffmpegHwaccel, setFfmpegHwaccel } = useUserSettings();
+  const { customOutDir, keyframeCut, toggleKeyframeCut, timecodeFormat, setTimecodeFormat, invertCutSegments, setInvertCutSegments, askBeforeClose, setAskBeforeClose, enableImportChapters, setEnableImportChapters, enableAskForFileOpenAction, setEnableAskForFileOpenAction, autoSaveProjectFile, setAutoSaveProjectFile, invertTimelineScroll, setInvertTimelineScroll, language, setLanguage, hideNotifications, setHideNotifications, hideOsNotifications, setHideOsNotifications, autoLoadTimecode, setAutoLoadTimecode, enableAutoHtml5ify, setEnableAutoHtml5ify, customFfPath, setCustomFfPath, storeProjectInWorkingDir, mouseWheelZoomModifierKey, setMouseWheelZoomModifierKey, mouseWheelFrameSeekModifierKey, setMouseWheelFrameSeekModifierKey, mouseWheelKeyframeSeekModifierKey, setMouseWheelKeyframeSeekModifierKey, segmentMouseModifierKey, setSegmentMouseModifierKey, captureFrameMethod, setCaptureFrameMethod, captureFrameQuality, setCaptureFrameQuality, captureFrameFileNameFormat, setCaptureFrameFileNameFormat, enableNativeHevc, setEnableNativeHevc, allowNetworkConnections, setAllowNetworkConnections, allowMultipleInstances, setAllowMultipleInstances, preferStrongColors, setPreferStrongColors, theme, setTheme, videoFit, setVideoFit, treatInputFileModifiedTimeAsStart, setTreatInputFileModifiedTimeAsStart, treatOutputFileModifiedTimeAsStart, setTreatOutputFileModifiedTimeAsStart, storeWindowBounds, setStoreWindowBounds, reducedMotion, setReducedMotion, ffmpegHwaccel, setFfmpegHwaccel } = useUserSettings();
 
   const onLangChange = useCallback<ChangeEventHandler<HTMLSelectElement>>((e) => {
     const { value } = e.target;
@@ -139,17 +139,6 @@ function Settings({
           </td>
         </Row>
 
-        <Row>
-          <KeyCell>
-            {t('Show export options screen before exporting?')}
-            <div style={detailsStyle}>
-              {t('This gives you an overview of the export and allows you to customise more parameters before exporting, like changing the output file name.')}
-            </div>
-          </KeyCell>
-          <td>
-            <Switch checked={exportConfirmEnabled} onCheckedChange={toggleExportConfirmEnabled} />
-          </td>
-        </Row>
 
         {showAdvancedSettings && (
           <Row>
