@@ -23,7 +23,7 @@ function ExportSheet({
 }) {
   const { t } = useTranslation();
   const [position, setPosition] = useState<{ left: number; top: number }>();
-  const dragRef = useRef<{ x: number; y: number; left: number; top: number }>();
+  const dragRef = useRef<{ x: number; y: number; left: number; top: number } | undefined>(undefined);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const clampPosition = useCallback((left: number, top: number) => {
