@@ -7,7 +7,6 @@ import { join } from 'node:path';
 
 import type { CropExportPlan } from '../common/videoCropTypes.js';
 import { buildCropFfmpegArgs } from './videoCropFfmpegArgs.js';
-import { getSourceDisplayRotation } from '../renderer/src/videoCropRotation.js';
 
 const enabled = process.env['SWIFTCUT_CROP_FFMPEG_TEST'] === '1';
 
@@ -135,7 +134,7 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       const metadata = JSON.parse(raw.toString('utf8')) as {
         streams: { side_data_list?: { side_data_type: string; rotation?: number }[] }[];
       };
-      const rotation = getSourceDisplayRotation(metadata.streams[0]);
+      const rotation = metadata.streams[0]?.side_data_list?.find((item) => item.side_data_type === 'Display Matrix')?.rotation;
       expect(rotation).toBe(90);
       const plan = planFor(rotated, dir);
       delete plan.audioStreamIndex;
@@ -183,7 +182,7 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       const frameTimes = execFileSync('ffprobe', [
         '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'frame=best_effort_timestamp_time',
         '-of', 'csv=p=0', source,
-      ]).toString('utf8').trim().split(/\r?\n/).map((value) => Number(value)).filter((value) => Number.isFinite(value));
+      ]).toString('utf8').trim().split(/\r?\n/).map(Number).filter((value) => Number.isFinite(value));
       const intervals = frameTimes.slice(1).map((time, i) => Math.round((time - frameTimes[i]!) * 1000));
       expect(new Set(intervals).size).toBeGreaterThan(1);
       const plan = planFor(source, dir);
@@ -195,7 +194,7 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       const outputPts = execFileSync('ffprobe', [
         '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'frame=best_effort_timestamp_time',
         '-of', 'csv=p=0', destination,
-      ]).toString('utf8').trim().split(/\r?\n/).map((value) => Number(value)).filter((value) => Number.isFinite(value));
+      ]).toString('utf8').trim().split(/\r?\n/).map(Number).filter((value) => Number.isFinite(value));
       const outputIntervals = outputPts.slice(1).map((time, i) => Math.round((time - outputPts[i]!) * 1000));
       expect(new Set(outputIntervals).size).toBeGreaterThan(1);
       expect(meta.streams.some((stream) => stream.codec_name === 'h264')).toBe(true);
