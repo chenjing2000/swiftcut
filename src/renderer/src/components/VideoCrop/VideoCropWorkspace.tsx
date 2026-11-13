@@ -112,7 +112,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
-  const titleRef = useRef<HTMLElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const {
     position: panelPosition,
     dragRef: panelDragRef,
@@ -126,7 +126,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   useEffect(() => registerOutputPanel('crop'), []);
 
   useLayoutEffect(() => {
-    titleRef.current?.focus();
+    cancelRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -396,7 +396,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             onLostPointerCapture={onPanelPointerUp}
             role="presentation"
           >
-            <strong ref={titleRef} tabIndex={-1}>{t('Crop Video Settings')}</strong>
+            <h2 className={chrome['title']}>{t('Crop Video Settings')}</h2>
             <button type="button" aria-label={t('Close')} onPointerDown={(event) => event.stopPropagation()} onClick={onClose}>×</button>
           </div>
           <div className={`${chrome['contents']} ${styles['contents']}`}>
@@ -477,7 +477,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             {exportError && <p role="alert">{exportError}</p>}
           </div>
           <div className={chrome['footer']}>
-            <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
+            <button ref={cancelRef} className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
             <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
           </div>
         </section>,
