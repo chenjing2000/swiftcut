@@ -1,4 +1,5 @@
-/* Align settings, controls and Help icons using the same columns in both tables. */
+/* Both Output tables use the same measured columns: flexible labels,
+   160px controls and a 20px Help icon separated by exactly 4px. */
 table.options {
   width: 100%;
   table-layout: fixed;
@@ -11,22 +12,21 @@ table.options td {
   min-width: 0;
 }
 table.options td:first-child {
-  width: 46%;
   overflow-wrap: anywhere;
+  text-align: left;
 }
 table.options td:nth-child(2) {
-  width: 46%;
   text-align: right;
 }
-table.options td:last-child {
-  width: 8%;
-  text-align: center;
+table.options td:last-child:not(:first-child) {
+  text-align: right;
   white-space: nowrap;
+  padding-left: 4px;
 }
 table.options td:nth-child(2) select {
   display: inline-block;
   box-sizing: border-box;
-  width: 150px;
+  width: 160px;
   max-width: 100%;
   min-width: 0;
   margin-left: 0 !important;
@@ -53,11 +53,11 @@ table.options tr.notice-row td {
   text-align: left;
   white-space: normal;
 }
-/* The output path fields span the complete table and keep their own layout. */
 table.options td[colspan="3"] {
-  width: auto;
+  padding-left: 0;
+  padding-right: 0;
 }
-/* Advanced switches are compact without altering switches elsewhere. */
+/* Advanced switches stay compact without changing other switches. */
 table.advancedOptions td:nth-child(2) [role="switch"] {
   transform: scale(.8);
   transform-origin: right center;
