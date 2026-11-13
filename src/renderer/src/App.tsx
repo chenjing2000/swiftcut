@@ -2627,21 +2627,7 @@ function App() {
           <SegColorsContext value={segColorsContext}>
             <UserSettingsContext value={userSettingsContext}>
               <div className={rootClass} style={rootStyle} id="app-root">
-                <TopMenu
-                  filePath={filePath}
-                  fileFormat={fileFormat}
-                  changeEnabledStreamsFilter={changeEnabledStreamsFilter}
-                  applyEnabledStreamsFilter={applyEnabledStreamsFilter}
-                  enabledStreamsFilter={enabledStreamsFilter}
-                  isCustomFormatSelected={isCustomFormatSelected}
-                  renderOutFmt={renderOutFmt}
-                  toggleSettings={toggleSettings}
-                  numStreamsToCopy={numStreamsToCopy}
-                  numStreamsTotal={numStreamsTotal}
-                  setStreamsSelectorShown={setStreamsSelectorShown}
-                  selectedSegments={segmentsOrInverse.selected}
-                  toggleDarkMode={toggleDarkMode}
-                />
+                <TopMenu toggleSettings={toggleSettings} toggleDarkMode={toggleDarkMode} />
 
                 <div style={{ flexGrow: 1, display: 'flex', overflowY: 'hidden' }}>
                   <AnimatePresence>
