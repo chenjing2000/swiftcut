@@ -1,4 +1,5 @@
 import type { CropExportPlan, CropExportRequest, CropExportTask } from '../../common/videoCropTypes.js';
+import { getMediaOutputName } from '../../common/mediaWorkspace.js';
 import { getCropEncodedDimensions, validateCropExportRequest } from '../../common/videoCropValidation.js';
 
 /** Pure, non-mutating planning; no FFmpeg launch or filesystem side effects. */
@@ -13,19 +14,21 @@ export function createCropExportPlan(request: CropExportRequest): CropExportPlan
   const encoded = getCropEncodedDimensions({
     width: outputWidth, height: outputHeight, pixelFormat: output.pixelFormat, padToCompatible: true,
   });
-  const sourceName = request.sourcePath.split(/[\\/]/).pop() ?? '';
-  const sourceStem = sourceName.replace(/\.[^.]+$/, '');
-  if (!sourceStem || sourceStem === '.' || sourceStem === '..') throw new Error('Invalid input filename');
-
-  const base = `${sourceStem}.crop`;
-  const extension = output.format;
   const sorted = request.segments.toSorted((a, b) => a.start - b.start || a.originalIndex - b.originalIndex);
   const separate = output.outputMode === 'separate' && sorted.length > 1;
+  const entire = output.timeRange === 'entire';
+  const outputName = (mode: 'entire' | 'segment' | 'merge', segmentIndex?: number) => getMediaOutputName({
+    sourcePath: request.sourcePath,
+    kind: 'crop',
+    mode,
+    extension: output.format,
+    ...(segmentIndex != null && { segmentIndex, segmentCount: sorted.length }),
+  });
   const tasks: CropExportTask[] = sorted.map((segment, index) => ({
     start: segment.start,
     end: segment.end,
     originalIndex: segment.originalIndex,
-    outputName: separate ? `${base}-${String(index + 1).padStart(3, '0')}.${extension}` : `${base}.${extension}`,
+    outputName: separate ? outputName('segment', index + 1) : outputName(entire ? 'entire' : 'segment', 1),
   }));
 
   const turned = frame.rotation === 90 || frame.rotation === 270;
@@ -44,6 +47,6 @@ export function createCropExportPlan(request: CropExportRequest): CropExportPlan
     outputSarNum: output.resize ? 1 : (turned ? frame.sarDen : frame.sarNum),
     outputSarDen: output.resize ? 1 : (turned ? frame.sarNum : frame.sarDen),
     tasks,
-    ...(output.outputMode === 'merge' && sorted.length > 1 && { mergedOutputName: `${base}.${extension}` }),
+    ...(output.outputMode === 'merge' && sorted.length > 1 && { mergedOutputName: outputName('merge') }),
   };
 }
