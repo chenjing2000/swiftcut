@@ -459,12 +459,12 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
               <button type="button" aria-pressed={previewMode === 'output'} onClick={() => setPreviewMode('output')}>{t('Preview Output')}</button>
             </div>
-            <div className={`${chrome['footer']} ${styles['footer']}`}>
-              <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
-              <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
-            </div>
-            {!valid && <p>{t('Invalid crop region')}</p>}
+            {!valid && <p role="alert">{t('Invalid crop region')}</p>}
             {exportError && <p role="alert">{exportError}</p>}
+          </div>
+          <div className={chrome['footer']}>
+            <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
+            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
           </div>
         </section>,
         document.getElementById('app-root') ?? document.body,
