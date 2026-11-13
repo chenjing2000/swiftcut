@@ -52,9 +52,7 @@ export default ({ keyBindings, keyUpActions, getKeyboardAction, closeExportConfi
         e.stopPropagation();
         return;
       }
-      if (action !== 'export') {
-        return; // stop here, don't allow other key actions than export while dialog is open
-      }
+      return; // The export panel handles its own buttons; no background keyboard actions.
     }
 
     // Escape releases focus from inputs, buttons etc. (outside of dialogs), so that keyboard shortcuts work again https://github.com/mifi/lossless-cut/issues/2942
