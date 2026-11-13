@@ -283,20 +283,20 @@ describe('Crop Video single-segment service', () => {
     await expect(readdir(directory)).resolves.not.toContain('clip.crop-002.mp4');
   });
 
-  it('preserves completed files and reports partial success if a later commit fails', async () => {
+  it('rejects a malformed export batch before publishing any output', async () => {
     const plan = makePlan();
     plan.output.outputMode = 'separate';
     plan.tasks = [
-      { start: 1, end: 3, originalIndex: 0, outputName: 'clip.crop-001.mp4' },
+      { start: 1, end: 3, originalIndex: 0, outputName: 'clip_segment_01.mp4' },
       { start: 5, end: 7, originalIndex: 1, outputName: '../invalid.mp4' },
     ];
     const jobId = await startCropExport(plan);
-    await expectState(jobId, 'partial_success');
+    await expectState(jobId, 'failed');
     const result = getCropExportStatus(jobId)!;
     expect(result.interruption).toBe('failed');
-    expect(result.error).toContain('Invalid crop output filename');
-    expect(result.outputPaths).toStrictEqual([join(directory, 'clip.crop-001.mp4')]);
-    await expect(readFile(result.outputPaths![0]!)).resolves.toStrictEqual(Buffer.from('mock encoded video'));
+    expect(result.error).toContain('Invalid output filename');
+    expect(result.outputPaths).toStrictEqual([]);
+    await expect(readdir(directory)).resolves.not.toContain('clip_segment_01.mp4');
     await expect(readdir(join(directory, '.swiftcut-crop-tmp'))).resolves.toStrictEqual([]);
   });
 
