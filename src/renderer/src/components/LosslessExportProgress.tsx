@@ -14,7 +14,8 @@ interface Props {
 export default function LosslessExportProgress({ state, text, progress, onCancel, onDismiss }: Props) {
   const { t } = useTranslation();
   const active = state !== 'cancelled';
-  const stateLabel = state === 'cancelled' ? 'Cancelled' : state === 'cancelling' ? 'Cancelling export' : 'Exporting';
+  const stateLabels = { running: 'Exporting', cancelling: 'Cancelling export', cancelled: 'Cancelled' } as const;
+  const stateLabel = stateLabels[state];
   const percent = progress == null ? undefined : Math.round(Math.max(0, Math.min(1, progress)) * 100);
   return (
     <aside className={styles['panel']} role="status" aria-live="polite" aria-label={t('Export Video Settings')}>
