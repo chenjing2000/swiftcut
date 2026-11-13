@@ -41,8 +41,8 @@ function getArgs(plan: CropExportPlan) {
 describe('Crop Video FFmpeg args', () => {
   it('uses explicit stream maps, time range, safe array arguments and exact pixel crop', () => {
     const args = getArgs(makePlan());
-    expect(args.slice(args.indexOf('-noautorotate'), args.indexOf('-noautorotate') + 3))
-      .toStrictEqual(['-noautorotate', '-i', String.raw`C:\Videos\source.mp4`]);
+    expect(args.slice(args.indexOf('-noautorotate'), args.indexOf('-noautorotate') + 5))
+      .toStrictEqual(['-noautorotate', '-display_rotation', '0', '-i', String.raw`C:\Videos\source.mp4`]);
     expect(args).toContain('0:0');
     expect(args).toContain('0:1');
     expect(args[args.indexOf('-ss') + 1]).toBe('10.000000');

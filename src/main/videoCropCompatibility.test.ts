@@ -144,9 +144,19 @@ describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
       plan.outputHeight = 81;
       plan.encodedWidth = 72;
       plan.encodedHeight = 82;
-      const meta = exportCrop(plan, join(dir, 'upright.mp4'));
+      const upright = join(dir, 'upright.mp4');
+      const meta = exportCrop(plan, upright);
       expect(meta.streams.find((stream) => stream.codec_type === 'video'))
         .toMatchObject({ codec_name: 'h264', width: 72, height: 82 });
+      // Crucial: rotate the pixels ONCE; the output must not inherit the
+      // input Display Matrix or a player will rotate the result a second time.
+      const outputRaw = execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', upright]);
+      const outputMeta = JSON.parse(outputRaw.toString('utf8')) as {
+        streams: { tags?: { rotate?: string }; side_data_list?: { side_data_type: string; rotation?: number }[] }[];
+      };
+      const outputStream = outputMeta.streams[0]!;
+      expect(outputStream.side_data_list?.some((item) => item.side_data_type === 'Display Matrix' && item.rotation !== 0) ?? false).toBe(false);
+      expect(Number(outputStream.tags?.rotate ?? 0)).toBe(0);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

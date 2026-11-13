@@ -44,6 +44,9 @@ export function buildCropFfmpegArgs({
   const includeAudio = output.keepAudio && plan.audioStreamIndex != null;
   const args = [
     '-hide_banner', '-nostdin', '-noautorotate',
+    // We rotate pixels explicitly below. Reset input Display Matrix so FFmpeg
+    // does not propagate the original rotation side data into the encoded MP4.
+    '-display_rotation', '0',
     '-i', plan.sourcePath,
     '-ss', formatFfmpegNumber(task.start),
     '-t', formatFfmpegNumber(task.end - task.start),
