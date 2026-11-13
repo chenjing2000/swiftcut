@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { MdRotate90DegreesCcw } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { IoIosCamera, IoMdKey, IoMdSpeedometer } from 'react-icons/io';
-import { FaYinYang, FaTrashAlt, FaStepBackward, FaStepForward, FaCaretLeft, FaCaretRight, FaPause, FaPlay, FaImages, FaKey, FaExclamationTriangle } from 'react-icons/fa';
+import { FaYinYang, FaTrashAlt, FaStepBackward, FaStepForward, FaCaretLeft, FaCaretRight, FaPause, FaPlay, FaImages, FaKey } from 'react-icons/fa';
 import { GiSoundWaves } from 'react-icons/gi';
 // import useTraceUpdate from 'use-trace-update';
 import invariant from 'tiny-invariant';
@@ -12,8 +12,6 @@ import invariant from 'tiny-invariant';
 import { primaryTextColor, primaryColor, darkModeTransition, dangerColor } from './colors';
 import SegmentCutpointButton from './components/SegmentCutpointButton';
 import SetCutpointButton from './components/SetCutpointButton';
-import ExportButton from './components/ExportButton';
-import ToggleExportConfirm from './components/ToggleExportConfirm';
 import CaptureFormatButton from './components/CaptureFormatButton';
 import Select from './components/Select';
 
@@ -28,7 +26,7 @@ import { isExactTimecodeMatch } from './util/duration';
 import useUserSettings from './hooks/useUserSettings';
 import useActionTitle from './hooks/useActionTitle';
 import { askForPlaybackRate } from './dialogs';
-import type { FormatTimecode, GetFrameCount, ParseTimecode, PlaybackMode, SegmentColorIndex, SegmentToExport, StateSegment } from './types';
+import type { FormatTimecode, GetFrameCount, ParseTimecode, PlaybackMode, SegmentColorIndex, StateSegment } from './types';
 import type { WaveformMode } from '../../common/types';
 import type { Frame } from './ffmpeg';
 import mainApi from './mainApi';
@@ -281,8 +279,8 @@ const CutTimeInput = memo(({ disabled, darkMode, cutTime, setCutTime, startTimeO
 
 function BottomBar({
   zoom, setZoom, timelineToggleComfortZoom,
-  isRotationSet, rotation, areWeCutting, increaseRotation, cleanupFilesDialog,
-  captureSnapshot, onExportPress, segmentsToExport, hasVideo,
+  isRotationSet, rotation, increaseRotation, cleanupFilesDialog,
+  captureSnapshot, hasVideo,
   seekAbs, currentSegIndexSafe, cutSegments, currentCutSeg, setCutStart, setCutEnd,
   setCurrentSegIndex,
   jumpTimelineStart, jumpTimelineEnd, jumpCutEnd, jumpCutStart, startTimeOffset, setCutTime,
@@ -299,12 +297,9 @@ function BottomBar({
   timelineToggleComfortZoom: () => void,
   isRotationSet: boolean,
   rotation: number,
-  areWeCutting: boolean,
   increaseRotation: () => void,
   cleanupFilesDialog: () => void,
   captureSnapshot: () => void,
-  onExportPress: () => void,
-  segmentsToExport: SegmentToExport[],
   hasVideo: boolean,
   seekAbs: (a: number) => void,
   currentSegIndexSafe: number,
@@ -394,7 +389,7 @@ function BottomBar({
     color: currentFrame?.keyframe ? primaryTextColor : undefined,
   }), [currentFrame]);
 
-  const { invertCutSegments, setInvertCutSegments, simpleMode, exportConfirmEnabled } = useUserSettings();
+  const { invertCutSegments, setInvertCutSegments, simpleMode } = useUserSettings();
   const actionTitle = useActionTitle();
 
   const rotationStr = `${rotation}°`;
@@ -646,12 +641,7 @@ function BottomBar({
           </div>
         )}
 
-        {!exportConfirmEnabled && (<FaExclamationTriangle style={{ color: dangerColor, marginLeft: '.4em' }} title={t('Export options screen is disabled, and you will not see any important notices or warnings.')} />)}
-        {(!simpleMode || !exportConfirmEnabled) && <ToggleExportConfirm style={{ marginLeft: exportConfirmEnabled ? '.4em' : undefined }} />}
 
-        {isFileOpened && (
-          <ExportButton segmentsToExport={segmentsToExport} areWeCutting={areWeCutting} onClick={withBlur(onExportPress)} />
-        )}
       </div>
     </>
   );
