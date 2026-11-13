@@ -168,9 +168,9 @@ function App() {
   const [streamsSelectorShown, setStreamsSelectorShown] = useState(false);
   const [concatDialogOpen, setConcatDialogOpen] = useState(false);
   const [audioExtractionDialogOpen, setAudioExtractionDialogOpen] = useState(false);
-  const [audioExtractionSource, setAudioExtractionSource] = useState<string>();
   const [cropVideoForFile, setCropVideoForFile] = useState<string>();
   const [cropExportJobId, setCropExportJobId] = useState<string>();
+  const cropExportStartingRef = useRef(false);
   const [cropExportStatus, setCropExportStatus] = useState<Awaited<ReturnType<typeof mainApi.getCropExportStatus>>>();
   const cropVideoOpen = filePath != null && cropVideoForFile === filePath;
   const [cropPreviewRect, setCropPreviewRect] = useState<{ left: number; top: number; width: number; height: number }>();
@@ -475,34 +475,39 @@ function App() {
   const outputDir = getOutDir(customOutDir, filePath);
 
   const submitCropExport = useCallback(async (config: CropVideoConfig) => {
-    if (!filePath || !cropFrame || !fileDuration || !outputDir || activeVideoStream == null) {
+    if (!filePath || !cropFrame || !fileDuration || activeVideoStream == null) {
       throw new Error('No valid crop video is loaded');
     }
-    if (cropExportStatus && !['success', 'partial_success', 'failed', 'cancelled'].includes(cropExportStatus.state)) {
+    if (cropExportStartingRef.current || (cropExportStatus && !['success', 'partial_success', 'failed', 'cancelled'].includes(cropExportStatus.state))) {
       throw new Error('A crop video export is already running');
     }
-    const selected = resolveVideoCropSegments({
-      segments: cutSegments,
-      inverseSegments: inverseCutSegments,
-      inverted: invertCutSegments,
-      duration: fileDuration,
-      timeRange: config.output.timeRange,
-    });
-    if (selected.length === 0) throw new Error('No valid segments selected');
-    const plan = createCropExportPlan({
-      sourcePath: filePath,
-      outputDir: getMediaOutputDir(filePath, 'crop'),
-      frame: cropFrame,
-      videoStreamIndex: activeVideoStream.index,
-      ...(config.output.keepAudio && activeAudioStreams[0] != null && { audioStreamIndex: activeAudioStreams[0].index }),
-      sourceDuration: fileDuration,
-      config,
-      segments: selected,
-    });
-    const jobId = await mainApi.startCropExport(plan);
-    setCropExportJobId(jobId);
-    setCropExportStatus({ id: jobId, state: 'preparing', progress: 0 });
-  }, [filePath, cropFrame, fileDuration, outputDir, activeVideoStream, cropExportStatus, cutSegments, inverseCutSegments, invertCutSegments, activeAudioStreams]);
+    cropExportStartingRef.current = true;
+    try {
+      const selected = resolveVideoCropSegments({
+        segments: cutSegments,
+        inverseSegments: inverseCutSegments,
+        inverted: invertCutSegments,
+        duration: fileDuration,
+        timeRange: config.output.timeRange,
+      });
+      if (selected.length === 0) throw new Error('No valid segments selected');
+      const plan = createCropExportPlan({
+        sourcePath: filePath,
+        outputDir: getMediaOutputDir(filePath, 'crop'),
+        frame: cropFrame,
+        videoStreamIndex: activeVideoStream.index,
+        ...(config.output.keepAudio && activeAudioStreams[0] != null && { audioStreamIndex: activeAudioStreams[0].index }),
+        sourceDuration: fileDuration,
+        config,
+        segments: selected,
+      });
+      const jobId = await mainApi.startCropExport(plan);
+      setCropExportJobId(jobId);
+      setCropExportStatus({ id: jobId, state: 'preparing', progress: 0 });
+    } finally {
+      cropExportStartingRef.current = false;
+    }
+  }, [filePath, cropFrame, fileDuration, activeVideoStream, cropExportStatus, cutSegments, inverseCutSegments, invertCutSegments, activeAudioStreams]);
 
   useEffect(() => {
     if (cropExportJobId == null) return undefined;
@@ -1692,7 +1697,6 @@ function App() {
   const toggleSettings = useCallback(() => setSettingsVisible((val) => !val), []);
   const openAudioExtractionDialog = useCallback(() => {
     if (!checkFileOpened()) return;
-    setAudioExtractionSource(filePath);
     setAudioExtractionDialogOpen(true);
   }, [checkFileOpened, filePath]);
 
@@ -2984,8 +2988,7 @@ function App() {
 
                 <LastCommands visible={lastCommandsVisible} onTogglePress={toggleLastCommands} ffmpegCommandLog={ffmpegCommandLog} setFfmpegCommandLog={setFfmpegCommandLog} />
 
-                {audioExtractionSource != null && (
-                  <AudioExtractionDialog
+                <AudioExtractionDialog
                     open={audioExtractionDialogOpen}
                     onOpenChange={setAudioExtractionDialogOpen}
                     filePath={filePath}
@@ -2999,7 +3002,6 @@ function App() {
                     }) : []}
                     formatName={mainFileFormat?.format_name}
                   />
-                )}
 
                 <Dialog.Root open={settingsVisible} onOpenChange={toggleSettings}>
                   <Dialog.Portal>
