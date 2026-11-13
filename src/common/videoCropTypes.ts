@@ -58,6 +58,8 @@ export interface CropExportRequest {
   videoStreamIndex: number;
   audioStreamIndex?: number;
   sourceDuration: number;
+  /** Optional bounded tolerance for independently probed container durations. */
+  sourceDurationTolerance?: number;
   config: CropVideoConfig;
   /** Already-resolved selected or inverse time ranges, in source seconds. */
   segments: readonly CropTimeSegment[];

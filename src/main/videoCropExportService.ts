@@ -161,6 +161,7 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
     ...(plan.audioStreamIndex != null && { audioStreamIndex: plan.audioStreamIndex }),
     // The source duration is probed by the main process, not inferred from untrusted tasks.
     sourceDuration,
+    sourceDurationTolerance: 0.1,
     segments: plan.tasks.map(({ start, end, originalIndex }) => ({ start, end, originalIndex })),
     config: { rect: plan.crop, aspectPreset: 'free', output: plan.output },
   });

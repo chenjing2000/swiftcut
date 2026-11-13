@@ -67,6 +67,7 @@ function doTimeRangesOverlap(segments: readonly CropTimeSegment[]): boolean {
 export function validateCropExportRequest(request: CropExportRequest): CropValidationProblem[] {
   const problems: CropValidationProblem[] = [];
   const { config, frame, sourceDuration, segments } = request;
+  const durationTolerance = request.sourceDurationTolerance ?? 0;
   if (!request.sourcePath.trim()) problems.push({ field: 'sourcePath', message: 'Missing source video path' });
   if (!request.outputDir.trim()) problems.push({ field: 'outputDir', message: 'Missing output directory' });
   if (!Number.isSafeInteger(request.videoStreamIndex) || request.videoStreamIndex < 0) {
@@ -92,6 +93,9 @@ export function validateCropExportRequest(request: CropExportRequest): CropValid
     }),
     ...validateCropOutput(config.output, config.rect),
   );
+  if (!Number.isFinite(durationTolerance) || durationTolerance < 0 || durationTolerance > 0.1) {
+    problems.push({ field: 'sourceDurationTolerance', message: 'Invalid source duration tolerance' });
+  }
   if (!Number.isFinite(sourceDuration) || sourceDuration <= 0) {
     problems.push({ field: 'sourceDuration', message: 'Invalid source duration' });
   }
@@ -115,14 +119,14 @@ export function validateCropExportRequest(request: CropExportRequest): CropValid
     problems.push({ field: 'segments', message: 'No exportable segments selected' });
   }
   segments.forEach(({ start, end }, index) => {
-    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > sourceDuration) {
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > sourceDuration + durationTolerance) {
       problems.push({ field: 'segments', message: `Invalid export segment at index ${index}` });
     }
   });
   if (config.output.outputMode === 'merge' && doTimeRangesOverlap(segments)) {
     problems.push({ field: 'segments', message: 'Overlapping segments cannot be merged' });
   }
-  if (config.output.timeRange === 'entire' && (segments.length !== 1 || segments[0]?.start !== 0 || segments[0]?.end !== sourceDuration)) {
+  if (config.output.timeRange === 'entire' && (segments.length !== 1 || segments[0]?.start !== 0 || Math.abs((segments[0]?.end ?? 0) - sourceDuration) > durationTolerance)) {
     problems.push({ field: 'segments', message: 'Entire video must cover the full source duration' });
   }
   return problems;
