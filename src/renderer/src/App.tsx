@@ -1179,17 +1179,12 @@ function App() {
       return;
     }
 
-    setStreamsSelectorShown(false);
-    setExportConfirmOpen(false);
-
     if (workingRef.current) return;
     try {
-      setWorking({ text: i18n.t('Exporting') });
+      // Validate editable output fields before dismissing the export panel.
       if (!isAbsolute(losslessDirectory)) throw new UserFacingError('Output directory must be an absolute path');
       assertOutputFilename(losslessFilename);
       if (parsePath(losslessFilename).ext.toLowerCase() !== `.${losslessExtension.toLowerCase()}`) throw new UserFacingError('Filename extension must match output format');
-      temporaryLosslessDir = pathJoin(losslessDirectory, '.swiftcut-lossless-tmp', window.crypto.randomUUID());
-      await mkdir(temporaryLosslessDir, { recursive: true });
 
       // Special segments-to-chapters mode:
       let chaptersToAdd: Chapter[] | undefined;
@@ -1202,6 +1197,12 @@ function App() {
         // matroska supports gaps, so we can use segments directly
         chaptersToAdd = isMatroska(fileFormat) ? sortedSegments : convertSegmentsToChaptersWithGaps(sortedSegments);
       }
+
+      setStreamsSelectorShown(false);
+      setExportConfirmOpen(false);
+      setWorking({ text: i18n.t('Exporting') });
+      temporaryLosslessDir = pathJoin(losslessDirectory, '.swiftcut-lossless-tmp', window.crypto.randomUUID());
+      await mkdir(temporaryLosslessDir, { recursive: true });
 
       const notices = new Set<string>();
       const warnings = new Set<string>();
