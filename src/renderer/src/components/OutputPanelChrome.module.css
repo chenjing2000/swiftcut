@@ -23,7 +23,14 @@
   touch-action: none;
   cursor: move;
 }
-.heading strong { font-size: 14px; }
+.title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: normal;
+}
 .heading > button {
   box-sizing: border-box;
   flex: 0 0 26px;
