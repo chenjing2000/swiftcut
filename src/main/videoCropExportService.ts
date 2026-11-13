@@ -1,20 +1,24 @@
 import { randomUUID } from 'node:crypto';
 import { basename, join, parse } from 'node:path';
-import { link, mkdir, rm, stat, unlink } from 'node:fs/promises';
+import { link, mkdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
 
-import type { CropExportPlan } from '../common/videoCropTypes.js';
+import type { CropExportPlan, CropExportTask } from '../common/videoCropTypes.js';
 import { validateCropExportRequest } from '../common/videoCropValidation.js';
 import { runFfprobe, runScopedFfmpeg } from './ffmpeg.js';
 import { buildCropFfmpegArgs } from './videoCropFfmpegArgs.js';
+import { buildCropConcatArgs, buildCropConcatList } from './videoCropConcat.js';
 import logger from './logger.js';
 
-export type CropExportState = 'preparing' | 'encoding' | 'verifying' | 'committing' | 'success' | 'failed' | 'cancelled';
+export type CropExportState = 'preparing' | 'encoding' | 'merging' | 'verifying' | 'committing' | 'success' | 'failed' | 'cancelled';
 
 export interface CropExportStatus {
   id: string;
   state: CropExportState;
   progress: number;
   outputPath?: string;
+  outputPaths?: string[];
+  completedSegments?: number;
+  totalSegments?: number;
   error?: string;
 }
 
@@ -43,7 +47,7 @@ function pruneJobs() {
 
 export function getCropExportStatus(id: string): CropExportStatus | undefined {
   const job = jobs.get(id);
-  return job == null ? undefined : { ...job.status };
+  return job == null ? undefined : { ...job.status, ...(job.status.outputPaths && { outputPaths: [...job.status.outputPaths] }) };
 }
 
 export function cancelCropExport(id: string): void {
@@ -104,7 +108,7 @@ async function probeJson(path: string): Promise<{
   };
 }
 
-async function verifyOutput(path: string, plan: CropExportPlan) {
+async function verifyOutput(path: string, plan: CropExportPlan, expectedDuration: number) {
   const file = await stat(path);
   if (!file.isFile() || file.size <= 0) throw new Error('Crop export output is empty');
   const metadata = await probeJson(path);
@@ -119,66 +123,114 @@ async function verifyOutput(path: string, plan: CropExportPlan) {
     throw new Error('Crop output audio verification failed');
   }
   const duration = Number(metadata.format?.duration);
-  const expectedDuration = plan.tasks[0]!.end - plan.tasks[0]!.start;
   if (!Number.isFinite(duration) || duration <= 0 || Math.abs(duration - expectedDuration) > Math.max(1, expectedDuration * 0.02)) {
     throw new Error('Crop output duration verification failed');
   }
 }
 
-// Phase 3B deliberately executes only one time range.
-// Multi-segment export and concatenation are reserved for Phase 3C.
+// Crop Video exports are isolated from the application's ordinary lossless export.
 export async function startCropExport(plan: CropExportPlan): Promise<string> {
-  if (plan.tasks.length !== 1 || plan.mergedOutputName) throw new Error('Multi-segment crop export is not available yet');
+  if (plan.tasks.length === 0) throw new Error('No crop export segments');
+  if (plan.tasks.some((task) => !Number.isFinite(task.start) || !Number.isFinite(task.end)
+    || task.start < 0 || task.end <= task.start)) throw new Error('Invalid crop export time ranges');
+  if (plan.output.outputMode === 'merge' && plan.tasks.some((task, index) => index > 0
+    && task.start < plan.tasks[index - 1]!.end)) {
+    throw new Error('Overlapping crop segments cannot be merged');
+  }
   const requestProblems = validateCropExportRequest({
     sourcePath: plan.sourcePath,
     outputDir: plan.outputDir,
     frame: plan.frame,
     videoStreamIndex: plan.videoStreamIndex,
     ...(plan.audioStreamIndex != null && { audioStreamIndex: plan.audioStreamIndex }),
-    sourceDuration: Math.max(plan.tasks[0]!.end, 1),
+    sourceDuration: Math.max(...plan.tasks.map((task) => task.end)),
     segments: plan.tasks.map(({ start, end, originalIndex }) => ({ start, end, originalIndex })),
     config: { rect: plan.crop, aspectPreset: 'free', output: plan.output },
   });
-  // Entire-video validation uses the original source duration in the planner;
-  // the service validates only the immutable plan and local file existence.
   if (requestProblems.some(({ field }) => field !== 'segments')) throw new Error('Invalid crop export plan');
   const source = await stat(plan.sourcePath);
   if (!source.isFile()) throw new Error('Crop source must be a local file');
 
   await mkdir(plan.outputDir, { recursive: true });
   const id = randomUUID();
-  const job: CropJob = { status: { id, state: 'preparing', progress: 0 }, cancelled: false };
+  const job: CropJob = {
+    status: { id, state: 'preparing', progress: 0, outputPaths: [], completedSegments: 0, totalSegments: plan.tasks.length },
+    cancelled: false,
+  };
   pruneJobs();
   jobs.set(id, job);
   const run = async () => {
     const workDir = join(plan.outputDir, '.swiftcut-crop-tmp', id);
-    const temporary = join(workDir, `output.${plan.output.format}`);
+    const totalDuration = plan.tasks.reduce((sum, task) => sum + task.end - task.start, 0);
+    const merged = plan.output.outputMode === 'merge' && plan.tasks.length > 1;
+    const encoded: { path: string; task: CropExportTask }[] = [];
     try {
       assertNotCancelled(job);
       await mkdir(workDir, { recursive: true });
-      assertNotCancelled(job);
-      job.status.state = 'encoding';
-      const args = buildCropFfmpegArgs({ plan, task: plan.tasks[0]!, outputPath: temporary });
-      const runner = runScopedFfmpeg({
-        ffmpegArgs: args,
-        duration: plan.tasks[0]!.end - plan.tasks[0]!.start,
-        onProgress: (progress) => {
-          job.status.progress = Math.max(0, Math.min(0.9, progress * 0.9));
-        },
-      });
-      job.cancelProcess = runner.cancel;
-      if (job.cancelled) runner.cancel();
-      await runner.result;
-      delete job.cancelProcess;
-      assertNotCancelled(job);
-      job.status.state = 'verifying';
-      job.status.progress = 0.92;
-      await verifyOutput(temporary, plan);
-      assertNotCancelled(job);
-      job.status.state = 'committing';
-      job.status.progress = 0.98;
-      const outputPath = await commitWithoutOverwrite(temporary, plan.outputDir, plan.tasks[0]!.outputName);
-      job.status.outputPath = outputPath;
+      for (const [index, task] of plan.tasks.entries()) {
+        assertNotCancelled(job);
+        job.status.state = 'encoding';
+        const temporary = join(workDir, `segment-${String(index + 1).padStart(3, '0')}.${plan.output.format}`);
+        const elapsedBefore = encoded.reduce((sum, item) => sum + item.task.end - item.task.start, 0);
+        const duration = task.end - task.start;
+        const args = buildCropFfmpegArgs({ plan, task, outputPath: temporary });
+        const runner = runScopedFfmpeg({
+          ffmpegArgs: args,
+          duration,
+          onProgress: (value) => {
+            const fraction = (elapsedBefore + Math.max(0, Math.min(1, value)) * duration) / totalDuration;
+            job.status.progress = Math.max(0, Math.min(0.9, fraction * 0.9));
+          },
+        });
+        job.cancelProcess = runner.cancel;
+        if (job.cancelled) runner.cancel();
+        await runner.result;
+        delete job.cancelProcess;
+        assertNotCancelled(job);
+        job.status.state = 'verifying';
+        await verifyOutput(temporary, plan, duration);
+        encoded.push({ path: temporary, task });
+        job.status.completedSegments = encoded.length;
+      }
+
+      let finalOutput: string | undefined;
+      if (merged) {
+        assertNotCancelled(job);
+        job.status.state = 'merging';
+        job.status.progress = 0.91;
+        const listPath = join(workDir, 'segments.ffcat');
+        await writeFile(listPath, buildCropConcatList(encoded.map((item) => item.path)), 'utf8');
+        const combinedPath = join(workDir, `merged.${plan.output.format}`);
+        const runner = runScopedFfmpeg({
+          ffmpegArgs: buildCropConcatArgs({ listPath, outputPath: combinedPath, plan }),
+          duration: totalDuration,
+          onProgress: (value) => {
+            job.status.progress = 0.91 + Math.max(0, Math.min(1, value)) * 0.05;
+          },
+        });
+        job.cancelProcess = runner.cancel;
+        if (job.cancelled) runner.cancel();
+        await runner.result;
+        delete job.cancelProcess;
+        assertNotCancelled(job);
+        job.status.state = 'verifying';
+        job.status.progress = 0.97;
+        await verifyOutput(combinedPath, plan, totalDuration);
+        assertNotCancelled(job);
+        job.status.state = 'committing';
+        finalOutput = await commitWithoutOverwrite(combinedPath, plan.outputDir, plan.mergedOutputName!);
+        job.status.outputPaths!.push(finalOutput);
+      } else {
+        job.status.state = 'committing';
+        for (const item of encoded) {
+          assertNotCancelled(job);
+          const outputPath = await commitWithoutOverwrite(item.path, plan.outputDir, item.task.outputName);
+          job.status.outputPaths!.push(outputPath);
+          finalOutput ??= outputPath;
+          job.status.progress = 0.9 + (job.status.outputPaths!.length / encoded.length) * 0.1;
+        }
+      }
+      job.status.outputPath = finalOutput;
       job.status.progress = 1;
       job.status.state = 'success';
     } catch (error) {
@@ -191,7 +243,8 @@ export async function startCropExport(plan: CropExportPlan): Promise<string> {
       }
     } finally {
       delete job.cancelProcess;
-      await rm(workDir, { recursive: true, force: true }).catch((error: unknown) => logger.warn('Failed to clean crop export temporary directory', error));
+      await rm(workDir, { recursive: true, force: true })
+        .catch((error: unknown) => logger.warn('Failed to clean crop export temporary directory', error));
     }
   };
   run().catch((error: unknown) => {
