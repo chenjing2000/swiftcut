@@ -15,15 +15,13 @@ export default function useCenteredDialogDrag() {
   const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const { current } = dragRef;
     if (!current || current.pointerId !== event.pointerId) return;
-    const { width, height } = event.currentTarget.getBoundingClientRect();
-    const maxX = Math.max(0, (window.innerWidth - width) / 2 - 8);
-    const maxY = Math.max(0, (window.innerHeight - height) / 2 - 8);
-    const clamp = (n: number, max: number) => Math.max(-max, Math.min(max, n));
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
     setOffset({
-      x: clamp(current.offsetX + event.clientX - current.x, maxX),
-      y: clamp(current.offsetY + event.clientY - current.y, maxY),
+      x: clamp(current.offsetX + event.clientX - current.x, offset.x + 8 - rect.left, offset.x + window.innerWidth - rect.width - rect.left - 8),
+      y: clamp(current.offsetY + event.clientY - current.y, offset.y + 8 - rect.top, offset.y + window.innerHeight - rect.height - rect.top - 8),
     });
-  }, []);
+  }, [offset]);
 
   const onPointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (dragRef.current?.pointerId !== event.pointerId) return;

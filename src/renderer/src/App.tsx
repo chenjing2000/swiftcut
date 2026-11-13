@@ -181,7 +181,8 @@ function App() {
   const [activeSubtitleStreamIndex, setActiveSubtitleStreamIndex] = useState<number>();
   const [hideCompatPlayer, setHideCompatPlayer] = useState(false);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
-  const [losslessExportState, setLosslessExportState] = useState<'running' | 'cancelling' | 'cancelled'>();
+  const [losslessExportState, setLosslessExportState] = useState<'running' | 'cancelling' | 'cancelled' | 'success'>();
+  const [losslessExportPaths, setLosslessExportPaths] = useState<string[]>([]);
   const losslessCancelRequestedRef = useRef(false);
   const [losslessCustomDirectory, setLosslessCustomDirectory] = useState<{ source: string, value: string }>();
   const [losslessCustomFilename, setLosslessCustomFilename] = useState<{ source: string, value: string }>();
@@ -1213,6 +1214,7 @@ function App() {
       setStreamsSelectorShown(false);
       setExportConfirmOpen(false);
       losslessCancelRequestedRef.current = false;
+      setLosslessExportPaths([]);
       setLosslessExportState('running');
       setWorking({ text: i18n.t('Exporting') });
       const assertNotCancelled = () => {
@@ -1319,7 +1321,7 @@ function App() {
 
       if (areWeCutting) notices.add(i18n.t('Cutpoints may be inaccurate.'));
 
-      if (simpleMode && !prefersReducedMotion) shootConfetti({ ticks: 50 });
+      // Keep the completion UI consistent with Crop Video: one result panel only.
 
       if (cleanupChoices.cleanupAfterExport) {
         const newCleanupChoices = cleanupChoices.askForCleanup ? await askForCleanupChoices() : cleanupChoices;
@@ -1327,13 +1329,12 @@ function App() {
         if (newCleanupChoices) await cleanupFiles(newCleanupChoices);
       }
 
-      // Note: this should be after cleanup, so we don't accidentally open two dialogs at the same time, leading to error *and* success dialog simultaneously https://github.com/mifi/lossless-cut/issues/2609
+      // Use the same single, bottom-right result presentation as Crop Video.
       const exportedPaths = willMerge && mergedOutFilePath != null ? [mergedOutFilePath] : committedPaths;
-      const [revealPath] = exportedPaths;
-      invariant(revealPath != null);
-      if (!hideAllNotifications) {
-        showOsNotification(i18n.t('Export finished'));
-        openCutFinishedDialog({ filePath: revealPath, warnings: [...warnings], notices: [...notices] });
+      invariant(exportedPaths.length > 0);
+      if (!losslessCancelRequestedRef.current) {
+        setLosslessExportPaths(exportedPaths);
+        setLosslessExportState('success');
       }
 
       setExportCount((c) => c + 1);
@@ -1376,7 +1377,7 @@ function App() {
       handleExportFailed(err);
     } finally {
       if (temporaryLosslessDir != null) await rm(temporaryLosslessDir, { recursive: true, force: true }).catch(console.error);
-      setLosslessExportState(losslessCancelRequestedRef.current ? 'cancelled' : undefined);
+      if (losslessCancelRequestedRef.current) setLosslessExportState('cancelled');
       setWorking(undefined);
       setProgress(undefined);
     }
@@ -3015,6 +3016,7 @@ function App() {
                       progress={progress}
                       onCancel={cancelLosslessExport}
                       onDismiss={() => setLosslessExportState(undefined)}
+                      outputPaths={losslessExportPaths}
                     />
                   )}
                 </AnimatePresence>

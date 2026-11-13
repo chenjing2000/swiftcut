@@ -3,7 +3,8 @@ import Button from './Button';
 import styles from './VideoCrop/CropExportProgress.module.css';
 
 interface Props {
-  state: 'running' | 'cancelling' | 'cancelled';
+  state: 'running' | 'cancelling' | 'cancelled' | 'success';
+  outputPaths: string[];
   text: string;
   progress?: number | undefined;
   onCancel: () => void;
@@ -11,17 +12,17 @@ interface Props {
 }
 
 /** Lossless and re-encoded exports share the same progress-panel presentation. */
-export default function LosslessExportProgress({ state, text, progress, onCancel, onDismiss }: Props) {
+export default function LosslessExportProgress({ state, text, progress, outputPaths, onCancel, onDismiss }: Props) {
   const { t } = useTranslation();
-  const active = state !== 'cancelled';
-  const stateLabels = { running: 'Exporting', cancelling: 'Cancelling export', cancelled: 'Cancelled' } as const;
+  const active = state === 'running' || state === 'cancelling';
+  const stateLabels = { running: 'Exporting', cancelling: 'Cancelling export', cancelled: 'Cancelled', success: 'Export finished' } as const;
   const stateLabel = stateLabels[state];
   const percent = progress == null ? undefined : Math.round(Math.max(0, Math.min(1, progress)) * 100);
   return (
     <aside className={styles['panel']} role="status" aria-live="polite" aria-label={t('Export Video Settings')}>
       <div className={styles['heading']}>
         <strong>{t('Export Video')}</strong>
-        <span className={styles['status']}>{t(stateLabel)}</span>
+        <span className={styles['status']} data-state={state === 'success' ? 'success' : state === 'cancelled' ? 'cancelled' : undefined}>{t(stateLabel)}</span>
       </div>
       <div className={styles['contents']}>
         {active ? (
@@ -37,7 +38,17 @@ export default function LosslessExportProgress({ state, text, progress, onCancel
           </>
         ) : (
           <>
-            <p>{t('Cancelled')}</p>
+            {state === 'success' ? (
+              <>
+                <p>{t('{{count}} output file(s) saved.', { count: outputPaths.length })}</p>
+                <div className={styles['outputs']}>
+                  <div className={styles['outputHeading']}>{t('Crop exported files')}</div>
+                  <ul className={styles['paths']}>
+                    {outputPaths.map((path) => <li key={path} title={path}>{path}</li>)}
+                  </ul>
+                </div>
+              </>
+            ) : <p>{t('Cancelled')}</p>}
             <div className={styles['actions']}><Button onClick={onDismiss}>{t('Dismiss')}</Button></div>
           </>
         )}
