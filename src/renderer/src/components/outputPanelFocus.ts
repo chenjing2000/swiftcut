@@ -5,16 +5,16 @@ const openPanels: OutputPanel[] = [];
 
 export function activateOutputPanel(panel: OutputPanel) {
   const index = openPanels.indexOf(panel);
-  if (index >= 0) openPanels.splice(index, 1);
+  if (index !== -1) openPanels.splice(index, 1);
   openPanels.push(panel);
 }
 
 function activateFromEvent(event: Event) {
   const panel = event.target instanceof Element
-    ? event.target.closest('[data-output-panel]')?.getAttribute('data-output-panel')
+    ? (event.target.closest('[data-output-panel]') as HTMLElement | null)?.dataset['outputPanel']
     : undefined;
-  if (panel === 'audio' || panel === 'crop' || panel === 'lossless') {
-    if (openPanels.includes(panel)) activateOutputPanel(panel);
+  if (panel != null && openPanels.includes(panel as OutputPanel)) {
+    activateOutputPanel(panel as OutputPanel);
   }
 }
 
@@ -26,7 +26,7 @@ export function registerOutputPanel(panel: OutputPanel) {
   activateOutputPanel(panel);
   return () => {
     const index = openPanels.indexOf(panel);
-    if (index >= 0) openPanels.splice(index, 1);
+    if (index !== -1) openPanels.splice(index, 1);
     if (openPanels.length === 0) {
       document.removeEventListener('pointerdown', activateFromEvent, { capture: true });
       document.removeEventListener('focusin', activateFromEvent, { capture: true });
