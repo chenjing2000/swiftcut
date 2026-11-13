@@ -34,7 +34,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const [trackSelection, setTrackSelection] = useState<{ source: string | undefined; indexes: number[] }>();
   // The long-lived job presenter survives source changes. A new source gets
   // its own default track without resetting the currently running job.
-  const selectedStreamIndexes = trackSelection?.source === filePath
+  const selectedStreamIndexes = trackSelection != null && trackSelection.source === filePath
     ? trackSelection.indexes : (streams[0] ? [streams[0].index] : []);
   const [mode, setMode] = useState<AudioExtractionMode>('mp3');
   const [quality, setQuality] = useState<Mp3Quality>('vbr');
