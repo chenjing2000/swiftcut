@@ -207,7 +207,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (!isActiveOutputPanel('crop')) return;
+      if (!isActiveOutputPanel('crop-settings')) return;
       const otherDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
       if (otherDialog && !(otherDialog as HTMLElement).dataset['outputPanel']) return;
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement
@@ -281,7 +281,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
         />
       )}
       <OutputFloatingPanel
-        id="crop"
+        id="crop-settings"
         open
         title={t('Crop Video Settings')}
         onClose={onClose}
