@@ -53,6 +53,7 @@ import LosslessExportProgress from './components/LosslessExportProgress';
 import { createCropExportPlan } from './videoCropExportPlanner';
 import { assertOutputFilename, getMediaOutputDir } from '../../common/mediaWorkspace.js';
 import { getLosslessExportPlan } from './losslessExportPlan';
+import { getLosslessCommitTargets, getLosslessPublishedPaths } from './losslessExportPublication';
 import { commitMediaOutputs } from './util/commitMediaOutputs';
 import { resolveVideoCropSegments } from './videoCropSegments';
 import { getSourceDisplayRotation } from './videoCropRotation';
@@ -1310,25 +1311,29 @@ function App() {
       }
 
       assertNotCancelled();
-      const outputsToCommit = [
-        ...(!willMerge || !autoDeleteMergedSegments ? outFiles.map((file, index) => ({
-          temporaryPath: file.path,
-          requestedName: cutFileNames[index]!,
-        })) : []),
-        ...(willMerge && mergedOutFilePath != null ? [{ temporaryPath: mergedOutFilePath, requestedName: losslessFilename }] : []),
-        ...extraPaths.map((path) => ({ temporaryPath: path, requestedName: basename(path) })),
-      ];
+      const outputsToCommit = getLosslessCommitTargets({
+        outFiles,
+        cutFileNames,
+        willMerge,
+        autoDeleteMergedSegments,
+        mergedOutFilePath,
+        mergedFilename: losslessFilename,
+        extraOutputs: extraPaths.map((path) => ({ temporaryPath: path, requestedName: basename(path) })),
+      });
       assertNotCancelled();
       // File publishing is the finalization boundary: do not abort a commit
       // or report already committed media as a cancelled export.
       losslessFinalizingRef.current = true;
       setLosslessExportState('finalizing');
       const committedPaths = await commitMediaOutputs({ outputDir: losslessDirectory, outputs: outputsToCommit });
-      if (willMerge) mergedOutFilePath = committedPaths[autoDeleteMergedSegments ? 0 : outFiles.length];
-
       if (areWeCutting) notices.add(i18n.t('Cutpoints may be inaccurate.'));
 
-      const exportedPaths = willMerge && mergedOutFilePath != null ? [mergedOutFilePath] : committedPaths;
+      const exportedPaths = getLosslessPublishedPaths({
+        committedPaths,
+        willMerge,
+        autoDeleteMergedSegments,
+        cutFileCount: outFiles.length,
+      });
       invariant(exportedPaths.length > 0);
       setLosslessExportPaths(committedPaths);
       setLosslessExportState('success');
