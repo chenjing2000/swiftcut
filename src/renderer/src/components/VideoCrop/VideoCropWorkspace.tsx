@@ -294,9 +294,9 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
         }}
         footer={(
           <>
-          <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
-          <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
-        </>
+            <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
+            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
+          </>
         )}
       >
         <div className={styles['sectionTitle']}>
