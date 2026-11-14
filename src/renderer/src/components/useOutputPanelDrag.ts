@@ -1,26 +1,39 @@
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getOutputProgressPosition, setOutputProgressPosition } from './outputProgressPositionStore';
+import type { ProgressWindowId } from './outputProgressPositionStore';
 
 interface Position { left: number; top: number }
 interface DragStart extends Position { x: number; y: number; pointerId: number }
 
 export type OutputPanelPlacement = 'top-right' | 'bottom-right';
 
-export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | null>, placement: OutputPanelPlacement = 'top-right') {
+export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | null>, placement: OutputPanelPlacement = 'top-right', progressId?: ProgressWindowId) {
   // A progress panel starts with CSS bottom/right placement until its actual
   // dimensions can be measured. This prevents a wrong first-frame position.
-  const [position, setPosition] = useState<Position | undefined>(placement === 'bottom-right' ? undefined : {
-    left: Math.max(8, window.innerWidth - 396), top: 48,
+  const [position, setPosition] = useState<Position | undefined>(() => {
+    if (progressId) return getOutputProgressPosition(progressId);
+    if (placement === 'bottom-right') return undefined;
+    return { left: Math.max(8, window.innerWidth - 396), top: 48 };
   });
   const resetPosition = useCallback(() => {
     if (placement === 'bottom-right') {
+      const saved = progressId ? getOutputProgressPosition(progressId) : undefined;
+      if (saved) {
+        setPosition(saved);
+        return;
+      }
       const rect = panelRef.current?.getBoundingClientRect();
       if (!rect) return;
       setPosition({ left: rect.left, top: rect.top });
       return;
     }
     setPosition({ left: Math.max(8, window.innerWidth - 396), top: 48 });
-  }, [panelRef, placement]);
+  }, [panelRef, placement, progressId]);
+  useEffect(() => {
+    if (progressId && position) setOutputProgressPosition(progressId, position);
+  }, [position, progressId]);
+
   const dragRef = useRef<DragStart | undefined>(undefined);
   const headingRef = useRef<HTMLDivElement>(null);
 
