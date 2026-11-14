@@ -23,12 +23,13 @@ export default function useOutputProgressAutoDismiss(enabled: boolean, interacti
 
   useEffect(() => {
     if (!enabled || interacting) {
-      setFading(false);
-      return undefined;
+      // Reset outside the effect's synchronous execution to avoid cascaded renders.
+      const resetTimer = setTimeout(() => setFading(false), 0);
+      return () => clearTimeout(resetTimer);
     }
 
     return scheduleOutputProgressDismiss(() => setFading(true), () => onDismissRef.current());
   }, [enabled, interacting]);
 
-  return fading;
+  return enabled && !interacting && fading;
 }
