@@ -113,62 +113,62 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 />
               ))}
             </div>
-            )}
-          </section>
+          )}
+        </section>
 
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: '1.2em' }}>
-            <strong>{t('Export')}</strong>
-            <label className={styles['row']} htmlFor="audio-time-range"><span>{t('Time range')}</span>
-              <select id="audio-time-range" value={effectiveTimeRange} disabled={isBusy} onChange={(event) => setTimeRange(event.target.value as 'selected' | 'entire')}>
-                <option value="selected" disabled={segments.length === 0}>{t('Selected segments')}</option>
-                <option value="entire">{t('Entire video')}</option>
-              </select>
-            </label>
-            <label className={styles['row']} htmlFor="audio-output-mode"><span>{t('Output mode')}</span>
-              <select id="audio-output-mode" value={outputMode} disabled={!multiple || isBusy} onChange={(event) => setOutputMode(event.target.value as 'merge' | 'separate')}>
-                <option value="merge">{t('Merge into one file')}</option>
-                <option value="separate">{t('Export separately')}</option>
-              </select>
-            </label>
-            <label className={styles['row']} htmlFor="audio-output-format"><span>{t('Output format')}</span>
-              <select id="audio-output-format" value={mode} disabled={isBusy} onChange={(event) => setMode(event.target.value as AudioExtractionMode)}>
-                <option value="original">{t('Original format')}</option>
-                <option value="mp3">{t('MP3 (re-encode)')}</option>
-              </select>
-            </label>
-            <label className={styles['row']} htmlFor="audio-mp3-quality"><span>{t('MP3 quality')}</span>
-              <select id="audio-mp3-quality" value={quality} disabled={mode === 'original' || isBusy} onChange={(event) => setQuality(event.target.value as Mp3Quality)}>
-                <option value="vbr">{t('VBR (LAME Quality 2)')}</option>
-                <option value="128k">128 kbps</option>
-                <option value="192k">192 kbps</option>
-                <option value="320k">320 kbps</option>
-              </select>
-            </label>
-          </section>
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: '1.2em' }}>
+          <strong>{t('Export')}</strong>
+          <label className={styles['row']} htmlFor="audio-time-range"><span>{t('Time range')}</span>
+            <select id="audio-time-range" value={effectiveTimeRange} disabled={isBusy} onChange={(event) => setTimeRange(event.target.value as 'selected' | 'entire')}>
+              <option value="selected" disabled={segments.length === 0}>{t('Selected segments')}</option>
+              <option value="entire">{t('Entire video')}</option>
+            </select>
+          </label>
+          <label className={styles['row']} htmlFor="audio-output-mode"><span>{t('Output mode')}</span>
+            <select id="audio-output-mode" value={outputMode} disabled={!multiple || isBusy} onChange={(event) => setOutputMode(event.target.value as 'merge' | 'separate')}>
+              <option value="merge">{t('Merge into one file')}</option>
+              <option value="separate">{t('Export separately')}</option>
+            </select>
+          </label>
+          <label className={styles['row']} htmlFor="audio-output-format"><span>{t('Output format')}</span>
+            <select id="audio-output-format" value={mode} disabled={isBusy} onChange={(event) => setMode(event.target.value as AudioExtractionMode)}>
+              <option value="original">{t('Original format')}</option>
+              <option value="mp3">{t('MP3 (re-encode)')}</option>
+            </select>
+          </label>
+          <label className={styles['row']} htmlFor="audio-mp3-quality"><span>{t('MP3 quality')}</span>
+            <select id="audio-mp3-quality" value={quality} disabled={mode === 'original' || isBusy} onChange={(event) => setQuality(event.target.value as Mp3Quality)}>
+              <option value="vbr">{t('VBR (LAME Quality 2)')}</option>
+              <option value="128k">128 kbps</option>
+              <option value="192k">192 kbps</option>
+              <option value="320k">320 kbps</option>
+            </select>
+          </label>
+        </section>
 
-          <section style={{ marginBottom: '1em' }}>
-            <strong>{t('Extraction segments')}</strong>
-            <p style={{ margin: '.35em 0' }}>
-              {t('{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).', {
-                segments: segmentCount,
-                tracks: selectedCount,
-                outputs: outputCount,
-              })}
-            </p>
-            {effectiveSegments.length === 0 ? (
-              <div>{t('Entire video')}</div>
-            ) : (
-              <div style={{ maxHeight: '8em', overflowY: 'auto', paddingLeft: '1.5em' }}>
-                {effectiveSegments.map((segment, index) => (
-                  <div key={`${segment.originalIndex}-${segment.start}-${segment.end}`}>
-                    {t('Segment {{number}}', { number: index + 1 })}: {formatTime(segment.start)} – {formatTime(segment.end)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+        <section style={{ marginBottom: '1em' }}>
+          <strong>{t('Extraction segments')}</strong>
+          <p style={{ margin: '.35em 0' }}>
+            {t('{{segments}} segment(s) × {{tracks}} track(s) = {{outputs}} output file(s).', {
+              segments: segmentCount,
+              tracks: selectedCount,
+              outputs: outputCount,
+            })}
+          </p>
+          {effectiveSegments.length === 0 ? (
+            <div>{t('Entire video')}</div>
+          ) : (
+            <div style={{ maxHeight: '8em', overflowY: 'auto', paddingLeft: '1.5em' }}>
+              {effectiveSegments.map((segment, index) => (
+                <div key={`${segment.originalIndex}-${segment.start}-${segment.end}`}>
+                  {t('Segment {{number}}', { number: index + 1 })}: {formatTime(segment.start)} – {formatTime(segment.end)}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
-          {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
+        {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
       </OutputFloatingPanel>
       {job && (
         <AudioExtractionProgress
