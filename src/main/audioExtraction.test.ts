@@ -34,7 +34,11 @@ describe('Original audio extraction arguments and container selection', () => {
     ['ac3', { extension: 'ac3', muxer: 'ac3' }],
     ['eac3', { extension: 'eac3', muxer: 'eac3' }],
     ['opus', { extension: 'opus', muxer: 'opus' }],
-    ['vorbis', { extension: 'mka', muxer: 'matroska' }],
+    ['flac', { extension: 'flac', muxer: 'flac' }],
+    ['vorbis', { extension: 'ogg', muxer: 'ogg' }],
+    ['pcm_s16le', { extension: 'wav', muxer: 'wav' }],
+    ['pcm_s24le', { extension: 'wav', muxer: 'wav' }],
+    ['wmapro', { extension: 'mka', muxer: 'matroska' }],
   ] as const)('selects the expected output container for %s', (codecName, expected) => {
     expect(getOriginalAudioOutputFormat(codecName)).toStrictEqual(expected);
   });
