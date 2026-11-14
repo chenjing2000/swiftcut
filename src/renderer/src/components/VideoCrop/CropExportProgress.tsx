@@ -43,6 +43,8 @@ export default function CropExportProgress({ status, onCancel, onDismiss }: Prop
       title={t(presentation.title)}
       label={t(presentation.label)}
       state={status.state}
+      autoDismiss={status.state === 'success' && !status.cleanupWarning}
+      onDismiss={onDismiss}
       testId="crop-export-progress"
     >
       {presentation.active ? (
