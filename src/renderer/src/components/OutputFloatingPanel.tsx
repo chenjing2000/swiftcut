@@ -35,7 +35,7 @@ export default function OutputFloatingPanel({
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const {
-    position, resetPosition, headingRef,
+    position, resetPosition, dragRef, headingRef, stopDrag,
     onPointerDown, onPointerMove, onPointerUp,
   } = useOutputPanelDrag(panelRef);
 
@@ -58,6 +58,12 @@ export default function OutputFloatingPanel({
       if (ignoreEscapeFromInputs && (event.target instanceof HTMLInputElement
         || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement)) return;
 
+      if (dragRef.current) {
+        stopDrag(undefined, true);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       const result = onEscape?.();
       if (result === 'ignore') return;
       if (result !== 'handled') onClose();
@@ -66,7 +72,7 @@ export default function OutputFloatingPanel({
     };
     document.addEventListener('keydown', keydown, { capture: true });
     return () => document.removeEventListener('keydown', keydown, { capture: true });
-  }, [id, ignoreEscapeFromInputs, onClose, onEscape, open]);
+  }, [dragRef, id, ignoreEscapeFromInputs, onClose, onEscape, open, stopDrag]);
 
   if (!open) return null;
 
