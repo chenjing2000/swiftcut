@@ -1,4 +1,4 @@
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import styles from './VideoCropWorkspace.module.css';
 
 const handles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
@@ -28,7 +28,7 @@ export default function VideoCropSelectionOverlay({
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onDoubleClick: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onDoubleClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
 }) {
   return (
     <div className={styles['overlay']} data-output-panel="crop">
