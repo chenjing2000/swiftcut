@@ -37,7 +37,10 @@ export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | nul
   }, [panelRef]);
 
   useEffect(() => {
-    const onResize = () => setPosition((current) => current == null ? current : clampPosition(current.left, current.top));
+    const onResize = () => setPosition((current) => {
+      if (current == null) return current;
+      return clampPosition(current.left, current.top);
+    });
     window.addEventListener('resize', onResize);
     const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(onResize);
     if (panelRef.current) observer?.observe(panelRef.current);
