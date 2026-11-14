@@ -25,3 +25,19 @@ export function emitLosslessCompletionSafely(
     reportError(error);
   }
 }
+
+export type LosslessExportFinalState = 'success' | 'cancelled' | 'failed';
+
+// A finished export remains visible on failure, while pre-start validation
+// errors do not create a progress window.
+export function getLosslessExportFinalState({
+  started, published, cancelled,
+}: {
+  started: boolean;
+  published: boolean;
+  cancelled: boolean;
+}): LosslessExportFinalState | undefined {
+  if (published) return 'success';
+  if (!started) return undefined;
+  return cancelled ? 'cancelled' : 'failed';
+}

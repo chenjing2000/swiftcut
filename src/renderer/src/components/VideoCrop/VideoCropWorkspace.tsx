@@ -197,7 +197,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   useEffect(() => {
     const onPointerDownInsideSettings = (event: PointerEvent) => {
       if (event.target instanceof Element
-        && event.target.closest('[role="dialog"][data-output-panel="crop"]')) {
+        && event.target.closest('[role="dialog"][data-output-panel="crop-settings"]')) {
         setFocused(false);
       }
     };

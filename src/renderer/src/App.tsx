@@ -54,7 +54,7 @@ import { createCropExportPlan } from './videoCropExportPlanner';
 import { assertOutputFilename, getMediaOutputDir } from '../../common/mediaWorkspace.js';
 import { getLosslessExportPlan } from './losslessExportPlan';
 import { getLosslessCommitTargets, getLosslessPublishedPaths } from './losslessExportPublication';
-import { classifyLosslessError, emitLosslessCompletionSafely } from './losslessExportOutcome';
+import { classifyLosslessError, emitLosslessCompletionSafely, getLosslessExportFinalState } from './losslessExportOutcome';
 import { commitMediaOutputs } from './util/commitMediaOutputs';
 import { resolveVideoCropSegments } from './videoCropSegments';
 import { getSourceDisplayRotation } from './videoCropRotation';
@@ -185,12 +185,13 @@ function App() {
   const [activeSubtitleStreamIndex, setActiveSubtitleStreamIndex] = useState<number>();
   const [hideCompatPlayer, setHideCompatPlayer] = useState(false);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
-  const [losslessExportState, setLosslessExportState] = useState<'running' | 'finalizing' | 'cancelling' | 'cancelled' | 'success'>();
+  const [losslessExportState, setLosslessExportState] = useState<'running' | 'finalizing' | 'cancelling' | 'cancelled' | 'success' | 'failed'>();
   const losslessExportDisabled = losslessExportState != null && ['running', 'finalizing', 'cancelling'].includes(losslessExportState);
   const losslessFinalizingRef = useRef(false);
   const [losslessExportPaths, setLosslessExportPaths] = useState<string[]>([]);
   const [losslessExportNotices, setLosslessExportNotices] = useState<string[]>([]);
   const [losslessExportWarnings, setLosslessExportWarnings] = useState<string[]>([]);
+  const [losslessExportError, setLosslessExportError] = useState<string>();
   const losslessCancelRequestedRef = useRef(false);
   const [cacheBuster, setCacheBuster] = useState(0);
 
@@ -1229,6 +1230,7 @@ function App() {
       setLosslessExportPaths([]);
       setLosslessExportNotices([]);
       setLosslessExportWarnings([]);
+      setLosslessExportError(undefined);
       setLosslessExportState('running');
       setWorking({ text: i18n.t('Exporting') });
       const assertNotCancelled = () => {
@@ -1393,6 +1395,7 @@ function App() {
         return;
       }
 
+      if (exportStarted) setLosslessExportError(err instanceof Error ? err.message : String(err));
       showOsNotification(i18n.t('Failed to export'));
 
       if (isExecaError(err)) {
@@ -1425,9 +1428,11 @@ function App() {
       losslessFinalizingRef.current = false;
       setWorking(undefined);
       setProgress(undefined);
-      if (exportSucceeded) setLosslessExportState('success');
-      else if (losslessCancelRequestedRef.current) setLosslessExportState('cancelled');
-      else setLosslessExportState(undefined);
+      setLosslessExportState(getLosslessExportFinalState({
+        started: exportStarted,
+        published: exportSucceeded,
+        cancelled: losslessCancelRequestedRef.current,
+      }));
     }
   }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutMultiple, outputDir, losslessDirectory, losslessFilename, losslessExtension, losslessExportPlan, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, cleanupChoices, segmentsOrInverse.selected, t, segmentsToChapters, invertCutSegments, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, handleExportFailed]);
 
@@ -3070,6 +3075,7 @@ function App() {
                       outputPaths={losslessExportPaths}
                       notices={losslessExportNotices}
                       warnings={losslessExportWarnings}
+                      error={losslessExportError}
                     />
                   )}
                 </AnimatePresence>
