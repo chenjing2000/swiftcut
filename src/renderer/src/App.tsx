@@ -24,6 +24,7 @@ import useFileFormatState from './hooks/useFileFormatState';
 import useFrameCapture from './hooks/useFrameCapture';
 import useSegments from './hooks/useSegments';
 import useDirectoryAccess from './hooks/useDirectoryAccess';
+import useExportActionDisabled from './hooks/useExportActionDisabled';
 
 import type { UserSettingsContextType, AppContextType, SegColorsContextType } from './contexts';
 import { UserSettingsContext, SegColorsContext, AppContext } from './contexts';
@@ -184,6 +185,7 @@ function App() {
   const [hideCompatPlayer, setHideCompatPlayer] = useState(false);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [losslessExportState, setLosslessExportState] = useState<'running' | 'finalizing' | 'cancelling' | 'cancelled' | 'success'>();
+  const losslessExportDisabled = useExportActionDisabled(losslessExportState === 'running' || losslessExportState === 'finalizing' || losslessExportState === 'cancelling');
   const losslessFinalizingRef = useRef(false);
   const [losslessExportPaths, setLosslessExportPaths] = useState<string[]>([]);
   const losslessCancelRequestedRef = useRef(false);
@@ -2932,7 +2934,7 @@ function App() {
 
                 {/* Dialogs */}
 
-                <ExportConfirm areWeCutting={areWeCutting} segmentsOrInverse={segmentsOrInverse} segmentsToExport={segmentsToExport} willMerge={willMerge} visible={exportConfirmOpen} onClosePress={closeExportConfirm} onExportConfirm={onExportConfirm} renderOutFmt={renderOutFmt} numStreamsTotal={numStreamsTotal} numStreamsToCopy={numStreamsToCopy} onShowStreamsSelectorClick={handleShowStreamsSelectorClick} outFormat={fileFormat} mainCopiedThumbnailStreams={mainCopiedThumbnailStreams} hvc1NeededStreams={hvc1NeededStreams} needSmartCut={needSmartCut} isEncoding={isEncoding} encBitrate={encBitrate} setEncBitrate={setEncBitrate} onChangeOutputFps={() => { changeLosslessOutputFps().catch(console.error); }} onIncreaseRotation={increaseRotation} outputRotation={isRotationSet ? (effectiveRotation ?? 0) : 0} outputPlaybackRate={outputPlaybackRate} lossyMode={lossyMode} />
+                <ExportConfirm areWeCutting={areWeCutting} segmentsOrInverse={segmentsOrInverse} segmentsToExport={segmentsToExport} willMerge={willMerge} visible={exportConfirmOpen} onClosePress={closeExportConfirm} onExportConfirm={onExportConfirm} exportDisabled={losslessExportDisabled} renderOutFmt={renderOutFmt} numStreamsTotal={numStreamsTotal} numStreamsToCopy={numStreamsToCopy} onShowStreamsSelectorClick={handleShowStreamsSelectorClick} outFormat={fileFormat} mainCopiedThumbnailStreams={mainCopiedThumbnailStreams} hvc1NeededStreams={hvc1NeededStreams} needSmartCut={needSmartCut} isEncoding={isEncoding} encBitrate={encBitrate} setEncBitrate={setEncBitrate} onChangeOutputFps={() => { changeLosslessOutputFps().catch(console.error); }} onIncreaseRotation={increaseRotation} outputRotation={isRotationSet ? (effectiveRotation ?? 0) : 0} outputPlaybackRate={outputPlaybackRate} lossyMode={lossyMode} />
 
                 <Dialog.Root open={streamsSelectorShown} onOpenChange={setStreamsSelectorShown}>
                   <Dialog.Portal>
