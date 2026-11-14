@@ -2,7 +2,6 @@
   position: fixed;
   right: 16px;
   bottom: 16px;
-  z-index: 300;
   box-sizing: border-box;
   width: min(360px, calc(100vw - 32px));
   min-width: min(300px, calc(100vw - 32px));
@@ -28,7 +27,16 @@
   border-bottom: 1px solid var(--gray-6);
 }
 
+.heading {
+  user-select: none;
+  touch-action: none;
+  cursor: move;
+}
+
 .heading strong { font-size: 14px; }
+
+/* Programmatic focus should not draw an outline around the whole panel. */
+.panel:focus { outline: none; }
 
 .status {
   color: var(--gray-11);
