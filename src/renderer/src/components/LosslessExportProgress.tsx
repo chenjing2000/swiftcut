@@ -31,6 +31,8 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
       title={t('Export Video')}
       label={t(stateLabel)}
       state={displayState}
+      autoDismiss={state === 'success' && warnings.length === 0}
+      onDismiss={onDismiss}
     >
       <div className={styles['contents']}>
         {active ? (
