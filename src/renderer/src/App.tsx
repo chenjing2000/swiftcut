@@ -188,6 +188,8 @@ function App() {
   const losslessExportDisabled = losslessExportState != null && ['running', 'finalizing', 'cancelling'].includes(losslessExportState);
   const losslessFinalizingRef = useRef(false);
   const [losslessExportPaths, setLosslessExportPaths] = useState<string[]>([]);
+  const [losslessExportNotices, setLosslessExportNotices] = useState<string[]>([]);
+  const [losslessExportWarnings, setLosslessExportWarnings] = useState<string[]>([]);
   const losslessCancelRequestedRef = useRef(false);
   const [cacheBuster, setCacheBuster] = useState(0);
 
@@ -1224,6 +1226,8 @@ function App() {
       exportStarted = true;
       emitEvent({ eventName: 'export-start', path: filePath });
       setLosslessExportPaths([]);
+      setLosslessExportNotices([]);
+      setLosslessExportWarnings([]);
       setLosslessExportState('running');
       setWorking({ text: i18n.t('Exporting') });
       const assertNotCancelled = () => {
@@ -1343,6 +1347,8 @@ function App() {
       const exportedPaths = publishedResult.paths;
       invariant(exportedPaths.length > 0);
       setLosslessExportPaths(committedPaths);
+      setLosslessExportNotices([...notices]);
+      setLosslessExportWarnings([...warnings]);
       // Keep the job locked until optional post-export cleanup and the
       // task-owned workspace cleanup finish.
       setExportCount((c) => c + 1);
@@ -3049,6 +3055,8 @@ function App() {
                       onCancel={cancelLosslessExport}
                       onDismiss={() => setLosslessExportState(undefined)}
                       outputPaths={losslessExportPaths}
+                      notices={losslessExportNotices}
+                      warnings={losslessExportWarnings}
                     />
                   )}
                 </AnimatePresence>
