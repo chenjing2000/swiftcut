@@ -97,6 +97,7 @@
 }
 
 .modalOverlay {
+  z-index: var(--swiftcut-notification-overlay-z);
   transition: opacity 600ms ease;
 }
 
@@ -105,6 +106,7 @@
 }
 
 .modalContent {
+  z-index: var(--swiftcut-notification-content-z);
   padding: 20px 24px !important;
   border-radius: 12px !important;
   transition: opacity 600ms ease;

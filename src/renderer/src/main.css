@@ -19,6 +19,15 @@ https://www.radix-ui.com/docs/colors/palette-composition/understanding-the-scale
 @import '@radix-ui/colors/white-alpha.css';
 
 
+/* Application-level window ordering. Output panels occupy z-index 200-205. */
+:root {
+  --swiftcut-modal-overlay-z: 20000;
+  --swiftcut-modal-content-z: 20001;
+  /* Blocking notifications may be shown over an existing Radix dialog. */
+  --swiftcut-notification-overlay-z: 20100;
+  --swiftcut-notification-content-z: 20101;
+}
+
 html {
   font-family: 'Open Sans', 'Noto Sans SemiCondensed', 'Noto Sans', sans-serif;
   font-size: 16px;

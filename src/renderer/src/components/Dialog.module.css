@@ -7,6 +7,8 @@
 .DialogOverlay {
 	background-color: var(--black-a9);
 	position: fixed;
+	/* Keep modal overlays above every non-modal Output window. */
+	z-index: var(--swiftcut-modal-overlay-z);
 	inset: 0;
 
 	&[data-state="open"] {
@@ -24,6 +26,8 @@
 
 .DialogContent {
 	position: fixed;
+	/* Always above this modal's overlay, including while exiting. */
+	z-index: var(--swiftcut-modal-content-z);
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
