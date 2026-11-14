@@ -193,6 +193,17 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   };
 
   useEffect(() => {
+    const onPointerDownInsideSettings = (event: PointerEvent) => {
+      if (event.target instanceof Element
+        && event.target.closest('[role="dialog"][data-output-panel="crop"]')) {
+        setFocused(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDownInsideSettings, { capture: true });
+    return () => document.removeEventListener('pointerdown', onPointerDownInsideSettings, { capture: true });
+  }, []);
+
+  useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (!isActiveOutputPanel('crop')) return;
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement
