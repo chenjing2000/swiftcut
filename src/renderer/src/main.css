@@ -23,6 +23,9 @@ https://www.radix-ui.com/docs/colors/palette-composition/understanding-the-scale
 :root {
   --swiftcut-modal-overlay-z: 20000;
   --swiftcut-modal-content-z: 20001;
+  /* Blocking notifications may be shown over an existing Radix dialog. */
+  --swiftcut-notification-overlay-z: 20100;
+  --swiftcut-notification-content-z: 20101;
 }
 
 html {
