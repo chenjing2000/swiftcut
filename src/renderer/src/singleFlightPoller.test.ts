@@ -4,10 +4,9 @@ import { createSingleFlightPoller } from './singleFlightPoller';
 
 describe('Output status single-flight polling', () => {
   it('skips overlapping ticks and retries after the active request settles', async () => {
-    let resolveFirst: (() => void) | undefined;
-    const first = new Promise<void>((resolve) => { resolveFirst = resolve; });
+    const { promise: first, resolve: resolveFirst } = Promise.withResolvers<void>();
     const fetchStatus = vi.fn<() => Promise<void>>()
-      .mockImplementationOnce(() => first)
+      .mockReturnValueOnce(first)
       .mockResolvedValue(undefined);
     const poller = createSingleFlightPoller(fetchStatus);
 
@@ -16,7 +15,7 @@ describe('Output status single-flight polling', () => {
     await poller.run();
     expect(fetchStatus).toHaveBeenCalledTimes(1);
 
-    resolveFirst?.();
+    resolveFirst();
     await pending;
     await poller.run();
     expect(fetchStatus).toHaveBeenCalledTimes(2);
@@ -34,9 +33,8 @@ describe('Output status single-flight polling', () => {
   });
 
   it('prevents further ticks after the job changes or unmounts', async () => {
-    let resolveFirst: (() => void) | undefined;
-    const first = new Promise<void>((resolve) => { resolveFirst = resolve; });
-    const fetchStatus = vi.fn<() => Promise<void>>().mockImplementation(() => first);
+    const { promise: first, resolve: resolveFirst } = Promise.withResolvers<void>();
+    const fetchStatus = vi.fn<() => Promise<void>>().mockReturnValue(first);
     const poller = createSingleFlightPoller(fetchStatus);
     const pending = poller.run();
 
@@ -44,7 +42,7 @@ describe('Output status single-flight polling', () => {
     await poller.run();
     expect(fetchStatus).toHaveBeenCalledTimes(1);
 
-    resolveFirst?.();
+    resolveFirst();
     await pending;
     await poller.run();
     expect(fetchStatus).toHaveBeenCalledTimes(1);
