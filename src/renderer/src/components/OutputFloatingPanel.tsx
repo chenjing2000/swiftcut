@@ -87,8 +87,8 @@ export default function OutputFloatingPanel({
       className={[chrome['panel'], className].filter(Boolean).join(' ')}
       style={{
         width,
-        top: position.top,
-        left: position.left,
+        top: position?.top,
+        left: position?.left,
         zIndex: getOutputPanelZIndex(id),
         visibility: hidden ? 'hidden' : undefined,
         pointerEvents: hidden ? 'none' : undefined,

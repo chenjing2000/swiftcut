@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AudioJobStatus } from '../../../../main/audioExtraction';
-import { ExportOutputPaths, ExportProgressHeader } from '../ExportProgressParts';
+import { ExportOutputPaths } from '../ExportProgressParts';
+import OutputProgressPanel from '../OutputProgressPanel';
 import Button from '../Button';
 import styles from '../VideoCrop/CropExportProgress.module.css';
 
@@ -41,8 +42,15 @@ export default function AudioExtractionProgress({ job, onCancel, onDismiss }: Pr
   } as const;
 
   return (
-    <aside className={styles['panel']} role="status" aria-live="polite" aria-label={t('Extract Audio Settings')}>
-      <ExportProgressHeader title={t('Extract Audio')} label={t(labels[job.state])} state={job.state} />
+    <OutputProgressPanel
+      id="audio-progress"
+      ariaLabel={t('Extract Audio Settings')}
+      title={t('Extract Audio')}
+      label={t(labels[job.state])}
+      state={job.state}
+      autoDismiss={job.state === 'success'}
+      onDismiss={onDismiss}
+    >
       <div className={styles['contents']}>
         {active ? (
           <>
@@ -74,6 +82,6 @@ export default function AudioExtractionProgress({ job, onCancel, onDismiss }: Pr
           </>
         )}
       </div>
-    </aside>
+    </OutputProgressPanel>
   );
 }

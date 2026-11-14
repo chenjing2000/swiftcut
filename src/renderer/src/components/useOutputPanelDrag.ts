@@ -1,17 +1,39 @@
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getOutputProgressPosition, setOutputProgressPosition } from './outputProgressPositionStore';
+import type { ProgressWindowId } from './outputProgressPositionStore';
 
 interface Position { left: number; top: number }
 interface DragStart extends Position { x: number; y: number; pointerId: number }
 
-export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | null>) {
-  const [position, setPosition] = useState<Position>(() => ({
-    left: Math.max(8, window.innerWidth - 396),
-    top: 48,
-  }));
+export type OutputPanelPlacement = 'top-right' | 'bottom-right';
+
+export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | null>, placement: OutputPanelPlacement = 'top-right', progressId?: ProgressWindowId) {
+  // A progress panel starts with CSS bottom/right placement until its actual
+  // dimensions can be measured. This prevents a wrong first-frame position.
+  const [position, setPosition] = useState<Position | undefined>(() => {
+    if (progressId) return getOutputProgressPosition(progressId);
+    if (placement === 'bottom-right') return undefined;
+    return { left: Math.max(8, window.innerWidth - 396), top: 48 };
+  });
   const resetPosition = useCallback(() => {
+    if (placement === 'bottom-right') {
+      const saved = progressId ? getOutputProgressPosition(progressId) : undefined;
+      if (saved) {
+        setPosition(saved);
+        return;
+      }
+      const rect = panelRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setPosition({ left: rect.left, top: rect.top });
+      return;
+    }
     setPosition({ left: Math.max(8, window.innerWidth - 396), top: 48 });
-  }, []);
+  }, [panelRef, placement, progressId]);
+  useEffect(() => {
+    if (progressId && position) setOutputProgressPosition(progressId, position);
+  }, [position, progressId]);
+
   const dragRef = useRef<DragStart | undefined>(undefined);
   const headingRef = useRef<HTMLDivElement>(null);
 
@@ -28,10 +50,18 @@ export default function useOutputPanelDrag(panelRef: RefObject<HTMLElement | nul
   }, [panelRef]);
 
   useEffect(() => {
-    const onResize = () => setPosition((current) => clampPosition(current.left, current.top));
+    const onResize = () => setPosition((current) => {
+      if (current == null) return current;
+      return clampPosition(current.left, current.top);
+    });
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [clampPosition]);
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(onResize);
+    if (panelRef.current) observer?.observe(panelRef.current);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      observer?.disconnect();
+    };
+  }, [clampPosition, panelRef]);
 
   const stopDrag = useCallback((pointerId?: number, revert = false) => {
     const { current } = dragRef;
