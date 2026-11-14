@@ -8,6 +8,7 @@ import './main.css';
 
 import NotificationHost from './notifications/NotificationHost';
 import OutputFloatingPanel from './components/OutputFloatingPanel';
+import * as Dialog from './components/Dialog';
 import OutputProgressPanel from './components/OutputProgressPanel';
 import './swal2.scss';
 import { enqueueNotification, requestConfirmation, showErrorNotification } from './notifications/notificationStore';
@@ -24,6 +25,7 @@ interface E2ENotificationInput {
 
 function TestHarness() {
   const [showOutputPanels, setShowOutputPanels] = useState(false);
+  const [showParentDialog, setShowParentDialog] = useState(false);
 
   useEffect(() => {
     async function handleNotification({ type, title, message, details, primaryActionLabel, secondaryActionLabel }: E2ENotificationInput) {
@@ -63,6 +65,8 @@ function TestHarness() {
       handleNotification(detail).catch((error: unknown) => console.error('Notification E2E event failed', error));
     }
 
+    const onParentDialog = (event: Event) => { setShowParentDialog(Boolean((event as CustomEvent<boolean>).detail)); };
+    document.addEventListener('swiftcut-e2e-parent-dialog', onParentDialog);
     const onSweetAlert = () => {
       delete document.documentElement.dataset['e2eSwalResult'];
       Swal.fire({
@@ -81,6 +85,7 @@ function TestHarness() {
     document.addEventListener('swiftcut-e2e-notification', onTestNotification);
     document.documentElement.dataset['e2eActionsReady'] = 'true';
     return () => {
+      document.removeEventListener('swiftcut-e2e-parent-dialog', onParentDialog);
       document.removeEventListener('swiftcut-e2e-swal', onSweetAlert);
       document.removeEventListener('swiftcut-e2e-output-panels', onOutputPanels);
       document.removeEventListener('swiftcut-e2e-notification', onTestNotification);
@@ -101,6 +106,15 @@ function TestHarness() {
             </OutputProgressPanel>
           </>
         )}
+        <Dialog.Root open={showParentDialog} onOpenChange={setShowParentDialog}>
+          <Dialog.Portal>
+            <Dialog.Overlay />
+            <Dialog.Content data-testid="e2e-parent-dialog" aria-describedby={undefined}>
+              <Dialog.Title>Parent settings dialog</Dialog.Title>
+              <button type="button" onClick={() => setShowParentDialog(false)}>Close parent</button>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
         <NotificationHost />
       </div>
       <div id="swal2-container-wrapper" />
