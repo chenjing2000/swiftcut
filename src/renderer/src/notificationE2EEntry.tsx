@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Theme } from '@radix-ui/themes';
+import Swal from 'sweetalert2/dist/sweetalert2.js';
 
 import '@radix-ui/themes/styles.css';
 import './main.css';
@@ -8,7 +9,6 @@ import './main.css';
 import NotificationHost from './notifications/NotificationHost';
 import OutputFloatingPanel from './components/OutputFloatingPanel';
 import OutputProgressPanel from './components/OutputProgressPanel';
-import Swal from 'sweetalert2/dist/sweetalert2.js';
 import './swal2.scss';
 import { enqueueNotification, requestConfirmation, showErrorNotification } from './notifications/notificationStore';
 import type { NotificationType } from './notifications/notificationStore';
@@ -72,6 +72,7 @@ function TestHarness() {
         showCancelButton: true,
       }).then((result) => {
         document.documentElement.dataset['e2eSwalResult'] = result.isConfirmed ? 'confirm' : 'cancel';
+        return result;
       }).catch((error: unknown) => console.error('SweetAlert E2E failed', error));
     };
     document.addEventListener('swiftcut-e2e-swal', onSweetAlert);
