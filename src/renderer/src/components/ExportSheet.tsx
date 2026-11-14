@@ -25,7 +25,7 @@ function ExportSheet({
   const { t } = useTranslation();
   return (
     <OutputFloatingPanel
-      id="lossless"
+      id="lossless-settings"
       open={visible}
       title={title}
       onClose={onClosePress}
