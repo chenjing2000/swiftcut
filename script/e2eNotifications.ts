@@ -130,6 +130,8 @@ async function postNotification(payload: {
   title?: string;
   message: string;
   details?: string;
+  primaryActionLabel?: string;
+  secondaryActionLabel?: string;
 }) {
   await evaluate(`document.dispatchEvent(new CustomEvent('swiftcut-e2e-notification', { detail: ${JSON.stringify(payload)} }))`);
   return { status: 200 };
