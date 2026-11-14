@@ -209,8 +209,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       const otherDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
       if (otherDialog && !(otherDialog as HTMLElement).dataset['outputPanel']) return;
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement
-        || event.target instanceof HTMLTextAreaElement) return;
-      if (!focused || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        || event.target instanceof HTMLTextAreaElement
+        || !focused || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
       const delta = event.shiftKey ? 10 : 1;
       const dx = event.key === 'ArrowLeft' ? -delta : (event.key === 'ArrowRight' ? 1 : 0);
       const dy = event.key === 'ArrowUp' ? -delta : (event.key === 'ArrowDown' ? 1 : 0);
