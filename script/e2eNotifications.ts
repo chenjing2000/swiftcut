@@ -439,6 +439,87 @@ async function testBlockingNotifications() {
   console.log('PASS error and confirmation dialogs');
 }
 
+
+async function testModalOverOutputPanels() {
+  await evaluate("document.dispatchEvent(new CustomEvent('swiftcut-e2e-output-panels', { detail: true }))");
+  await waitForExpression(
+    'Boolean(document.querySelector("[data-output-panel=audio-settings]")) && Boolean(document.querySelector("[data-output-panel=audio-progress]"))',
+    'real Output settings and progress panels',
+  );
+  await evaluate(`(() => {
+    const settings = document.querySelector('[data-output-panel=audio-settings]');
+    const progress = document.querySelector('[data-output-panel=audio-progress]');
+    // Deliberately cover the center of the viewport with the two floating windows.
+    settings.style.left = 'calc(50% - 190px)';
+    settings.style.top = 'calc(50% - 180px)';
+    progress.style.left = 'calc(50% - 120px)';
+    progress.style.top = 'calc(50% - 10px)';
+  })()`);
+
+  for (const action of ['primary', 'secondary'] as const) {
+    await postNotification({
+      type: 'error',
+      title: 'Audio extraction failed',
+      message: 'Extraction paused after a controlled test failure.',
+      primaryActionLabel: 'Continue',
+      secondaryActionLabel: 'Cancel remaining tasks',
+    });
+    await waitForExpression('Boolean(document.querySelector("[data-testid=notification-modal]"))', 'error modal over Output panels');
+
+    const metrics = await evaluate<{
+      modalAbovePanels: boolean;
+      overlayAbovePanels: boolean;
+      buttonIsTopmost: boolean;
+      settingsZ: number;
+      progressZ: number;
+      overlayZ: number;
+      modalZ: number;
+      x: number;
+      y: number;
+    }>(`(() => {
+      const modal = document.querySelector('[data-testid=notification-modal]');
+      const button = document.querySelector('[data-testid=notification-${action}-action]');
+      const overlay = document.querySelector('[data-radix-dialog-overlay], [data-state=open][class*=AlertDialogOverlay]');
+      const settings = document.querySelector('[data-output-panel=audio-settings]');
+      const progress = document.querySelector('[data-output-panel=audio-progress]');
+      const rect = button.getBoundingClientRect();
+      const x = rect.x + rect.width / 2;
+      const y = rect.y + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      const settingsZ = Number(getComputedStyle(settings).zIndex);
+      const progressZ = Number(getComputedStyle(progress).zIndex);
+      const modalZ = Number(getComputedStyle(modal).zIndex);
+      const overlayZ = overlay ? Number(getComputedStyle(overlay).zIndex) : NaN;
+      return {
+        modalAbovePanels: modalZ > Math.max(settingsZ, progressZ),
+        overlayAbovePanels: overlayZ > Math.max(settingsZ, progressZ),
+        buttonIsTopmost: hit === button || button.contains(hit),
+        settingsZ, progressZ, overlayZ, modalZ, x, y,
+      };
+    })()`);
+    assert.ok(metrics.modalAbovePanels, `Modal must be above Output panels: ${JSON.stringify(metrics)}`);
+    assert.ok(metrics.overlayAbovePanels, `Modal overlay must cover Output panels: ${JSON.stringify(metrics)}`);
+    assert.ok(metrics.buttonIsTopmost, `Modal button must be the actual pointer target: ${JSON.stringify(metrics)}`);
+
+    await captureScreenshot(`modal-over-output-${action}.png`);
+    await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: metrics.x, y: metrics.y });
+    await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: metrics.x, y: metrics.y, button: 'left', clickCount: 1 });
+    await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: metrics.x, y: metrics.y, button: 'left', clickCount: 1 });
+    await waitForExpression(
+      `document.documentElement.dataset.e2eLastErrorAction === "${action === 'primary' ? 'acknowledge' : 'cancel'}"`,
+      `${action} modal action after a real pointer click`,
+    );
+    await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'modal to close');
+    await evaluate('delete document.documentElement.dataset.e2eLastErrorAction');
+  }
+
+  // With no modal, the Output settings button becomes interactive again.
+  await evaluate('document.querySelector("[data-testid=e2e-output-action]").click()');
+  assert.equal(await evaluate<string>('document.documentElement.dataset.e2eOutputClicked'), 'true');
+  await evaluate("document.dispatchEvent(new CustomEvent('swiftcut-e2e-output-panels', { detail: false }))");
+  console.log('PASS modal stacking, hit testing, real pointer actions, and Output restoration');
+}
+
 const vite = await createServer({
   configFile: false,
   root: resolvePath('src/renderer'),
@@ -517,6 +598,7 @@ try {
   await testDarkThemeStyles();
   await testBlockingPriorityAndQueueOrder();
   await testBlockingNotifications();
+  await testModalOverOutputPanels();
 
   logStage('All notification desktop E2E tests passed');
 } catch (error) {
