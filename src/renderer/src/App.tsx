@@ -24,7 +24,6 @@ import useFileFormatState from './hooks/useFileFormatState';
 import useFrameCapture from './hooks/useFrameCapture';
 import useSegments from './hooks/useSegments';
 import useDirectoryAccess from './hooks/useDirectoryAccess';
-import useExportActionDisabled from './hooks/useExportActionDisabled';
 
 import type { UserSettingsContextType, AppContextType, SegColorsContextType } from './contexts';
 import { UserSettingsContext, SegColorsContext, AppContext } from './contexts';
@@ -185,7 +184,7 @@ function App() {
   const [hideCompatPlayer, setHideCompatPlayer] = useState(false);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [losslessExportState, setLosslessExportState] = useState<'running' | 'finalizing' | 'cancelling' | 'cancelled' | 'success'>();
-  const losslessExportDisabled = useExportActionDisabled(losslessExportState === 'running' || losslessExportState === 'finalizing' || losslessExportState === 'cancelling');
+  const losslessExportDisabled = losslessExportState === 'running' || losslessExportState === 'finalizing' || losslessExportState === 'cancelling';
   const losslessFinalizingRef = useRef(false);
   const [losslessExportPaths, setLosslessExportPaths] = useState<string[]>([]);
   const losslessCancelRequestedRef = useRef(false);
