@@ -57,8 +57,10 @@ describe.skipIf(!enabled)('Audio extraction with real FFmpeg', () => {
       ]);
       const output = join(dir, 'iphone_audio.m4a');
       ffmpeg(buildOriginalAudioFfmpegArgs({
-        inputPath: source, streamIndex: 1,
-        outputFormat: getOriginalAudioOutputFormat('aac'), outputPath: output,
+        inputPath: source,
+        streamIndex: 1,
+        outputFormat: getOriginalAudioOutputFormat('aac'),
+        outputPath: output,
       }));
       expect(probeAudio(output).streams).toStrictEqual([{ codec_type: 'audio', codec_name: 'aac' }]);
       ffmpeg(['-xerror', '-i', output, '-f', 'null', '-']);
