@@ -6,6 +6,8 @@ import styles from './VideoCrop/CropExportProgress.module.css';
 interface Props {
   state: 'running' | 'finalizing' | 'cancelling' | 'cancelled' | 'success';
   outputPaths: string[];
+  notices: string[];
+  warnings: string[];
   text: string;
   progress?: number | undefined;
   onCancel: () => void;
@@ -13,7 +15,7 @@ interface Props {
 }
 
 /** Lossless and re-encoded exports share the same progress-panel presentation. */
-export default function LosslessExportProgress({ state, text, progress, outputPaths, onCancel, onDismiss }: Props) {
+export default function LosslessExportProgress({ state, text, progress, outputPaths, notices, warnings, onCancel, onDismiss }: Props) {
   const { t } = useTranslation();
   const active = ['running', 'finalizing', 'cancelling'].includes(state);
   const stateLabels = { running: 'Exporting', finalizing: 'Finalizing export', cancelling: 'Cancelling export', cancelled: 'Cancelled', success: 'Export finished' } as const;
@@ -42,6 +44,8 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
               <>
                 <p>{t('{{count}} output file(s) saved.', { count: outputPaths.length })}</p>
                 <ExportOutputPaths paths={outputPaths} />
+                {notices.map((notice) => <p key={notice}>{notice}</p>)}
+                {warnings.map((warning) => <p key={warning} className={styles['warning']}>{warning}</p>)}
               </>
             ) : <p>{t('Cancelled')}</p>}
             <div className={styles['actions']}><Button onClick={onDismiss}>{t('Dismiss')}</Button></div>
