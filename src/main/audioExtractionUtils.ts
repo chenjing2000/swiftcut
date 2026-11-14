@@ -14,6 +14,13 @@ const originalAudioOutputFormats: Record<string, OriginalAudioOutputFormat> = {
   ac3: { extension: 'ac3', muxer: 'ac3' },
   eac3: { extension: 'eac3', muxer: 'eac3' },
   opus: { extension: 'opus', muxer: 'opus' },
+  flac: { extension: 'flac', muxer: 'flac' },
+  vorbis: { extension: 'ogg', muxer: 'ogg' },
+  pcm_s16le: { extension: 'wav', muxer: 'wav' },
+  pcm_s24le: { extension: 'wav', muxer: 'wav' },
+  pcm_s32le: { extension: 'wav', muxer: 'wav' },
+  pcm_f32le: { extension: 'wav', muxer: 'wav' },
+  pcm_f64le: { extension: 'wav', muxer: 'wav' },
 };
 
 export function getOriginalAudioOutputFormat(codecName: string): OriginalAudioOutputFormat {
