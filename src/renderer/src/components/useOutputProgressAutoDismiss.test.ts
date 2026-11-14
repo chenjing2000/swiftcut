@@ -9,8 +9,8 @@ afterEach(() => {
 describe('Successful Output progress auto-dismiss timing', () => {
   it('waits three seconds, fades for one, then dismisses', () => {
     vi.useFakeTimers();
-    const fade = vi.fn();
-    const dismiss = vi.fn();
+    const fade = vi.fn<() => void>();
+    const dismiss = vi.fn<() => void>();
     const cancel = scheduleOutputProgressDismiss(fade, dismiss);
 
     vi.advanceTimersByTime(2999);
@@ -27,8 +27,8 @@ describe('Successful Output progress auto-dismiss timing', () => {
 
   it('cancels both timers when a user interacts or the task changes', () => {
     vi.useFakeTimers();
-    const fade = vi.fn();
-    const dismiss = vi.fn();
+    const fade = vi.fn<() => void>();
+    const dismiss = vi.fn<() => void>();
     const cancel = scheduleOutputProgressDismiss(fade, dismiss);
     vi.advanceTimersByTime(3500);
     expect(fade).toHaveBeenCalledOnce();
@@ -36,8 +36,8 @@ describe('Successful Output progress auto-dismiss timing', () => {
     vi.advanceTimersByTime(10000);
     expect(dismiss).not.toHaveBeenCalled();
 
-    const nextFade = vi.fn();
-    const nextDismiss = vi.fn();
+    const nextFade = vi.fn<() => void>();
+    const nextDismiss = vi.fn<() => void>();
     const cancelNext = scheduleOutputProgressDismiss(nextFade, nextDismiss);
     vi.advanceTimersByTime(2999);
     expect(nextFade).not.toHaveBeenCalled();
