@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Theme } from '@radix-ui/themes';
 
@@ -6,6 +6,8 @@ import '@radix-ui/themes/styles.css';
 import './main.css';
 
 import NotificationHost from './notifications/NotificationHost';
+import OutputFloatingPanel from './components/OutputFloatingPanel';
+import OutputProgressPanel from './components/OutputProgressPanel';
 import { enqueueNotification, requestConfirmation, showErrorNotification } from './notifications/notificationStore';
 import type { NotificationType } from './notifications/notificationStore';
 
@@ -14,15 +16,21 @@ interface E2ENotificationInput {
   title?: string;
   message: string;
   details?: string;
+  primaryActionLabel?: string;
+  secondaryActionLabel?: string;
 }
 
 function TestHarness() {
+  const [showOutputPanels, setShowOutputPanels] = useState(false);
+
   useEffect(() => {
-    async function handleNotification({ type, title, message, details }: E2ENotificationInput) {
+    async function handleNotification({ type, title, message, details, primaryActionLabel, secondaryActionLabel }: E2ENotificationInput) {
       const notification = {
         message,
         ...(title != null && { title }),
         ...(details != null && { details }),
+        ...(primaryActionLabel != null && { primaryActionLabel }),
+        ...(secondaryActionLabel != null && { secondaryActionLabel }),
         source: 'notification-e2e',
       };
       switch (type) {
@@ -53,9 +61,12 @@ function TestHarness() {
       handleNotification(detail).catch((error: unknown) => console.error('Notification E2E event failed', error));
     }
 
+    const onOutputPanels = (event: Event) => { setShowOutputPanels(Boolean((event as CustomEvent<boolean>).detail)); };
+    document.addEventListener('swiftcut-e2e-output-panels', onOutputPanels);
     document.addEventListener('swiftcut-e2e-notification', onTestNotification);
     document.documentElement.dataset['e2eActionsReady'] = 'true';
     return () => {
+      document.removeEventListener('swiftcut-e2e-output-panels', onOutputPanels);
       document.removeEventListener('swiftcut-e2e-notification', onTestNotification);
       delete document.documentElement.dataset['e2eActionsReady'];
     };
@@ -64,6 +75,16 @@ function TestHarness() {
   return (
     <Theme appearance="light" accentColor="cyan">
       <div id="app-root" style={{ width: '100%', height: '100vh' }}>
+        {showOutputPanels && (
+          <>
+            <OutputFloatingPanel id="audio-settings" open title="Extract Audio Settings" onClose={() => setShowOutputPanels(false)} footer={<button type="button" data-testid="e2e-output-action" onClick={() => { document.documentElement.dataset['e2eOutputClicked'] = 'true'; }}>Background action</button>}>
+              <p>Extraction settings behind the modal</p>
+            </OutputFloatingPanel>
+            <OutputProgressPanel id="audio-progress" title="Extract Audio Progress" label="Paused" ariaLabel="Extract Audio Progress">
+              <p>Output progress behind the modal</p>
+            </OutputProgressPanel>
+          </>
+        )}
         <NotificationHost />
       </div>
     </Theme>
