@@ -186,8 +186,6 @@ function App() {
   const losslessFinalizingRef = useRef(false);
   const [losslessExportPaths, setLosslessExportPaths] = useState<string[]>([]);
   const losslessCancelRequestedRef = useRef(false);
-  const [losslessCustomDirectory, setLosslessCustomDirectory] = useState<{ source: string, value: string }>();
-  const [losslessCustomFilename, setLosslessCustomFilename] = useState<{ source: string, value: string }>();
   const [cacheBuster, setCacheBuster] = useState(0);
 
   const { fileFormat, setFileFormat, detectedFileFormat, setDetectedFileFormat, isCustomFormatSelected } = useFileFormatState();
@@ -1153,33 +1151,25 @@ function App() {
   const closeExportConfirm = useCallback(() => setExportConfirmOpen(false), []);
 
   const willMerge = segmentsToExport.length > 1 && autoMerge;
-  const defaultLosslessDirectory = filePath == null ? '' : getMediaOutputDir(filePath, 'lossless');
-  const losslessDirectory = filePath != null && losslessCustomDirectory?.source === filePath ? losslessCustomDirectory.value : defaultLosslessDirectory;
+  const losslessDirectory = filePath == null ? '' : getMediaOutputDir(filePath, 'lossless');
   const losslessExtension = filePath == null ? 'mp4' : (getOutFileExtension({ isCustomFormatSelected, outFormat: fileFormat ?? detectedFileFormat ?? 'mp4', filePath }) ?? (parsePath(filePath).ext ?? '.mp4')).replace(/^\./, '');
   const defaultLosslessMode = (() => {
     if (segmentsToChaptersOnly) return 'chapters' as const;
     if (willMerge) return 'merge' as const;
     return areWeCutting ? 'segment' as const : 'entire' as const;
   })();
-  const defaultLosslessFilename = filePath == null ? '' : getMediaOutputName({
+  const losslessFilename = filePath == null ? '' : getMediaOutputName({
     sourcePath: filePath,
     kind: 'lossless',
     mode: defaultLosslessMode,
     extension: losslessExtension,
     ...((areWeCutting && !willMerge && !segmentsToChaptersOnly) && { segmentIndex: 1, segmentCount: Math.max(1, segmentsToExport.length) }),
   });
-  const losslessFilename = filePath != null && losslessCustomFilename?.source === filePath ? losslessCustomFilename.value : defaultLosslessFilename;
   const openLosslessExport = useCallback(() => {
     if (!filePath) return;
-    setLosslessCustomDirectory(undefined);
-    setLosslessCustomFilename(undefined);
     setExportConfirmOpen(true);
     setStreamsSelectorShown(false);
   }, [filePath]);
-  const chooseLosslessDirectory = useCallback(async () => {
-    const selected = await askForOutDir(losslessDirectory);
-    if (selected && filePath) setLosslessCustomDirectory({ source: filePath, value: selected });
-  }, [losslessDirectory, filePath]);
   const changeLosslessOutputFps = useCallback(async () => {
     const rate = await askForPlaybackRate({ detectedFps, outputPlaybackRate });
     if (rate != null) setOutputPlaybackRate(rate);
@@ -1246,8 +1236,7 @@ function App() {
       const warnings = new Set<string>();
       const count = Math.max(1, segmentsToExport.length);
       const suffix = parsePath(losslessFilename).ext;
-      const userRenamed = losslessCustomFilename?.source === filePath;
-      const baseStem = userRenamed ? parsePath(losslessFilename).name.replace(/_segment_\d+$/, '') : getSourceStem(filePath);
+      const baseStem = getSourceStem(filePath);
       const segmentName = (index: number) => `${baseStem}_segment_${String(index + 1).padStart(Math.max(2, String(count).length), '0')}${suffix}`;
       const cutFileNames = (count === 1 && !willMerge) ? [losslessFilename] : Array.from({ length: count }, (_, index) => segmentName(index));
       // Write all intermediate media inside the task-owned workspace.
@@ -1406,7 +1395,7 @@ function App() {
       setWorking(undefined);
       setProgress(undefined);
     }
-  }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutMultiple, outputDir, losslessDirectory, losslessFilename, losslessExtension, losslessCustomFilename, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, cleanupChoices, segmentsOrInverse.selected, t, segmentsToChapters, invertCutSegments, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, handleExportFailed]);
+  }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutMultiple, outputDir, losslessDirectory, losslessFilename, losslessExtension, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, cleanupChoices, segmentsOrInverse.selected, t, segmentsToChapters, invertCutSegments, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, handleExportFailed]);
 
   const onExportPress = useCallback(() => openLosslessExport(), [openLosslessExport]);
 
@@ -2948,7 +2937,7 @@ function App() {
 
                 {/* Dialogs */}
 
-                <ExportConfirm areWeCutting={areWeCutting} segmentsOrInverse={segmentsOrInverse} segmentsToExport={segmentsToExport} willMerge={willMerge} visible={exportConfirmOpen} onClosePress={closeExportConfirm} onExportConfirm={onExportConfirm} renderOutFmt={renderOutFmt} outputDir={losslessDirectory} onOutputDirChange={(value) => { if (filePath) setLosslessCustomDirectory({ source: filePath, value }); }} onChooseOutputDir={() => { chooseLosslessDirectory().catch(console.error); }} outputFilename={losslessFilename} onOutputFilenameChange={(value) => { if (filePath) setLosslessCustomFilename({ source: filePath, value }); }} numStreamsTotal={numStreamsTotal} numStreamsToCopy={numStreamsToCopy} onShowStreamsSelectorClick={handleShowStreamsSelectorClick} outFormat={fileFormat} mainCopiedThumbnailStreams={mainCopiedThumbnailStreams} hvc1NeededStreams={hvc1NeededStreams} needSmartCut={needSmartCut} isEncoding={isEncoding} encBitrate={encBitrate} setEncBitrate={setEncBitrate} onChangeOutputFps={() => { changeLosslessOutputFps().catch(console.error); }} onIncreaseRotation={increaseRotation} outputRotation={isRotationSet ? (effectiveRotation ?? 0) : 0} outputPlaybackRate={outputPlaybackRate} lossyMode={lossyMode} />
+                <ExportConfirm areWeCutting={areWeCutting} segmentsOrInverse={segmentsOrInverse} segmentsToExport={segmentsToExport} willMerge={willMerge} visible={exportConfirmOpen} onClosePress={closeExportConfirm} onExportConfirm={onExportConfirm} renderOutFmt={renderOutFmt} numStreamsTotal={numStreamsTotal} numStreamsToCopy={numStreamsToCopy} onShowStreamsSelectorClick={handleShowStreamsSelectorClick} outFormat={fileFormat} mainCopiedThumbnailStreams={mainCopiedThumbnailStreams} hvc1NeededStreams={hvc1NeededStreams} needSmartCut={needSmartCut} isEncoding={isEncoding} encBitrate={encBitrate} setEncBitrate={setEncBitrate} onChangeOutputFps={() => { changeLosslessOutputFps().catch(console.error); }} onIncreaseRotation={increaseRotation} outputRotation={isRotationSet ? (effectiveRotation ?? 0) : 0} outputPlaybackRate={outputPlaybackRate} lossyMode={lossyMode} />
 
                 <Dialog.Root open={streamsSelectorShown} onOpenChange={setStreamsSelectorShown}>
                   <Dialog.Portal>
