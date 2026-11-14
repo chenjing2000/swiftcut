@@ -3032,7 +3032,6 @@ function App() {
                     duration: fileDuration,
                     timeRange: 'selected',
                   }) : []}
-                  formatName={mainFileFormat?.format_name}
                 />
 
                 <Dialog.Root open={settingsVisible} onOpenChange={toggleSettings}>
