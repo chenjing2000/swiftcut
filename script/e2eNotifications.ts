@@ -522,6 +522,51 @@ async function testModalOverOutputPanels() {
   console.log('PASS modal stacking, hit testing, real pointer actions, and Output restoration');
 }
 
+
+async function testSweetAlertAndRadixNotification() {
+  // The legacy SweetAlert container sits beside #app-root in the real application.
+  await evaluate("document.dispatchEvent(new Event('swiftcut-e2e-swal'))");
+  await waitForExpression('Boolean(document.querySelector(".swal2-container .swal2-confirm"))', 'SweetAlert popup');
+
+  await postNotification({
+    type: 'error',
+    title: 'Failure while SweetAlert is open',
+    message: 'An urgent Radix error must remain clickable above the legacy popup.',
+  });
+  await waitForExpression('Boolean(document.querySelector("[data-testid=notification-modal]"))', 'Radix modal over SweetAlert');
+
+  const coords = await evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
+    const button = document.querySelector('[data-testid=notification-primary-action]');
+    const rect = button.getBoundingClientRect();
+    const x = rect.x + rect.width / 2;
+    const y = rect.y + rect.height / 2;
+    const el = document.elementFromPoint(x, y);
+    return { x, y, hit: el === button || button.contains(el) };
+  })()`);
+  assert.ok(coords.hit, 'Radix error button must be clickable while SweetAlert is open');
+  await captureScreenshot('radix-over-sweetalert.png');
+  await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: coords.x, y: coords.y });
+  await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: coords.x, y: coords.y, button: 'left', clickCount: 1 });
+  await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: coords.x, y: coords.y, button: 'left', clickCount: 1 });
+  await waitForExpression('document.documentElement.dataset.e2eLastErrorAction === "acknowledge"', 'Radix error to be acknowledged over SweetAlert');
+  await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'Radix notification to close');
+
+  const swal = await evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
+    const button = document.querySelector('.swal2-container .swal2-confirm');
+    const rect = button.getBoundingClientRect();
+    const x = rect.x + rect.width / 2;
+    const y = rect.y + rect.height / 2;
+    const el = document.elementFromPoint(x, y);
+    return { x, y, hit: el === button || button.contains(el) };
+  })()`);
+  assert.ok(swal.hit, 'SweetAlert must be interactive again after Radix closes');
+  await cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: swal.x, y: swal.y });
+  await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: swal.x, y: swal.y, button: 'left', clickCount: 1 });
+  await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: swal.x, y: swal.y, button: 'left', clickCount: 1 });
+  await waitForExpression('document.documentElement.dataset.e2eSwalResult === "confirm"', 'SweetAlert to resume and confirm');
+  console.log('PASS SweetAlert recovery after a blocking Radix error');
+}
+
 const vite = await createServer({
   configFile: false,
   root: resolvePath('src/renderer'),
@@ -601,6 +646,7 @@ try {
   await testBlockingPriorityAndQueueOrder();
   await testBlockingNotifications();
   await testModalOverOutputPanels();
+  await testSweetAlertAndRadixNotification();
 
   logStage('All notification desktop E2E tests passed');
 } catch (error) {
