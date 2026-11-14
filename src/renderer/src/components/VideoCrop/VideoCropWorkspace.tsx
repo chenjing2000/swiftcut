@@ -15,7 +15,6 @@ import { isActiveOutputPanel } from '../outputPanelFocus';
 import actionStyles from '../OutputActionButtons.module.css';
 import CropNumericField from './CropNumericField';
 import VideoCropSelectionOverlay from './VideoCropSelectionOverlay';
-import useExportActionDisabled from '../../hooks/useExportActionDisabled';
 
 interface Props {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -64,7 +63,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [format, setFormat] = useState<'mp4' | 'mkv'>('mp4');
   const [quality, setQuality] = useState('high');
   const [submitting, setSubmitting] = useState(false);
-  const exportDisabled = useExportActionDisabled(submitting || exportBusy);
+  const exportDisabled = submitting || exportBusy;
   const [exportError, setExportError] = useState<string>();
   const [previewMode, setPreviewMode] = useState<'edit' | 'output'>('edit');
   const [size, setSize] = useState({ width: 1, height: 1 });
