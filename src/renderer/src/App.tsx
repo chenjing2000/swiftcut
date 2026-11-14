@@ -1381,10 +1381,12 @@ function App() {
         errorToast(i18n.t('Export finished, but post-export processing failed'));
         return;
       }
-      if (exportStarted) emitLosslessCompletionSafely(
-        () => emitEvent({ eventName: 'export-complete' }),
-        (error) => console.error('Unable to notify Lossless export interruption', error),
-      );
+      if (exportStarted) {
+        emitLosslessCompletionSafely(
+          () => emitEvent({ eventName: 'export-complete' }),
+          (error) => console.error('Unable to notify Lossless export interruption', error),
+        );
+      }
 
       if (outcome === 'cancelled') {
         losslessCancelRequestedRef.current = true;
