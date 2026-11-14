@@ -5,6 +5,7 @@ on:
     branches:
       - feature/crop-video
       - feature/media-workspace-export-ui
+      - feature/media-input-compatibility
   workflow_dispatch:
 
 jobs:
@@ -22,8 +23,8 @@ jobs:
       - run: yarn install --immutable
       - run: yarn test --run
       - uses: AnimMouse/setup-ffmpeg@v1
-      - name: Real FFmpeg crop smoke test
-        run: yarn test --run src/main/videoCropFfmpegIntegration.test.ts src/main/videoCropCompatibility.test.ts
+      - name: Real FFmpeg media compatibility smoke tests
+        run: yarn test --run src/main/videoCropFfmpegIntegration.test.ts src/main/videoCropCompatibility.test.ts src/main/audioExtractionFfmpegIntegration.test.ts
         env:
           SWIFTCUT_CROP_FFMPEG_TEST: '1'
       - run: yarn tsc
