@@ -1326,6 +1326,8 @@ function App() {
       losslessFinalizingRef.current = true;
       setLosslessExportState('finalizing');
       const committedPaths = await commitMediaOutputs({ outputDir: losslessDirectory, outputs: outputsToCommit });
+      // No subsequent notification or cleanup error may invalidate published files.
+      exportSucceeded = true;
       if (areWeCutting) notices.add(i18n.t('Cutpoints may be inaccurate.'));
 
       const publishedResult = getLosslessPublishedPaths({
@@ -1341,9 +1343,8 @@ function App() {
       const exportedPaths = publishedResult.paths;
       invariant(exportedPaths.length > 0);
       setLosslessExportPaths(committedPaths);
-      // The published files are safe, but keep the job locked until optional
-      // post-export cleanup and the task-owned workspace cleanup finish.
-      exportSucceeded = true;
+      // Keep the job locked until optional post-export cleanup and the
+      // task-owned workspace cleanup finish.
       setExportCount((c) => c + 1);
       emitEvent({ eventName: 'export-complete', paths: exportedPaths });
 
@@ -1359,9 +1360,15 @@ function App() {
         }
       }
     } catch (err) {
-      if (exportStarted && !exportSucceeded) emitEvent({ eventName: 'export-complete' });
+      if (exportSucceeded) {
+        // Media publication cannot be rolled back by a later UI or cleanup error.
+        console.error('Lossless export post-publication operation failed', err);
+        errorToast(i18n.t('Export finished, but post-export processing failed'));
+        return;
+      }
+      if (exportStarted) emitEvent({ eventName: 'export-complete' });
 
-      if (!exportSucceeded && (losslessCancelRequestedRef.current || isAbortedError(err))) {
+      if (losslessCancelRequestedRef.current || isAbortedError(err)) {
         losslessCancelRequestedRef.current = true;
         return;
       }
