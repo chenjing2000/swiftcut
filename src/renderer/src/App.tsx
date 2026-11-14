@@ -1341,7 +1341,8 @@ function App() {
       const exportedPaths = publishedResult.paths;
       invariant(exportedPaths.length > 0);
       setLosslessExportPaths(committedPaths);
-      setLosslessExportState('success');
+      // The published files are safe, but keep the job locked until optional
+      // post-export cleanup and the task-owned workspace cleanup finish.
       exportSucceeded = true;
       setExportCount((c) => c + 1);
       emitEvent({ eventName: 'export-complete', paths: exportedPaths });
@@ -1394,11 +1395,12 @@ function App() {
       handleExportFailed(err);
     } finally {
       if (temporaryLosslessDir != null) await rm(temporaryLosslessDir, { recursive: true, force: true }).catch(console.error);
-      if (!exportSucceeded && losslessCancelRequestedRef.current) setLosslessExportState('cancelled');
-      else if (!exportSucceeded) setLosslessExportState(undefined);
       losslessFinalizingRef.current = false;
       setWorking(undefined);
       setProgress(undefined);
+      if (exportSucceeded) setLosslessExportState('success');
+      else if (losslessCancelRequestedRef.current) setLosslessExportState('cancelled');
+      else setLosslessExportState(undefined);
     }
   }, [filePath, numStreamsToCopy, haveInvalidSegs, workingRef, setWorking, segmentsToChaptersOnly, cutMultiple, outputDir, losslessDirectory, losslessFilename, losslessExtension, losslessExportPlan, fileFormat, fileDuration, isRotationSet, effectiveRotation, copyFileStreams, allFilesMeta, keyframeCut, segmentsToExport, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, detectedFps, willMerge, mainFileFormat, mainStreams, exportExtraStreams, areWeCutting, cleanupChoices, segmentsOrInverse.selected, t, segmentsToChapters, invertCutSegments, concatCutSegments, autoDeleteMergedSegments, tryDeleteFiles, nonCopiedExtraStreams, extractStreams, askForCleanupChoices, cleanupFiles, showOsNotification, handleExportFailed]);
 
