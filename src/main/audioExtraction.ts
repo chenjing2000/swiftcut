@@ -1,8 +1,9 @@
-import { basename, dirname, extname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { access, link, mkdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { findAvailableBatchNames, getMediaOutputDir, getSourceStem } from '../common/mediaWorkspace.js';
 import { buildCropConcatList } from './videoCropConcat.js';
+import { canExtractAudio, isCommonMediaInput } from '../common/mediaInputSupport.js';
 import { runFfprobe, runScopedFfmpeg } from './ffmpeg.js';
 import logger from './logger.js';
 import type { AudioExtractionMode, Mp3Quality, AudioExtractionSegment } from './audioExtractionUtils.js';
@@ -160,8 +161,8 @@ export async function startAudioExtraction(args: {
     ?? (args.streamIndex != null ? [args.streamIndex] : []);
   const requestedSegments = args.segments ?? [];
 
-  if (typeof inputPath !== 'string' || extname(inputPath).toLowerCase() !== '.mp4') {
-    throw new Error('Only local MP4 files are supported');
+  if (typeof inputPath !== 'string' || !isCommonMediaInput(inputPath)) {
+    throw new Error('Unsupported media input format');
   }
   if (!Array.isArray(selectedStreamIndexes) || selectedStreamIndexes.length === 0) {
     throw new Error('Select at least one audio track');
@@ -178,7 +179,9 @@ export async function startAudioExtraction(args: {
   if (!fileStat.isFile()) throw new Error('Input must be a file');
 
   const info = await probe(inputPath);
-  if (!info.format?.format_name?.split(',').includes('mp4')) throw new Error('Input is not an MP4 file');
+  if (!info.format?.format_name || !canExtractAudio(inputPath, info.streams ?? [])) {
+    throw new Error('Input has no supported audio stream');
+  }
 
   const audioStreams = (info.streams ?? [])
     .filter((stream) => stream.codec_type === 'audio')
