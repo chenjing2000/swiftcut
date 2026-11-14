@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import type { CropExportStatus } from '../../../../main/videoCropExportService.js';
 import Button from '../Button';
-import { ExportOutputPaths, ExportProgressHeader } from '../ExportProgressParts';
+import { ExportOutputPaths } from '../ExportProgressParts';
+import OutputProgressPanel from '../OutputProgressPanel';
 import { getCropExportPresentation, getCropExportSegmentPosition } from './cropExportPresentation';
 
 import styles from './CropExportProgress.module.css';
@@ -36,13 +37,14 @@ export default function CropExportProgress({ status, onCancel, onDismiss }: Prop
   };
 
   return (
-    <aside
-      className={styles['panel']}
-      data-testid="crop-export-progress"
-      data-state={status.state}
-      aria-label={t('Crop video export')}
+    <OutputProgressPanel
+      id="crop-progress"
+      ariaLabel={t('Crop video export')}
+      title={t(presentation.title)}
+      label={t(presentation.label)}
+      state={status.state}
+      testId="crop-export-progress"
     >
-      <ExportProgressHeader title={t(presentation.title)} label={t(presentation.label)} state={status.state} />
       {presentation.active ? (
         <div className={styles['contents']} role="status" aria-live="polite" aria-atomic="true">
           <div className={styles['progressText']}>
@@ -70,6 +72,6 @@ export default function CropExportProgress({ status, onCancel, onDismiss }: Prop
           </div>
         </div>
       )}
-    </aside>
+    </OutputProgressPanel>
   );
 }
