@@ -21,6 +21,7 @@ export function getLosslessCommitTargets({
   mergedFilename: string;
   extraOutputs: readonly CommitTarget[];
 }): CommitTarget[] {
+  if (willMerge && mergedOutFilePath == null) throw new Error('Missing staged Lossless merged output');
   return [
     ...(!willMerge || !autoDeleteMergedSegments ? outFiles.map((file, index) => ({
       temporaryPath: file.path,
@@ -32,8 +33,9 @@ export function getLosslessCommitTargets({
   ];
 }
 
-// Keep progress history for every committed output, but report only the
-// merged file to listeners when merging was requested.
+// Keep the complete published list for the progress UI. A missing merged
+// result must be surfaced explicitly without turning a completed commit into
+// a failed export or discarding files that were already published.
 export function getLosslessPublishedPaths({
   committedPaths, willMerge, autoDeleteMergedSegments, cutFileCount,
 }: {
@@ -41,9 +43,10 @@ export function getLosslessPublishedPaths({
   willMerge: boolean;
   autoDeleteMergedSegments: boolean;
   cutFileCount: number;
-}): string[] {
-  if (!willMerge) return [...committedPaths];
+}): { paths: string[]; missingMergedOutput: boolean } {
+  if (!willMerge) return { paths: [...committedPaths], missingMergedOutput: false };
   const mergedIndex = autoDeleteMergedSegments ? 0 : cutFileCount;
   const mergedPath = committedPaths[mergedIndex];
-  return mergedPath == null ? [...committedPaths] : [mergedPath];
+  if (mergedPath == null) return { paths: [...committedPaths], missingMergedOutput: true };
+  return { paths: [mergedPath], missingMergedOutput: false };
 }
