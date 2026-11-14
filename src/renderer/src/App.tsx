@@ -2727,6 +2727,7 @@ function App() {
                         fullscreen={fullscreen}
                         onToggleFullscreen={toggleFullscreenVideo}
                         onExport={submitCropExport}
+                        exportBusy={cropExportStartingRef.current || (cropExportStatus != null && !['success', 'partial_success', 'failed', 'cancelled'].includes(cropExportStatus.state))}
                         onClose={() => {
                           setCropVideoForFile(undefined);
                           setCropPreviewRect(undefined);
