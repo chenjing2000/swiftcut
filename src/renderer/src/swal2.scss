@@ -3,7 +3,7 @@ $swal2-outline-color: var(--gray-5) !default;
 // see colors.ts primaryColor
 $swal2-confirm-button-background-color: var(--cyan-9);
 
-$myswal-background: var(--gray-1);
+$myswal-background: var(--color-panel-solid, var(--gray-2));
 $myswal-foreground: var(--gray-12);
 $swal2-outline-color: $swal2-outline-color;
 
@@ -106,3 +106,38 @@ $swal2-button-focus-box-shadow: 0 0 0 1px $swal2-background, 0 0 0 3px $swal2-ou
 }
 
 @import 'sweetalert2/src/sweetalert2.scss';
+
+/* Consistent SweetAlert typography, based on the Change FPS dialog.
+   Keep action buttons and icon alignment governed by SweetAlert itself. */
+.swal2-popup {
+  font-size: 13px;
+}
+.swal2-popup .swal2-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+.swal2-popup .swal2-html-container,
+.swal2-popup .swal2-validation-message,
+.swal2-popup label,
+.swal2-popup .swal2-input-label {
+  font-size: 13px;
+  text-align: left;
+}
+.swal2-popup .swal2-html-container :is(p, div, span, label, li, td, th) {
+  text-align: left;
+}
+.swal2-popup :is(.swal2-input, .swal2-textarea, .swal2-select, .swal2-file) {
+  box-sizing: border-box;
+  font-size: 13px;
+  line-height: normal;
+  border-radius: 5px;
+  text-align: left;
+}
+.swal2-popup .swal2-input,
+.swal2-popup .swal2-select {
+  height: 30px;
+}
+.swal2-popup :is(input, textarea)::placeholder {
+  text-align: left;
+}

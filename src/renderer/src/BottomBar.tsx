@@ -1,10 +1,9 @@
 import type { CSSProperties, ClipboardEvent, Dispatch, SubmitEvent, KeyboardEvent, SetStateAction } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { MdRotate90DegreesCcw } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
-import { IoIosCamera, IoMdKey, IoMdSpeedometer } from 'react-icons/io';
-import { FaYinYang, FaTrashAlt, FaStepBackward, FaStepForward, FaCaretLeft, FaCaretRight, FaPause, FaPlay, FaImages, FaKey, FaExclamationTriangle } from 'react-icons/fa';
+import { IoIosCamera, IoMdKey } from 'react-icons/io';
+import { FaYinYang, FaTrashAlt, FaStepBackward, FaStepForward, FaCaretLeft, FaCaretRight, FaPause, FaPlay, FaImages, FaKey } from 'react-icons/fa';
 import { GiSoundWaves } from 'react-icons/gi';
 // import useTraceUpdate from 'use-trace-update';
 import invariant from 'tiny-invariant';
@@ -12,8 +11,6 @@ import invariant from 'tiny-invariant';
 import { primaryTextColor, primaryColor, darkModeTransition, dangerColor } from './colors';
 import SegmentCutpointButton from './components/SegmentCutpointButton';
 import SetCutpointButton from './components/SetCutpointButton';
-import ExportButton from './components/ExportButton';
-import ToggleExportConfirm from './components/ToggleExportConfirm';
 import CaptureFormatButton from './components/CaptureFormatButton';
 import Select from './components/Select';
 
@@ -27,8 +24,7 @@ import { useSegColors } from './contexts';
 import { isExactTimecodeMatch } from './util/duration';
 import useUserSettings from './hooks/useUserSettings';
 import useActionTitle from './hooks/useActionTitle';
-import { askForPlaybackRate } from './dialogs';
-import type { FormatTimecode, GetFrameCount, ParseTimecode, PlaybackMode, SegmentColorIndex, SegmentToExport, StateSegment } from './types';
+import type { FormatTimecode, GetFrameCount, ParseTimecode, PlaybackMode, SegmentColorIndex, StateSegment } from './types';
 import type { WaveformMode } from '../../common/types';
 import type { Frame } from './ffmpeg';
 import mainApi from './mainApi';
@@ -281,30 +277,23 @@ const CutTimeInput = memo(({ disabled, darkMode, cutTime, setCutTime, startTimeO
 
 function BottomBar({
   zoom, setZoom, timelineToggleComfortZoom,
-  isRotationSet, rotation, areWeCutting, increaseRotation, cleanupFilesDialog,
-  captureSnapshot, onExportPress, segmentsToExport, hasVideo,
+  cleanupFilesDialog,
+  captureSnapshot, hasVideo,
   seekAbs, currentSegIndexSafe, cutSegments, currentCutSeg, setCutStart, setCutEnd,
   setCurrentSegIndex,
   jumpTimelineStart, jumpTimelineEnd, jumpCutEnd, jumpCutStart, startTimeOffset, setCutTime,
   playing, shortStep, togglePlay, toggleLoopSelectedSegments, hasAudio,
-  keyframesEnabled, toggleShowKeyframes, seekClosestKeyframe, detectedFps, isFileOpened, selectedSegments,
+  keyframesEnabled, toggleShowKeyframes, seekClosestKeyframe, isFileOpened, selectedSegments,
   darkMode,
   toggleShowThumbnails, toggleWaveformMode, waveformMode, showThumbnails,
-  outputPlaybackRate, setOutputPlaybackRate,
   formatTimecode, parseTimecode, playbackRate,
   currentFrame, playbackMode, displayTime, fileDurationNonZero, getFrameCount,
 }: {
   zoom: number,
   setZoom: (fn: (z: number) => number) => void,
   timelineToggleComfortZoom: () => void,
-  isRotationSet: boolean,
-  rotation: number,
-  areWeCutting: boolean,
-  increaseRotation: () => void,
   cleanupFilesDialog: () => void,
   captureSnapshot: () => void,
-  onExportPress: () => void,
-  segmentsToExport: SegmentToExport[],
   hasVideo: boolean,
   seekAbs: (a: number) => void,
   currentSegIndexSafe: number,
@@ -327,7 +316,6 @@ function BottomBar({
   keyframesEnabled: boolean,
   toggleShowKeyframes: () => void,
   seekClosestKeyframe: (a: number) => void,
-  detectedFps: number | undefined,
   isFileOpened: boolean,
   selectedSegments: SegmentColorIndex[],
   darkMode: boolean,
@@ -335,8 +323,6 @@ function BottomBar({
   toggleWaveformMode: () => void,
   waveformMode: WaveformMode | undefined,
   showThumbnails: boolean,
-  outputPlaybackRate: number,
-  setOutputPlaybackRate: (v: number) => void,
   formatTimecode: FormatTimecode,
   parseTimecode: ParseTimecode,
   playbackRate: number,
@@ -394,16 +380,9 @@ function BottomBar({
     color: currentFrame?.keyframe ? primaryTextColor : undefined,
   }), [currentFrame]);
 
-  const { invertCutSegments, setInvertCutSegments, simpleMode, exportConfirmEnabled } = useUserSettings();
+  const { invertCutSegments, setInvertCutSegments, simpleMode } = useUserSettings();
   const actionTitle = useActionTitle();
 
-  const rotationStr = `${rotation}°`;
-
-
-  const handleChangePlaybackRateClick = useCallback(async () => {
-    const newRate = await askForPlaybackRate({ detectedFps, outputPlaybackRate });
-    if (newRate != null) setOutputPlaybackRate(newRate);
-  }, [detectedFps, outputPlaybackRate, setOutputPlaybackRate]);
 
   const playbackRateRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -586,24 +565,7 @@ function BottomBar({
 
             <div ref={playbackRateRef} title={t('Playback rate')} style={{ color: 'var(--gray-11)', fontSize: '.7em', borderRadius: '.5em' }}>{playbackRate.toFixed(1)}</div>
 
-            <div style={{ whiteSpace: 'nowrap' }}>
-              <IoMdSpeedometer title={t('Change FPS')} style={{ fontSize: '1.3em', verticalAlign: 'middle' }} role="button" onClick={handleChangePlaybackRateClick} />
-
-              {detectedFps != null && (
-                <span title={t('Video FPS')} role="button" onClick={handleChangePlaybackRateClick} style={{ color: 'var(--gray-11)', fontSize: '.7em', marginLeft: '.3em' }}>{(detectedFps * outputPlaybackRate).toFixed(3)}</span>
-              )}
-            </div>
           </>
-        )}
-
-        {isFileOpened && !simpleMode && hasVideo && (
-          <div onClick={increaseRotation} role="button" style={{ whiteSpace: 'nowrap' }}>
-            <MdRotate90DegreesCcw
-              style={{ fontSize: '1.3em', verticalAlign: 'middle', color: isRotationSet ? primaryTextColor : undefined }}
-              title={actionTitle(`${t('Set output rotation. Current: ')} ${isRotationSet ? rotationStr : t('Don\'t modify')}`, 'increaseRotation')}
-            />
-            <span style={{ textAlign: 'right', display: 'inline-block', fontSize: '.8em', marginLeft: '.1em' }}>{isRotationSet && rotationStr}</span>
-          </div>
         )}
 
         <div style={{ flexGrow: 1 }} />
@@ -646,12 +608,7 @@ function BottomBar({
           </div>
         )}
 
-        {!exportConfirmEnabled && (<FaExclamationTriangle style={{ color: dangerColor, marginLeft: '.4em' }} title={t('Export options screen is disabled, and you will not see any important notices or warnings.')} />)}
-        {(!simpleMode || !exportConfirmEnabled) && <ToggleExportConfirm style={{ marginLeft: exportConfirmEnabled ? '.4em' : undefined }} />}
 
-        {isFileOpened && (
-          <ExportButton segmentsToExport={segmentsToExport} areWeCutting={areWeCutting} onClick={withBlur(onExportPress)} />
-        )}
       </div>
     </>
   );

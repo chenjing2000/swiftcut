@@ -1,0 +1,18 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.row select {
+  flex: 0 1 160px;
+  width: 160px;
+  max-width: 100%;
+  min-width: 0;
+  background: var(--gray-2);
+  color: var(--gray-12);
+  border: 1px solid var(--gray-7);
+  border-radius: 5px;
+  padding: 5px;
+}

@@ -1,24 +1,64 @@
+/* Both Output tables use the same measured columns: flexible labels,
+   160px controls and a 20px Help icon separated by exactly 4px. */
 table.options {
   width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
 }
-
+table.options td {
+  box-sizing: border-box;
+  padding: 6px 0;
+  vertical-align: middle;
+  min-width: 0;
+}
+table.options td:first-child {
+  overflow-wrap: anywhere;
+  text-align: left;
+}
 table.options td:nth-child(2) {
   text-align: right;
 }
-
-table.options td:last-child {
-  text-align: center;
-  width: 1.7em;
+table.options td:last-child:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 4px;
 }
-
-table.options td {
-  padding: .5em 0em;
+table.options td:nth-child(2) select {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 160px;
+  max-width: 100%;
+  min-width: 0;
+  margin-left: 0 !important;
+  vertical-align: middle;
 }
-
-table.options td {
-  vertical-align: top;
+table.options td:nth-child(2) > :is(button, span, div) {
+  max-width: 100%;
 }
-
-tr.notice-row td {
+table.options td:nth-child(2) > button {
+  vertical-align: middle;
+}
+table.options td:nth-child(2) > [role="switch"] {
+  display: inline-block;
+}
+table.options td:nth-child(2) > div {
+  margin-left: auto;
+}
+table.options td:last-child > svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+table.options tr.notice-row td {
   padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+table.options td[colspan="3"] {
+  padding-left: 0;
+  padding-right: 0;
+}
+/* Advanced switches stay compact without changing other switches. */
+table.advancedOptions td:nth-child(2) [role="switch"] {
+  transform: scale(.8);
+  transform-origin: right center;
 }

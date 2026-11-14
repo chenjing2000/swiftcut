@@ -4,16 +4,16 @@ import { FiScissors } from 'react-icons/fi';
 import { FaFileExport } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 
-import { primaryColor } from '../colors';
 import useUserSettings from '../hooks/useUserSettings';
 import type { SegmentToExport } from '../types';
-import styles from './ExportButton.module.css';
+import actionStyles from './OutputActionButtons.module.css';
 
 
 interface Props {
   segmentsToExport: SegmentToExport[],
   areWeCutting: boolean,
   onClick: MouseEventHandler<HTMLButtonElement>,
+  disabled?: boolean;
   style?: CSSProperties,
 }
 
@@ -22,6 +22,7 @@ const ExportButton = forwardRef<HTMLButtonElement, Props>(({
   segmentsToExport,
   areWeCutting,
   onClick,
+  disabled = false,
   style,
 }, ref) => {
   const CutIcon = areWeCutting ? FiScissors : FaFileExport;
@@ -43,9 +44,10 @@ const ExportButton = forwardRef<HTMLButtonElement, Props>(({
     <button
       ref={ref}
       type="button"
-      className={[...(simpleMode ? ['export-animation'] : []), styles['exportButton']].join(' ')}
-      style={{ backgroundColor: primaryColor, ...style }}
+      className={[...(simpleMode ? ['export-animation'] : []), actionStyles['action'], actionStyles['primary']].join(' ')}
+      style={style}
       onClick={onClick}
+      disabled={disabled}
       title={title}
     >
       <CutIcon

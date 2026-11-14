@@ -31,9 +31,9 @@
 	max-height: 85vh;
 
 	border: .1em solid var(--black-a2);
-  background: var(--white-a11);
+  background: var(--color-panel-solid, var(--gray-2));
   color: var(--gray-12);
-  backdrop-filter: blur(2em);
+  backdrop-filter: none;
   border-radius: .5em;
   padding: 1.7em;
   box-shadow: 0 0 1em .3em var(--black-a1);
@@ -49,7 +49,7 @@
 
 :global(.dark-theme) .AlertDialogContent {
   border: .1em solid var(--white-a3);
-  background: var(--black-a4);
+  background: var(--color-panel-solid, var(--gray-2));
   box-shadow: 0 0 1em .3em var(--black-a2);
 }
 
@@ -117,3 +117,13 @@
 		transition-duration: 0ms;
 	}
 }
+
+/* Consistent centered dialog sizing and typography; explicit widths may expand to 640px. */
+.AlertDialogContent {
+  width: 400px;
+  min-width: min(320px, calc(100vw - 16px));
+  max-width: min(640px, calc(100vw - 16px));
+  font-size: 13px;
+}
+.AlertDialogContent :is(button, input, select, textarea) { font-size: inherit; }
+.AlertDialogTitle { font-size: 14px; cursor: move; user-select: none; touch-action: none; }

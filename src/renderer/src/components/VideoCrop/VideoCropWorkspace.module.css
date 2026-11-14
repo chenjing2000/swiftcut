@@ -6,12 +6,11 @@
 .handle[data-crop-handle="w"], .handle[data-crop-handle="e"] { cursor: ew-resize; }
 .handle[data-crop-handle="nw"], .handle[data-crop-handle="se"] { cursor: nwse-resize; }
 .handle[data-crop-handle="ne"], .handle[data-crop-handle="sw"] { cursor: nesw-resize; }
-.panel { position: fixed; z-index: 200; width: min(380px, calc(100vw - 16px)); max-height: calc(100vh - 16px); display: flex; flex-direction: column; color: var(--gray-12); background: var(--color-panel-solid, var(--gray-2)); border: 1px solid var(--gray-7); border-radius: 10px; box-shadow: 0 7px 28px rgb(0 0 0 / 32%); pointer-events: auto; font-size: 13px; }
-.heading { user-select: none; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--gray-6); cursor: move; touch-action: none; }
-.heading button { cursor: pointer; font-size: 18px; }
-.contents { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
+.contents { display: flex; flex-direction: column; gap: 10px; }
 .contents select, .contents input[type="text"] { background: var(--gray-2); color: var(--gray-12); border: 1px solid var(--gray-7); border-radius: 5px; padding: 5px; min-width: 0; }
-.contents select { width: 190px; max-width: 55%; }
+.contents select { width: 160px; max-width: 100%; }
+.contents > select { align-self: flex-end; }
+.qualityRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sectionTitle, .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sectionTitle button { font-size: 12px; }
 .coordinateGrid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 4px; row-gap: 8px; }
@@ -23,8 +22,16 @@
 .resizeRow .radio { margin-right: auto; }
 .resizeRow .numberField { width: 74px; gap: 3px; }
 .resizeRow .numberField input { width: 100%; }
-.footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--gray-6); }
-.footer button { white-space: nowrap; }
 .previewRow { display: flex; gap: 4px; }
 .previewRow button { flex: 1; border: 1px solid var(--gray-7); border-radius: 5px; padding: 5px; }
 .previewRow button[aria-pressed="true"] { background: var(--accent-5); border-color: var(--accent-9); }
+
+.previewRow button { background: var(--gray-3); color: var(--gray-12); }
+.previewRow button:hover { filter: brightness(1.08); }
+
+.numberField input[type="text"] {
+  box-sizing: border-box;
+  height: 30px;
+  font-size: 13px;
+  text-align: center;
+}

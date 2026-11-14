@@ -44,8 +44,8 @@ describe('zoom', () => {
     expect(getAction({ pixelY: -10, modifiers: { ctrlKey: true }, isPinch: true, zoomKey: 'meta', frameSeekKey: 'ctrl' })).toStrictEqual({ type: 'zoom', amount: 20 });
   });
 
-  test('ctrl actually held with other zoom modifier seeks, as before', () => {
-    expect(getAction({ pixelY: -100, modifiers: { ctrlKey: true }, zoomKey: 'meta' })).toStrictEqual({ type: 'seek', amount: 20 });
+  test('ctrl without the configured zoom modifier does not seek by wheel', () => {
+    expect(getAction({ pixelY: -100, modifiers: { ctrlKey: true }, zoomKey: 'meta' })).toStrictEqual({ type: 'none' });
     expect(getAction({ pixelY: -100, modifiers: { ctrlKey: true }, zoomKey: 'meta', frameSeekKey: 'ctrl' })).toStrictEqual({ type: 'frameSeek', direction: 1 });
   });
 
@@ -60,9 +60,9 @@ describe('zoom', () => {
 });
 
 describe('seek', () => {
-  test('wheel up seeks forward, inverted with invertTimelineScroll', () => {
-    expect(getAction({ pixelY: -100 })).toStrictEqual({ type: 'seek', amount: 20 });
-    expect(getAction({ pixelY: -100, invertTimelineScroll: true })).toStrictEqual({ type: 'seek', amount: -20 });
+  test('unmodified wheel never seeks the timeline', () => {
+    expect(getAction({ pixelY: -100 })).toStrictEqual({ type: 'none' });
+    expect(getAction({ pixelY: -100, invertTimelineScroll: true })).toStrictEqual({ type: 'none' });
   });
 
   test('frame and keyframe seek follow invertTimelineScroll', () => {

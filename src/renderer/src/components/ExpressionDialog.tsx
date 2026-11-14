@@ -51,8 +51,7 @@ const ExpressionDialog = forwardRef<HTMLDivElement, Props>(({ onSubmit, examples
   }, []);
 
   return (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    <AlertDialog.Content ref={ref as any} aria-describedby={undefined} style={{ width: '80vw' }}>
+    <AlertDialog.Content ref={ref} aria-describedby={undefined} style={{ width: '80vw' }}>
       <AlertDialog.Title>{title}</AlertDialog.Title>
 
       {description && <AlertDialog.Description>{description}</AlertDialog.Description>}

@@ -575,7 +575,7 @@ function useFfmpegOperations({ filePath, treatInputFileModifiedTimeAsStart, trea
   }, [appendFfmpegCommandLog, filePath]);
 
   const cutMultiple = useCallback(async ({
-    outputDir, customOutDir, segments: segmentsIn, cutFileNames, fileDuration, rotation, detectedFps, onProgress: onTotalProgress, keyframeCut, copyFileStreams, allFilesMeta, outFormat, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, chapters,
+    outputDir, customOutDir, segments: segmentsIn, cutFileNames, fileDuration, rotation, detectedFps, onProgress: onTotalProgress, keyframeCut, copyFileStreams, allFilesMeta, outFormat, shortestFlag, ffmpegExperimental, preserveMetadata, preserveMetadataOnMerge, preserveMovData, preserveChapters, movFastStart, avoidNegativeTs, paramsByFile, chapters, isCancelled,
   }: {
     outputDir: string,
     customOutDir: string | undefined,
@@ -599,9 +599,14 @@ function useFfmpegOperations({ filePath, treatInputFileModifiedTimeAsStart, trea
     avoidNegativeTs: AvoidNegativeTs | undefined,
     paramsByFile: ParamsByFile,
     chapters: Chapter[] | undefined,
+    isCancelled?: (() => boolean) | undefined,
   }) => {
     console.log('paramsByFile', paramsByFile);
 
+    const assertNotCancelled = () => {
+      if (isCancelled?.()) throw new DOMException('Export cancelled', 'AbortError');
+    };
+    assertNotCancelled();
     const segments = getGuaranteedSegments(segmentsIn, fileDuration);
 
     const singleProgresses: Record<number, number> = {};
@@ -620,6 +625,7 @@ function useFfmpegOperations({ filePath, treatInputFileModifiedTimeAsStart, trea
     // then it will cut the part *from* the keyframe to "end", and concat them together and return the concated file
     // so that for the calling code it looks as if it's just a normal segment
     const cutSegment = async ({ start: desiredCutFrom, end: cutTo }: { start: number, end: number }, i: number) => {
+      assertNotCancelled();
       const onProgress = (progress: number) => onSingleProgress(i, progress / 2);
       const onConcatProgress = (progress: number) => onSingleProgress(i, (1 + progress) / 2);
 
@@ -741,7 +747,9 @@ function useFfmpegOperations({ filePath, treatInputFileModifiedTimeAsStart, trea
     };
 
     try {
-      return await pMap(segments, cutSegment, { concurrency: 1 });
+      const results = await pMap(segments, cutSegment, { concurrency: 1 });
+      assertNotCancelled();
+      return results;
     } finally {
       if (chaptersPath) await tryDeleteFiles([chaptersPath]);
     }

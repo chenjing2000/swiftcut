@@ -1,4 +1,4 @@
-export type Mp3Quality = 'vbr' | '320k' | '192k';
+export type Mp3Quality = 'vbr' | '128k' | '192k' | '320k';
 
 export type AudioExtractionMode = 'original' | 'mp3';
 
@@ -90,10 +90,12 @@ export function createAudioExtractionTasks({
   segments,
   selectedStreamIndexes,
   audioStreamIndexes,
+  entireSource = false,
 }: {
   segments: readonly AudioExtractionSegment[];
   selectedStreamIndexes: readonly number[];
   audioStreamIndexes: readonly number[];
+  entireSource?: boolean;
 }): AudioExtractionTask[] {
   if (selectedStreamIndexes.length === 0) throw new Error('Select at least one audio track');
   if (new Set(selectedStreamIndexes).size !== selectedStreamIndexes.length) {
@@ -112,8 +114,8 @@ export function createAudioExtractionTasks({
   return segments.flatMap((segment, segmentIndex) => selectedTracks.map(({ streamIndex, trackNumber }) => {
     const segmentNumber = segmentIndex + 1;
     const suffixParts = [
-      ...(segments.length > 1 ? [`segment-${String(segmentNumber).padStart(2, '0')}`] : []),
-      ...(selectedTracks.length > 1 ? [`track-${String(trackNumber).padStart(2, '0')}`] : []),
+      entireSource ? 'audio' : `segment_${String(segmentNumber).padStart(Math.max(2, String(segments.length).length), '0')}`,
+      ...(selectedTracks.length > 1 ? [`track_${String(trackNumber).padStart(Math.max(2, String(selectedTracks.length).length), '0')}`] : []),
     ];
 
     return {

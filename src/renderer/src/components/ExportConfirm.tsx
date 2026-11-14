@@ -3,11 +3,11 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import { FaExclamationTriangle, FaInfoCircle, FaRegCheckCircle } from 'react-icons/fa';
 import i18n from 'i18next';
 import { useTranslation, Trans } from 'react-i18next';
-import { IoIosHelpCircle, IoIosSettings } from 'react-icons/io';
+import { IoIosHelpCircle } from 'react-icons/io';
 
 import ExportButton from './ExportButton';
+import AutoExportToggler from './AutoExportToggler';
 import ExportModeButton from './ExportModeButton';
-import FileNameTemplateEditor from './FileNameTemplateEditor';
 import HighlightedText from './HighlightedText';
 import Select from './Select';
 import Switch from './Switch';
@@ -19,20 +19,13 @@ import { isMov as ffmpegIsMov } from '../util/streams';
 import useUserSettings from '../hooks/useUserSettings';
 import styles from './ExportConfirm.module.css';
 import type { SegmentToExport } from '../types';
-import type { GenerateOutFileNames } from '../util/outputNameTemplate';
-import { defaultCutFileTemplate, defaultCutMergedFileTemplate } from '../util/outputNameTemplate';
 import type { FFprobeStream } from '../../../common/ffprobe';
 import type { AvoidNegativeTs, PreserveMetadata } from '../../../common/types';
 import TextInput from './TextInput';
 import type { UseSegments } from '../hooks/useSegments';
 import ExportSheet from './ExportSheet';
-import ToggleExportConfirm from './ToggleExportConfirm';
 import type { LossyMode } from '../../../main';
 import AnimatedTr from './AnimatedTr';
-import type { Frame } from '../ffmpeg';
-import type { FindNearestKeyframeTime } from '../hooks/useKeyframes';
-import { troubleshootingUrl } from '../../../common/constants';
-import OutDirSelector from './OutDirSelector';
 import mainApi from '../mainApi';
 
 
@@ -46,7 +39,7 @@ const HelpIcon = ({ onClick, style }: { onClick: () => void, style?: CSSProperti
 function ShiftTimes({ values, num, setNum }: { values: number[], num: number, setNum: (n: number) => void }) {
   const { t } = useTranslation();
   return (
-    <Select value={num} onChange={(e) => setNum(Number(e.target.value))} style={{ height: 20, marginLeft: 5 }}>
+    <Select value={num} onChange={(e) => setNum(Number(e.target.value))} style={{ marginLeft: 0 }}>
       {values.map((v) => <option key={v} value={v}>{t('{{numFrames}} frames', { numFrames: v >= 0 ? `+${v}` : v, count: v })}</option>)}
     </Select>
   );
@@ -118,17 +111,15 @@ function ExportConfirm({
   visible,
   onClosePress,
   onExportConfirm,
+  exportDisabled,
+  onChangeOutputFps,
+  onIncreaseRotation,
+  outputRotation,
   outFormat,
   renderOutFmt,
-  outputDir,
   numStreamsTotal,
   numStreamsToCopy,
   onShowStreamsSelectorClick,
-  cutFileTemplate,
-  cutMergedFileTemplate,
-  generateCutFileNames,
-  generateCutMergedFileNames,
-  currentSegIndexSafe,
   segmentsOrInverse,
   mainCopiedThumbnailStreams,
   hvc1NeededStreams,
@@ -136,11 +127,8 @@ function ExportConfirm({
   isEncoding,
   encBitrate,
   setEncBitrate,
-  toggleSettings,
   outputPlaybackRate,
   lossyMode,
-  neighbouringKeyFrames,
-  findNearestKeyFrameTime,
 } : {
   areWeCutting: boolean,
   segmentsToExport: SegmentToExport[],
@@ -148,17 +136,15 @@ function ExportConfirm({
   visible: boolean,
   onClosePress: () => void,
   onExportConfirm: () => void,
+  exportDisabled: boolean,
+  onChangeOutputFps: () => void,
+  onIncreaseRotation: () => void,
+  outputRotation: number,
   outFormat: string | undefined,
   renderOutFmt: (style: CSSProperties) => ReactNode,
-  outputDir: string | undefined,
   numStreamsTotal: number,
   numStreamsToCopy: number,
   onShowStreamsSelectorClick: () => void,
-  cutFileTemplate: string,
-  cutMergedFileTemplate: string,
-  generateCutFileNames: GenerateOutFileNames,
-  generateCutMergedFileNames: GenerateOutFileNames,
-  currentSegIndexSafe: number,
   segmentsOrInverse: UseSegments['segmentsOrInverse'],
   mainCopiedThumbnailStreams: FFprobeStream[],
   hvc1NeededStreams: FFprobeStream[],
@@ -166,17 +152,14 @@ function ExportConfirm({
   isEncoding: boolean,
   encBitrate: number | undefined,
   setEncBitrate: Dispatch<SetStateAction<number | undefined>>,
-  toggleSettings: () => void,
   outputPlaybackRate: number,
   lossyMode: LossyMode | undefined,
-  neighbouringKeyFrames: Frame[],
-  findNearestKeyFrameTime: FindNearestKeyframeTime,
 }) {
   const { t } = useTranslation();
 
-  const { keyframeCut, toggleKeyframeCut, preserveMovData, setPreserveMovData, preserveMetadata, setPreserveMetadata, preserveChapters, setPreserveChapters, movFastStart, setMovFastStart, avoidNegativeTs, setAvoidNegativeTs, autoDeleteMergedSegments, exportConfirmEnabled, toggleExportConfirmEnabled, segmentsToChapters, setSegmentsToChapters, preserveMetadataOnMerge, setPreserveMetadataOnMerge, enableSmartCut, setEnableSmartCut, effectiveExportMode, enableOverwriteOutput, setEnableOverwriteOutput, ffmpegExperimental, setFfmpegExperimental, cutFromAdjustmentFrames, setCutFromAdjustmentFrames, cutToAdjustmentFrames, setCutToAdjustmentFrames, setCutFileTemplate, setCutMergedFileTemplate, simpleMode, keyframesEnabled } = useUserSettings();
+  const { keyframeCut, toggleKeyframeCut, preserveMovData, setPreserveMovData, preserveMetadata, setPreserveMetadata, preserveChapters, setPreserveChapters, movFastStart, setMovFastStart, avoidNegativeTs, setAvoidNegativeTs, segmentsToChapters, setSegmentsToChapters, preserveMetadataOnMerge, setPreserveMetadataOnMerge, enableSmartCut, setEnableSmartCut, effectiveExportMode, ffmpegExperimental, setFfmpegExperimental, cutFromAdjustmentFrames, setCutFromAdjustmentFrames, cutToAdjustmentFrames, setCutToAdjustmentFrames, simpleMode, treatInputFileModifiedTimeAsStart, setTreatInputFileModifiedTimeAsStart, treatOutputFileModifiedTimeAsStart, setTreatOutputFileModifiedTimeAsStart, cleanupChoices, setCleanupChoices } = useUserSettings();
 
-  const [showAdvanced, setShowAdvanced] = useState(!simpleMode);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const togglePreserveChapters = useCallback(() => setPreserveChapters((val) => !val), [setPreserveChapters]);
   const togglePreserveMovData = useCallback(() => setPreserveMovData((val) => !val), [setPreserveMovData]);
@@ -190,19 +173,8 @@ function ExportConfirm({
   // some thumbnail streams (png,jpg etc) cannot always be cut correctly, so we warn if they try to.
   const areWeCuttingProblematicStreams = areWeCutting && mainCopiedThumbnailStreams.length > 0;
 
-  const haveSegmentWithProblematicKeyframe = useMemo(() => {
-    if (neighbouringKeyFrames.length === 0) return false; // we don't know
-    return segmentsToExport.some(({ start, end }) => {
-      const nearestPreviousKeyframeTime = findNearestKeyFrameTime({ time: start, direction: -1 }) ?? 0;
-      const segmentDuration = end - start;
-      const estimatedExportedSegmentDuration = end - nearestPreviousKeyframeTime;
-      // if estimated actual output length of segment is more than 1.5 times the intended segment duration, then we consider it problematic and warn the user about it.
-      return estimatedExportedSegmentDuration > segmentDuration * 1.5;
-    });
-  }, [neighbouringKeyFrames.length, segmentsToExport, findNearestKeyFrameTime]);
-
   const notices = useMemo(() => {
-    const specific: Record<'exportMode' | 'problematicStreams' | 'movFastStart' | 'preserveMovData' | 'smartCut' | 'cutMode' | 'avoidNegativeTs' | 'overwriteOutput', Notice | undefined> = {
+    const specific: Record<'exportMode' | 'problematicStreams' | 'movFastStart' | 'preserveMovData' | 'smartCut' | 'cutMode' | 'avoidNegativeTs', Notice | undefined> = {
       exportMode: effectiveExportMode === 'segments_to_chapters' ? { text: i18n.t('Segments to chapters mode is active, this means that the file will not be cut. Instead chapters will be created from the segments.') } : undefined,
       problematicStreams: areWeCuttingProblematicStreams ? { warning: true, text: <Trans>Warning: Cutting thumbnail tracks is known to cause problems. Consider disabling track {{ trackNumber: mainCopiedThumbnailStreams[0] ? mainCopiedThumbnailStreams[0].index + 1 : 0 }}.</Trans> } : undefined,
       movFastStart: isMov && isIpod && !movFastStart ? { warning: true, text: t('For the ipod format, it is recommended to activate this option') } : undefined,
@@ -221,7 +193,6 @@ function ExportConfirm({
         }
         return undefined;
       })() : undefined,
-      overwriteOutput: enableOverwriteOutput ? { text: t('Existing files will be overwritten without warning!') } : undefined,
     };
 
     const generic: GenericNotice[] = [];
@@ -246,9 +217,6 @@ function ExportConfirm({
       if (outputPlaybackRate !== 1) {
         generic.push({ warning: true, text: t('Adjusting the output FPS and cutting at the same time will cause incorrect cuts. Consider instead doing it in two separate steps.') });
       }
-      if (keyframesEnabled && haveSegmentWithProblematicKeyframe) {
-        generic.push({ warning: true, text: t('A segment may result in an unexpectedly long output file length after exporting, because your video file doesn\'t have any keyframes near the start time of the segment you\'re trying to cut.'), url: troubleshootingUrl });
-      }
     }
 
     return {
@@ -256,7 +224,7 @@ function ExportConfirm({
       specific,
       totalNum: generic.filter((n) => n.warning).length + Object.values(specific).filter((n) => n?.warning).length,
     };
-  }, [effectiveExportMode, areWeCuttingProblematicStreams, mainCopiedThumbnailStreams, isMov, isIpod, movFastStart, t, preserveMovData, areWeCutting, needSmartCut, isEncoding, keyframeCut, enableOverwriteOutput, simpleMode, willMerge, avoidNegativeTs, outFormat, outputPlaybackRate, keyframesEnabled, haveSegmentWithProblematicKeyframe, hvc1NeededStreams]);
+  }, [effectiveExportMode, areWeCuttingProblematicStreams, mainCopiedThumbnailStreams, isMov, isIpod, movFastStart, t, preserveMovData, areWeCutting, needSmartCut, isEncoding, keyframeCut, simpleMode, willMerge, avoidNegativeTs, outFormat, outputPlaybackRate, hvc1NeededStreams]);
 
   const exportModeDescription = useMemo(() => ({
     segments_to_chapters: t('Don\'t cut the file, but instead export an unmodified original which has chapters generated from segments'),
@@ -316,14 +284,6 @@ function ExportConfirm({
     showHelpText({ text: i18n.t('When merging, do you want to preserve metadata from your original file? NOTE: This may dramatically increase processing time') });
   }, [showHelpText]);
 
-  const onCutFileTemplateHelpPress = useCallback(() => {
-    showHelpText({ text: i18n.t('You can customize the file name of the output segment(s) using special variables.', { count: segmentsToExport.length }) });
-  }, [segmentsToExport.length, showHelpText]);
-
-  const onCutMergedFileTemplateHelpPress = useCallback(() => {
-    showHelpText({ text: i18n.t('You can customize the file name of the merged file using special variables.') });
-  }, [showHelpText]);
-
   const onExportModeHelpPress = useCallback(() => {
     showHelpText({ text: exportModeDescription });
   }, [exportModeDescription, showHelpText]);
@@ -348,8 +308,6 @@ function ExportConfirm({
     showHelpText({ text: t('Enable experimental ffmpeg features flag?') });
   }, [showHelpText, t]);
 
-  const canEditSegTemplate = !willMerge || !autoDeleteMergedSegments;
-
   const handleEncBitrateToggle = useCallback((checked: boolean) => {
     setEncBitrate(() => (checked ? undefined : 10000));
   }, [setEncBitrate]);
@@ -362,26 +320,20 @@ function ExportConfirm({
 
   return (
     <ExportSheet
-      width="50em"
+      width="380px"
       visible={visible}
-      title={t('Export options')}
+      title={t('Export Video Settings')}
       onClosePress={onClosePress}
       renderButton={() => (
-        <ExportButton segmentsToExport={segmentsToExport} areWeCutting={areWeCutting} onClick={withBlur(() => onExportConfirm())} style={{ fontSize: '1.3em' }} />
-      )}
-      renderBottom={() => (
-        <>
-          <ToggleExportConfirm size="1.5em" />
-          <div style={{ fontSize: '.8em', marginLeft: '.4em', marginRight: '.5em', maxWidth: '8.5em', lineHeight: '100%', color: exportConfirmEnabled ? 'var(--gray-12)' : 'var(--gray-11)', cursor: 'pointer' }} role="button" onClick={toggleExportConfirmEnabled}>
-            {t('Show this page before exporting?')}
-          </div>
-          {notices.totalNum > 0 && (
-            renderNoticeIcon({ warning: true }, { fontSize: '1.5em', marginRight: '.5em' })
-          )}
-        </>
+        <ExportButton segmentsToExport={segmentsToExport} areWeCutting={areWeCutting} disabled={exportDisabled} onClick={withBlur(() => onExportConfirm())} />
       )}
     >
       <table className={styles['options']}>
+        <colgroup>
+          <col />
+          <col style={{ width: 160 }} />
+          <col style={{ width: 24 }} />
+        </colgroup>
         <tbody>
           {notices.generic.map((notice) => renderGenericNotice(notice))}
 
@@ -400,7 +352,7 @@ function ExportConfirm({
               {renderNotice(notices.specific['exportMode'])}
             </td>
             <td>
-              <ExportModeButton selectedSegments={segmentsOrInverse.selected} style={{ height: '1.8em' }} />
+              <ExportModeButton selectedSegments={segmentsOrInverse.selected} style={{ width: 160, maxWidth: '100%' }} />
             </td>
             <td>
               {renderNoticeIcon(notices.specific['exportMode'], rightIconStyle) ?? <HelpIcon onClick={onExportModeHelpPress} />}
@@ -412,7 +364,7 @@ function ExportConfirm({
               {t('Output container format:')}
             </td>
             <td>
-              {renderOutFmt({ height: '1.8em', maxWidth: 150 })}
+              {renderOutFmt({ width: 160, maxWidth: '100%' })}
             </td>
             <td>
               <HelpIcon onClick={onOutFmtHelpPress} />
@@ -432,58 +384,17 @@ function ExportConfirm({
             </td>
           </tr>
 
-          <tr>
-            <td>
-              {t('Save output to path:')}
-            </td>
-            <td>
-              <OutDirSelector>
-                <HighlightedText role="button" style={{ wordBreak: 'break-all', cursor: 'pointer' }}>{outputDir}</HighlightedText>
-              </OutDirSelector>
-            </td>
-            <td />
-          </tr>
-
-          {canEditSegTemplate && (
-            <tr>
-              <td colSpan={2}>
-                <FileNameTemplateEditor mode="separate" template={cutFileTemplate} setTemplate={setCutFileTemplate} defaultTemplate={defaultCutFileTemplate} generateFileNames={generateCutFileNames} currentSegIndexSafe={currentSegIndexSafe} />
-              </td>
-              <td>
-                <HelpIcon onClick={onCutFileTemplateHelpPress} />
-              </td>
-            </tr>
-          )}
-
-          {willMerge && (
-            <tr>
-              <td colSpan={2}>
-                <FileNameTemplateEditor mode="merge-segments" template={cutMergedFileTemplate} setTemplate={setCutMergedFileTemplate} defaultTemplate={defaultCutMergedFileTemplate} generateFileNames={generateCutMergedFileNames} />
-              </td>
-              <td>
-                <HelpIcon onClick={onCutMergedFileTemplateHelpPress} />
-              </td>
-            </tr>
-          )}
-
-          <tr>
-            <td>
-              {t('Overwrite existing files')}
-              {renderNotice(notices.specific['overwriteOutput'])}
-            </td>
-            <td>
-              <Switch checked={enableOverwriteOutput} onCheckedChange={setEnableOverwriteOutput} />
-            </td>
-            <td>
-              {renderNoticeIcon(notices.specific['overwriteOutput'], rightIconStyle) ?? <HelpIcon onClick={() => showHelpText({ text: t('Overwrite files when exporting, if a file with the same name as the output file name exists?') })} />}
-            </td>
-          </tr>
         </tbody>
       </table>
 
       <h3 style={{ marginBottom: '.5em' }}>{t('Advanced options')}</h3>
 
-      <table className={styles['options']}>
+      <table className={`${styles['options']} ${styles['advancedOptions']}`}>
+        <colgroup>
+          <col />
+          <col style={{ width: 160 }} />
+          <col style={{ width: 24 }} />
+        </colgroup>
         <tbody>
           <tr>
             <td style={{ paddingTop: '.5em', color: 'var(--gray-11)', fontSize: '.9em' }} colSpan={2}>
@@ -576,7 +487,7 @@ function ExportConfirm({
                   {t('Preserve metadata')}
                 </td>
                 <td>
-                  <Select value={preserveMetadata} onChange={(e) => setPreserveMetadata(e.target.value as PreserveMetadata)} style={{ height: 20, marginLeft: 5 }}>
+                  <Select value={preserveMetadata} onChange={(e) => setPreserveMetadata(e.target.value as PreserveMetadata)} style={{ marginLeft: 0 }}>
                     <option value={'default' satisfies PreserveMetadata}>{t('Default')}</option>
                     <option value={'none' satisfies PreserveMetadata}>{t('None')}</option>
                     <option value={'nonglobal' satisfies PreserveMetadata}>{t('Non-global')}</option>
@@ -688,7 +599,7 @@ function ExportConfirm({
                     {renderNotice(notices.specific['avoidNegativeTs'])}
                   </td>
                   <td>
-                    <Select value={avoidNegativeTs} onChange={(e) => setAvoidNegativeTs(e.target.value as AvoidNegativeTs)} style={{ height: 20, marginLeft: 5 }}>
+                    <Select value={avoidNegativeTs} onChange={(e) => setAvoidNegativeTs(e.target.value as AvoidNegativeTs)} style={{ marginLeft: 0 }}>
                       <option value={'auto' satisfies AvoidNegativeTs}>auto</option>
                       <option value={'make_zero' satisfies AvoidNegativeTs}>make_zero</option>
                       <option value={'make_non_negative' satisfies AvoidNegativeTs}>make_non_negative</option>
@@ -714,14 +625,65 @@ function ExportConfirm({
               </AnimatedTr>
 
               <AnimatedTr>
+                <td>{t('Change FPS')}</td>
+                <td><button type="button" onClick={onChangeOutputFps}>{outputPlaybackRate.toFixed(3)}x</button></td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Set output rotation. Current: ')}</td>
+                <td><button type="button" onClick={onIncreaseRotation}>{outputRotation}°</button></td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Set file modification date/time of output files to:')}</td>
                 <td>
-                  {t('More settings')}
-                </td>
-                <td>
-                  <IoIosSettings size={24} role="button" onClick={toggleSettings} style={{ marginLeft: 5 }} />
+                  <Select value={typeof treatOutputFileModifiedTimeAsStart === 'boolean' ? String(treatOutputFileModifiedTimeAsStart) : 'disabled'} onChange={(event) => setTreatOutputFileModifiedTimeAsStart(event.target.value === 'disabled' ? null : event.target.value === 'true')}>
+                    <option value="disabled">{t('Current time')}</option>
+                    <option value="true">{t('Source file\'s time plus segment start cut time')}</option>
+                    <option value="false">{t('Source file\'s time minus segment end cut time')}</option>
+                  </Select>
                 </td>
                 <td />
               </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Treat source file modification date/time as:')}</td>
+                <td>
+                  <Select disabled={treatOutputFileModifiedTimeAsStart == null} value={String(treatInputFileModifiedTimeAsStart)} onChange={(event) => setTreatInputFileModifiedTimeAsStart(event.target.value === 'true')}>
+                    <option value="true">{t('Start of video')}</option>
+                    <option value="false">{t('End of video')}</option>
+                  </Select>
+                </td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Extract unprocessable tracks to separate files or discard them?')}</td>
+                <td><AutoExportToggler /></td>
+                <td />
+              </AnimatedTr>
+              <AnimatedTr>
+                <td>{t('Cleanup files after export?')}</td>
+                <td><Switch checked={cleanupChoices.cleanupAfterExport ?? false} onCheckedChange={(checked) => setCleanupChoices((previous) => ({ ...previous, cleanupAfterExport: checked }))} /></td>
+                <td />
+              </AnimatedTr>
+              {cleanupChoices.cleanupAfterExport && (
+                <>
+                  <AnimatedTr>
+                    <td>{t('Ask before cleanup')}</td>
+                    <td><Switch checked={cleanupChoices.askForCleanup} onCheckedChange={(checked) => setCleanupChoices((previous) => ({ ...previous, askForCleanup: checked }))} /></td>
+                    <td />
+                  </AnimatedTr>
+                  <AnimatedTr>
+                    <td>{t('Close current file after export')}</td>
+                    <td><Switch checked={cleanupChoices.closeFile} onCheckedChange={(checked) => setCleanupChoices((previous) => ({ ...previous, closeFile: checked }))} /></td>
+                    <td />
+                  </AnimatedTr>
+                  <AnimatedTr>
+                    <td>{t('Move temporary files to trash')}</td>
+                    <td><Switch checked={cleanupChoices.trashTmpFiles} onCheckedChange={(checked) => setCleanupChoices((previous) => ({ ...previous, trashTmpFiles: checked }))} /></td>
+                    <td />
+                  </AnimatedTr>
+                </>
+              )}
             </>
           )}
         </tbody>

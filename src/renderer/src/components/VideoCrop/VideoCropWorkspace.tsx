@@ -1,16 +1,20 @@
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createPortal } from 'react-dom';
 
 import type { CropAspectPreset, CropOutputMode, CropRect, CropTimeRange, CropVideoConfig } from '../../../../common/videoCropTypes.js';
 import { validateCropRect } from '../../../../common/videoCropValidation.js';
-import { alignCropSize, cropPointToScreen, getCropDisplayTransform, getCropTargetAspect, getCropVisibleSize, sanitizeCropDigits, screenToCropPoint } from '../../videoCropGeometry';
+import { alignCropSize, cropPointToScreen, getCropDisplayTransform, getCropTargetAspect, getCropVisibleSize, screenToCropPoint } from '../../videoCropGeometry';
 import type { CropFrameGeometry, CropViewport } from '../../videoCropGeometry';
 import { getDefaultCropTimeRange } from '../../videoCropSegments';
 import type { CropSourceSegment } from '../../videoCropSegments';
 
 import styles from './VideoCropWorkspace.module.css';
+import OutputFloatingPanel from '../OutputFloatingPanel';
+import { isActiveOutputPanel } from '../outputPanelFocus';
+import actionStyles from '../OutputActionButtons.module.css';
+import CropNumericField from './CropNumericField';
+import VideoCropSelectionOverlay from './VideoCropSelectionOverlay';
 
 interface Props {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -21,6 +25,7 @@ interface Props {
   duration: number;
   onClose: () => void;
   onExport: (config: CropVideoConfig) => Promise<void>;
+  exportBusy: boolean;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   onPreviewChange: (rect: { left: number; top: number; width: number; height: number } | undefined) => void;
@@ -41,50 +46,7 @@ const makeFullRect = (frame: CropFrameGeometry): CropRect => {
   return { x: 0, y: 0, width: visible.width, height: visible.height };
 };
 
-function CropNumericField({ label, value, onCommit, disabled = false }: {
-  label: string;
-  value: number;
-  onCommit: (value: number) => void;
-  disabled?: boolean;
-}) {
-  const id = useId();
-  // Undefined means display the latest committed value without a syncing effect.
-  const [draft, setDraft] = useState<string>();
-  const commit = () => {
-    const next = Number(draft);
-    if (draft && Number.isSafeInteger(next)) onCommit(next);
-    setDraft(undefined);
-  };
-
-  return (
-    <div className={styles['numberField']}>
-      <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        type="text"
-        disabled={disabled}
-        inputMode="numeric"
-        pattern="[0-9]*"
-        aria-label={label}
-        value={draft ?? String(value)}
-        onFocus={() => setDraft(String(value))}
-        onChange={(event) => setDraft(sanitizeCropDigits(event.target.value))}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.currentTarget.blur();
-          } else if (event.key === 'Escape') {
-            setDraft(undefined);
-            event.currentTarget.blur();
-            event.stopPropagation();
-          }
-        }}
-      />
-    </div>
-  );
-}
-
-export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, selectedSegmentCount, duration, onClose, onExport, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
+export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, selectedSegmentCount, duration, onClose, onExport, exportBusy, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
   type Handle = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e';
   type Dimension = 'x' | 'y' | 'width' | 'height';
   const { t } = useTranslation();
@@ -101,47 +63,13 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [format, setFormat] = useState<'mp4' | 'mkv'>('mp4');
   const [quality, setQuality] = useState('high');
   const [submitting, setSubmitting] = useState(false);
+  const exportDisabled = submitting || exportBusy;
   const [exportError, setExportError] = useState<string>();
   const [previewMode, setPreviewMode] = useState<'edit' | 'output'>('edit');
   const [size, setSize] = useState({ width: 1, height: 1 });
-  const [panelPosition, setPanelPosition] = useState(() => ({
-    left: Math.max(8, window.innerWidth - 396),
-    top: 48,
-  }));
   const [focused, setFocused] = useState(false);
-  const panelDragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | undefined>(undefined);
   const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLElement>(null);
-  const headingRef = useRef<HTMLDivElement>(null);
-
-  const clampPanel = useCallback((left: number, top: number) => {
-    const root = document.getElementById('app-root');
-    const bounds = root?.getBoundingClientRect() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
-    const width = panelRef.current?.offsetWidth ?? 380;
-    const height = panelRef.current?.offsetHeight ?? 250;
-    const margin = 8;
-    return {
-      left: clamp(left, bounds.left + margin, Math.max(bounds.left + margin, bounds.right - width - margin)),
-      top: clamp(top, bounds.top + margin, Math.max(bounds.top + margin, bounds.bottom - height - margin)),
-    };
-  }, []);
-
-  useEffect(() => {
-    const onResize = () => setPanelPosition((previous) => clampPanel(previous.left, previous.top));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [clampPanel]);
-
-  const stopPanelDrag = useCallback((pointerId?: number, revert = false) => {
-    const drag = panelDragRef.current;
-    if (!drag || (pointerId != null && drag.pointerId !== pointerId)) return;
-    panelDragRef.current = undefined;
-    const heading = headingRef.current;
-    if (heading?.hasPointerCapture(drag.pointerId)) heading.releasePointerCapture(drag.pointerId);
-    if (revert) setPanelPosition(clampPanel(drag.left, drag.top));
-  }, [clampPanel]);
-
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return undefined;
@@ -267,26 +195,27 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   };
 
   useEffect(() => {
+    const onPointerDownInsideSettings = (event: PointerEvent) => {
+      if (event.target instanceof Element
+        && event.target.closest('[role="dialog"][data-output-panel="crop"]')) {
+        setFocused(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDownInsideSettings, { capture: true });
+    return () => document.removeEventListener('pointerdown', onPointerDownInsideSettings, { capture: true });
+  }, []);
+
+  useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (panelDragRef.current && event.key === 'Escape') {
-        stopPanelDrag(undefined, true);
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-      }
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement) return;
-      if (event.key === 'Escape') {
-        if (fullscreen) return; // Let Chromium exit the native video fullscreen.
-        if (pointerDragRef.current) pointerDragRef.current = undefined;
-        else onClose();
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-      }
-      if (!focused || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      if (!isActiveOutputPanel('crop')) return;
+      const otherDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
+      if (otherDialog && !(otherDialog as HTMLElement).dataset['outputPanel']) return;
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement
+        || event.target instanceof HTMLTextAreaElement
+        || !focused || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
       const delta = event.shiftKey ? 10 : 1;
-      const dx = event.key === 'ArrowLeft' ? -delta : (event.key === 'ArrowRight' ? delta : 0);
-      const dy = event.key === 'ArrowUp' ? -delta : (event.key === 'ArrowDown' ? delta : 0);
+      const dx = event.key === 'ArrowLeft' ? -delta : (event.key === 'ArrowRight' ? 1 : 0);
+      const dy = event.key === 'ArrowUp' ? -delta : (event.key === 'ArrowDown' ? 1 : 0);
       setRect((previous) => ({
         ...previous,
         x: clamp(previous.x + dx, 0, bounds.width - previous.width),
@@ -297,23 +226,12 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     };
     document.addEventListener('keydown', keydown, { capture: true });
     return () => document.removeEventListener('keydown', keydown, { capture: true });
-  }, [bounds.height, bounds.width, focused, fullscreen, onClose, stopPanelDrag]);
+  }, [bounds.height, bounds.width, focused]);
 
-  const handles: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
-  const handleStyles: Record<string, CSSProperties> = {
-    nw: { left: 0, top: 0 },
-    n: { left: '50%', top: 0 },
-    ne: { left: '100%', top: 0 },
-    e: { left: '100%', top: '50%' },
-    se: { left: '100%', top: '100%' },
-    s: { left: '50%', top: '100%' },
-    sw: { left: 0, top: '100%' },
-    w: { left: 0, top: '50%' },
-  };
   const multiple = timeRange === 'selected' && selectedSegmentCount > 1;
 
   const submitExport = async () => {
-    if (submitting || !valid || quality === 'custom') return;
+    if (exportDisabled || !valid || quality === 'custom') return;
     setExportError(undefined);
     setSubmitting(true);
     try {
@@ -346,171 +264,121 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   return (
     <>
       {previewMode === 'edit' && (
-        <div className={styles['overlay']}>
-          <div
-            ref={surfaceRef}
-            className={styles['surface']}
-            style={{
-              left: layout.drawnLeft,
-              top: layout.drawnTop,
-              width: layout.drawnWidth,
-              height: layout.drawnHeight,
-            }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            onDoubleClick={(event) => {
-              const target = event.target as HTMLElement;
-              if (target.dataset['cropHandle'] && target.dataset['cropHandle'] !== 'move') return;
-              pointerDragRef.current = undefined;
-              onToggleFullscreen();
-              event.stopPropagation();
-            }}
-            role="presentation"
-          >
-            <div
-              className={styles['selection']}
-              data-crop-handle="move"
-              style={{
-                ...displayRect,
-                left: displayRect.left - layout.drawnLeft,
-                top: displayRect.top - layout.drawnTop,
-              }}
-            >
-              {handles.map((handle) => (
-                <span key={handle} data-crop-handle={handle} className={styles['handle']} style={handleStyles[handle]} />
-              ))}
-            </div>
-          </div>
+        <VideoCropSelectionOverlay
+          surfaceRef={surfaceRef}
+          layout={layout}
+          displayRect={displayRect}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onDoubleClick={(event) => {
+            const target = event.target as HTMLElement;
+            if (target.dataset['cropHandle'] && target.dataset['cropHandle'] !== 'move') return;
+            pointerDragRef.current = undefined;
+            onToggleFullscreen();
+            event.stopPropagation();
+          }}
+        />
+      )}
+      <OutputFloatingPanel
+        id="crop"
+        open
+        title={t('Crop Video Settings')}
+        onClose={onClose}
+        hidden={fullscreen}
+        contentClassName={styles['contents']}
+        ignoreEscapeFromInputs
+        onEscape={() => {
+          if (fullscreen) return 'ignore';
+          if (pointerDragRef.current) {
+            pointerDragRef.current = undefined;
+            return 'handled';
+          }
+          return undefined;
+        }}
+        footer={(
+          <>
+            <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
+            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || exportDisabled || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
+          </>
+        )}
+      >
+        <div className={styles['sectionTitle']}>
+          <strong>{t('Crop Region')}</strong>
+          <button type="button" onClick={() => { setRect(fullRect); if (!resize) { setResizeWidth(fullRect.width); setResizeHeight(fullRect.height); } }}>{t('Reset')}</button>
         </div>
-      )}
-      {createPortal(
-        <section
-          ref={panelRef}
-          aria-label={t('Crop Video Settings')}
-          className={styles['panel']}
-          style={{ left: panelPosition.left, top: panelPosition.top, visibility: fullscreen ? 'hidden' : undefined, pointerEvents: fullscreen ? 'none' : undefined }}
-          onPointerDown={() => setFocused(false)}
-        >
-          <div
-            ref={headingRef}
-            className={styles['heading']}
-            onPointerDown={(event) => {
-              if (event.button !== 0 || (event.target !== event.currentTarget && (event.target as HTMLElement).closest('button'))) return;
-              panelDragRef.current = {
-                pointerId: event.pointerId,
-                x: event.clientX,
-                y: event.clientY,
-                left: panelPosition.left,
-                top: panelPosition.top,
-              };
-              event.currentTarget.setPointerCapture(event.pointerId);
-              event.preventDefault();
-            }}
-            onPointerMove={(event) => {
-              const drag = panelDragRef.current;
-              if (!drag || drag.pointerId !== event.pointerId) return;
-              if (event.buttons % 2 === 0) {
-                stopPanelDrag(event.pointerId);
-                return;
-              }
-              setPanelPosition(clampPanel(
-                drag.left + event.clientX - drag.x,
-                drag.top + event.clientY - drag.y,
-              ));
-            }}
-            onPointerUp={(event) => stopPanelDrag(event.pointerId)}
-            onPointerCancel={(event) => stopPanelDrag(event.pointerId)}
-            onLostPointerCapture={(event) => stopPanelDrag(event.pointerId)}
-            role="presentation"
-          >
-            <strong>{t('Crop Video Settings')}</strong>
-            <button type="button" aria-label={t('Close')} onPointerDown={(event) => event.stopPropagation()} onClick={onClose}>×</button>
-          </div>
-          <div className={styles['contents']}>
-            <div className={styles['sectionTitle']}>
-              <strong>{t('Crop Region')}</strong>
-              <button type="button" onClick={() => { setRect(fullRect); if (!resize) { setResizeWidth(fullRect.width); setResizeHeight(fullRect.height); } }}>{t('Reset')}</button>
-            </div>
-            <div className={styles['coordinateGrid']}>
-              <CropNumericField label="X" value={rect.x} onCommit={(value) => updateDimension('x', value)} />
-              <CropNumericField label="Y" value={rect.y} onCommit={(value) => updateDimension('y', value)} />
-              <CropNumericField label="W" value={rect.width} onCommit={(value) => updateDimension('width', value)} />
-              <CropNumericField label="H" value={rect.height} onCommit={(value) => updateDimension('height', value)} />
-            </div>
-            <label className={styles['row']} htmlFor="crop-aspect-ratio"><span>{t('Aspect ratio')}</span>
-              <select
-                id="crop-aspect-ratio"
-                value={ratio}
-                onChange={(event) => {
-                  const preset = event.target.value as CropAspectPreset;
-                  const aspect = getCropTargetAspect(preset, frame);
-                  setRatio(preset);
-                  if (aspect != null) {
-                    try {
-                      const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
-                      setRect(aligned);
-                      if (!resize) {
-                        setResizeWidth(aligned.width);
-                        setResizeHeight(aligned.height);
-                      }
-                    } catch {
-                      // Keep the last valid integer crop while the ratio cannot fit.
-                    }
+        <div className={styles['coordinateGrid']}>
+          <CropNumericField label="X" value={rect.x} onCommit={(value) => updateDimension('x', value)} />
+          <CropNumericField label="Y" value={rect.y} onCommit={(value) => updateDimension('y', value)} />
+          <CropNumericField label="W" value={rect.width} onCommit={(value) => updateDimension('width', value)} />
+          <CropNumericField label="H" value={rect.height} onCommit={(value) => updateDimension('height', value)} />
+        </div>
+        <label className={styles['row']} htmlFor="crop-aspect-ratio"><span>{t('Aspect ratio')}</span>
+          <select
+            id="crop-aspect-ratio"
+            value={ratio}
+            onChange={(event) => {
+              const preset = event.target.value as CropAspectPreset;
+              const aspect = getCropTargetAspect(preset, frame);
+              setRatio(preset);
+              if (aspect != null) {
+                try {
+                  const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
+                  setRect(aligned);
+                  if (!resize) {
+                    setResizeWidth(aligned.width);
+                    setResizeHeight(aligned.height);
                   }
-                }}
-              >
-                {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
-              </select>
-            </label>
-            <strong>{t('Output Size')}</strong>
-            <label className={styles['radio']} htmlFor="crop-original-size"><input id="crop-original-size" name="crop-output-size" type="radio" checked={!resize} onChange={() => setResize(false)} />{t('Original crop size')}</label>
-            <div className={styles['resizeRow']}>
-              <label className={styles['radio']} htmlFor="crop-resize"><input id="crop-resize" name="crop-output-size" type="radio" checked={resize} onChange={() => setResize(true)} />{t('Resize to:')}</label>
-              <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
-              <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
-            </div>
-            {resize && <label className={styles['checkbox']} htmlFor="crop-resize-lock"><input id="crop-resize-lock" type="checkbox" checked={lockResizeAspect} onChange={(event) => setLockResizeAspect(event.target.checked)} />{t('Lock aspect ratio')}</label>}
-            <strong>{t('Video Quality')}</strong>
-            <select value={quality} onChange={(event) => setQuality(event.target.value)}>
-              <option value="high">{t('High quality')} · H.264 CRF 18</option>
-              <option value="standard">{t('Standard')} · H.264 CRF 23</option>
-              <option value="custom" disabled>{t('Custom (Phase 3)')}</option>
-            </select>
-            <strong>{t('Export')}</strong>
-            <label className={styles['row']} htmlFor="crop-time-range"><span>{t('Time range')}</span>
-              <select id="crop-time-range" value={timeRange} onChange={(event) => setTimeRange(event.target.value as CropTimeRange)}>
-                <option value="selected">{t('Selected segments')}</option>
-                <option value="entire">{t('Entire video')}</option>
-              </select>
-            </label>
-            <label className={styles['row']} htmlFor="crop-output-mode"><span>{t('Output mode')}</span>
-              <select id="crop-output-mode" value={outputMode} disabled={!multiple} onChange={(event) => setOutputMode(event.target.value as CropOutputMode)}>
-                <option value="merge">{t('Merge into one file')}</option>
-                <option value="separate">{t('Export separately')}</option>
-              </select>
-            </label>
-            <label className={styles['checkbox']} htmlFor="crop-keep-audio"><input id="crop-keep-audio" type="checkbox" checked={keepAudio} onChange={(event) => setKeepAudio(event.target.checked)} />{t('Keep Audio')}</label>
-            <label className={styles['row']} htmlFor="crop-format"><span>{t('Output format')}</span>
-              <select id="crop-format" value={format} onChange={(event) => setFormat(event.target.value as 'mp4' | 'mkv')}>
-                <option value="mp4">MP4</option><option value="mkv">MKV</option>
-              </select>
-            </label>
-            <div className={styles['footer']}>
-              <button type="button" onClick={onClose}>{t('Cancel')}</button>
-              <button type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export Video')}</button>
-            </div>
-            <div className={styles['previewRow']}>
-              <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
-              <button type="button" aria-pressed={previewMode === 'output'} onClick={() => setPreviewMode('output')}>{t('Preview Output')}</button>
-            </div>
-            {!valid && <p>{t('Invalid crop region')}</p>}
-            {exportError && <p role="alert">{exportError}</p>}
-          </div>
-        </section>,
-        document.getElementById('app-root') ?? document.body,
-      )}
+                } catch {
+                  // Keep the last valid integer crop while the ratio cannot fit.
+                }
+              }
+            }}
+          >
+            {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
+          </select>
+        </label>
+        <strong>{t('Output Size')}</strong>
+        <label className={styles['radio']} htmlFor="crop-original-size"><input id="crop-original-size" name="crop-output-size" type="radio" checked={!resize} onChange={() => setResize(false)} />{t('Original crop size')}</label>
+        <div className={styles['resizeRow']}>
+          <label className={styles['radio']} htmlFor="crop-resize"><input id="crop-resize" name="crop-output-size" type="radio" checked={resize} onChange={() => setResize(true)} />{t('Resize to:')}</label>
+          <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
+          <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
+        </div>
+        {resize && <label className={styles['checkbox']} htmlFor="crop-resize-lock"><input id="crop-resize-lock" type="checkbox" checked={lockResizeAspect} onChange={(event) => setLockResizeAspect(event.target.checked)} />{t('Lock aspect ratio')}</label>}
+        <label className={styles['qualityRow']} htmlFor="crop-quality"><strong>{t('Video Quality')}</strong>
+          <select id="crop-quality" value={quality} onChange={(event) => setQuality(event.target.value)}>
+            <option value="high">{t('High quality')} · H.264 CRF 18</option>
+            <option value="standard">{t('Standard')} · H.264 CRF 23</option>
+            <option value="custom" disabled>{t('Custom (Phase 3)')}</option>
+          </select>
+        </label>
+        <strong>{t('Export')}</strong>
+        <label className={styles['row']} htmlFor="crop-time-range"><span>{t('Time range')}</span>
+          <select id="crop-time-range" value={timeRange} onChange={(event) => setTimeRange(event.target.value as CropTimeRange)}>
+            <option value="selected">{t('Selected segments')}</option>
+            <option value="entire">{t('Entire video')}</option>
+          </select>
+        </label>
+        <label className={styles['row']} htmlFor="crop-output-mode"><span>{t('Output mode')}</span>
+          <select id="crop-output-mode" value={outputMode} disabled={!multiple} onChange={(event) => setOutputMode(event.target.value as CropOutputMode)}>
+            <option value="merge">{t('Merge into one file')}</option>
+            <option value="separate">{t('Export separately')}</option>
+          </select>
+        </label>
+        <label className={styles['checkbox']} htmlFor="crop-keep-audio"><input id="crop-keep-audio" type="checkbox" checked={keepAudio} onChange={(event) => setKeepAudio(event.target.checked)} />{t('Keep Audio')}</label>
+        <label className={styles['row']} htmlFor="crop-format"><span>{t('Output format')}</span>
+          <select id="crop-format" value={format} onChange={(event) => setFormat(event.target.value as 'mp4' | 'mkv')}>
+            <option value="mp4">MP4</option><option value="mkv">MKV</option>
+          </select>
+        </label>
+        <div className={styles['previewRow']}>
+          <button type="button" aria-pressed={previewMode === 'edit'} onClick={() => setPreviewMode('edit')}>{t('Edit Selection')}</button>
+          <button type="button" aria-pressed={previewMode === 'output'} onClick={() => setPreviewMode('output')}>{t('Preview Output')}</button>
+        </div>
+        {!valid && <p role="alert">{t('Invalid crop region')}</p>}
+        {exportError && <p role="alert">{exportError}</p>}
+      </OutputFloatingPanel>
     </>
   );
 }

@@ -1,0 +1,21 @@
+/* Shared appearance for the Output settings panels. */
+.action {
+  appearance: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid var(--gray-7);
+  border-radius: 5px;
+  color: var(--gray-12);
+  background: var(--gray-3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.action:hover:not(:disabled) { filter: brightness(1.08); }
+.action:focus-visible { outline: 2px solid var(--cyan-9); outline-offset: 2px; }
+.action:disabled { opacity: .5; cursor: not-allowed; }
+.primary { color: white; background: var(--cyan-9); border-color: var(--cyan-9); }

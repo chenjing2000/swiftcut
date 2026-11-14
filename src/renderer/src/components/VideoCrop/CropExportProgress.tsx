@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { CropExportStatus } from '../../../../main/videoCropExportService.js';
 import Button from '../Button';
+import { ExportOutputPaths, ExportProgressHeader } from '../ExportProgressParts';
 import { getCropExportPresentation, getCropExportSegmentPosition } from './cropExportPresentation';
 
 import styles from './CropExportProgress.module.css';
@@ -41,10 +42,7 @@ export default function CropExportProgress({ status, onCancel, onDismiss }: Prop
       data-state={status.state}
       aria-label={t('Crop video export')}
     >
-      <div className={styles['heading']}>
-        <strong>{t(presentation.title)}</strong>
-        <span className={styles['status']} data-state={status.state}>{t(presentation.label)}</span>
-      </div>
+      <ExportProgressHeader title={t(presentation.title)} label={t(presentation.label)} state={status.state} />
       {presentation.active ? (
         <div className={styles['contents']} role="status" aria-live="polite" aria-atomic="true">
           <div className={styles['progressText']}>
@@ -64,14 +62,7 @@ export default function CropExportProgress({ status, onCancel, onDismiss }: Prop
           {status.state === 'partial_success' && (
             <p role="status">{t('Crop partially saved files', { count: savedCount })}</p>
           )}
-          {savedCount > 0 && (
-            <div className={styles['outputs']}>
-              <div className={styles['outputHeading']}>{t('Crop exported files')}</div>
-              <ul className={styles['paths']}>
-                {status.outputPaths?.map((path) => <li key={path} title={path}>{path}</li>)}
-              </ul>
-            </div>
-          )}
+          <ExportOutputPaths paths={status.outputPaths ?? []} heading={t('Crop exported files')} />
           {status.error && <p className={styles['error']} role="alert">{status.error}</p>}
           {status.cleanupWarning && <p className={styles['warning']} role="alert">{t('Crop cleanup warning', { details: status.cleanupWarning })}</p>}
           <div className={styles['actions']}>

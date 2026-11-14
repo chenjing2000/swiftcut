@@ -40,7 +40,7 @@ describe('Crop Video Phase 3A export planner', () => {
     expect(plan.outputWidth).toBe(853);
     expect(plan.outputHeight).toBe(479);
     expect([plan.encodedWidth, plan.encodedHeight]).toStrictEqual([854, 480]);
-    expect(plan.tasks).toStrictEqual([{ start: 10, end: 20, originalIndex: 2, outputName: 'test.clip.crop.mp4' }]);
+    expect(plan.tasks).toStrictEqual([{ start: 10, end: 20, originalIndex: 2, outputName: 'test.clip_segment_01.mp4' }]);
     request.config.rect.x = 999;
     expect(plan.crop.x).toBe(101);
   });
@@ -50,7 +50,7 @@ describe('Crop Video Phase 3A export planner', () => {
     request.config.output.outputMode = 'separate';
     request.segments = [{ start: 30, end: 40, originalIndex: 3 }, { start: 10, end: 20, originalIndex: 2 }];
     const plan = createCropExportPlan(request);
-    expect(plan.tasks.map((task) => task.outputName)).toStrictEqual(['test.clip.crop-001.mp4', 'test.clip.crop-002.mp4']);
+    expect(plan.tasks.map((task) => task.outputName)).toStrictEqual(['test.clip_segment_01.mp4', 'test.clip_segment_02.mp4']);
     expect(plan.tasks.map((task) => task.start)).toStrictEqual([10, 30]);
   });
 
@@ -58,7 +58,7 @@ describe('Crop Video Phase 3A export planner', () => {
     const request = makeRequest();
     request.segments = [{ start: 20, end: 30, originalIndex: 1 }, { start: 0, end: 10, originalIndex: 0 }];
     const plan = createCropExportPlan(request);
-    expect(plan.mergedOutputName).toBe('test.clip.crop.mp4');
+    expect(plan.mergedOutputName).toBe('test.clip_segments_merge.mp4');
     expect(plan.tasks).toHaveLength(2);
   });
 
