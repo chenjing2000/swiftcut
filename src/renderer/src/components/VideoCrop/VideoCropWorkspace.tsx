@@ -1,7 +1,6 @@
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createPortal } from 'react-dom';
 
 import type { CropAspectPreset, CropOutputMode, CropRect, CropTimeRange, CropVideoConfig } from '../../../../common/videoCropTypes.js';
 import { validateCropRect } from '../../../../common/videoCropValidation.js';
@@ -11,9 +10,8 @@ import { getDefaultCropTimeRange } from '../../videoCropSegments';
 import type { CropSourceSegment } from '../../videoCropSegments';
 
 import styles from './VideoCropWorkspace.module.css';
-import chrome from '../OutputPanelChrome.module.css';
-import useOutputPanelDrag from '../useOutputPanelDrag';
-import { isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
+import OutputFloatingPanel from '../OutputFloatingPanel';
+import { isActiveOutputPanel } from '../outputPanelFocus';
 import actionStyles from '../OutputActionButtons.module.css';
 import CropNumericField from './CropNumericField';
 import VideoCropSelectionOverlay from './VideoCropSelectionOverlay';
@@ -70,23 +68,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [focused, setFocused] = useState(false);
   const pointerDragRef = useRef<{ x: number; y: number; rect: CropRect; mode: Handle } | undefined>(undefined);
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLElement>(null);
-  const {
-    position: panelPosition,
-    dragRef: panelDragRef,
-    headingRef,
-    stopDrag: stopPanelDrag,
-    onPointerDown: onPanelPointerDown,
-    onPointerMove: onPanelPointerMove,
-    onPointerUp: onPanelPointerUp,
-  } = useOutputPanelDrag(panelRef);
-
-  useEffect(() => registerOutputPanel('crop'), []);
-
-  useLayoutEffect(() => {
-    panelRef.current?.focus();
-  }, []);
-
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return undefined;
@@ -214,29 +195,12 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (!isActiveOutputPanel('crop')) return;
-      // Do not steal Escape from unrelated application dialogs.
-      const otherDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
-      if (otherDialog && !(otherDialog as HTMLElement).dataset['outputPanel']) return;
-      if (panelDragRef.current && event.key === 'Escape') {
-        stopPanelDrag(undefined, true);
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-      }
-      if (panelRef.current?.contains(event.target as Node)
-        && (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement)) return;
-      if (event.key === 'Escape') {
-        if (fullscreen) return; // Let Chromium exit the native video fullscreen.
-        if (pointerDragRef.current) pointerDragRef.current = undefined;
-        else onClose();
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-      }
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement
+        || event.target instanceof HTMLTextAreaElement) return;
       if (!focused || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
       const delta = event.shiftKey ? 10 : 1;
-      const dx = event.key === 'ArrowLeft' ? -delta : (event.key === 'ArrowRight' ? delta : 0);
-      const dy = event.key === 'ArrowUp' ? -delta : (event.key === 'ArrowDown' ? delta : 0);
+      const dx = event.key === 'ArrowLeft' ? -delta : (event.key === 'ArrowRight' ? 1 : 0);
+      const dy = event.key === 'ArrowUp' ? -delta : (event.key === 'ArrowDown' ? 1 : 0);
       setRect((previous) => ({
         ...previous,
         x: clamp(previous.x + dx, 0, bounds.width - previous.width),
@@ -247,7 +211,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     };
     document.addEventListener('keydown', keydown, { capture: true });
     return () => document.removeEventListener('keydown', keydown, { capture: true });
-  }, [bounds.height, bounds.width, focused, fullscreen, onClose, panelDragRef, stopPanelDrag]);
+  }, [bounds.height, bounds.width, focused]);
 
   const multiple = timeRange === 'selected' && selectedSegmentCount > 1;
 
@@ -301,30 +265,29 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           }}
         />
       )}
-      {createPortal(
-        <section
-          ref={panelRef}
-          tabIndex={-1}
-          aria-label={t('Crop Video Settings')}
-          data-output-panel="crop"
-          className={`${chrome['panel']} ${styles['panel']}`}
-          style={{ left: panelPosition.left, top: panelPosition.top, visibility: fullscreen ? 'hidden' : undefined, pointerEvents: fullscreen ? 'none' : undefined }}
-          onPointerDown={() => setFocused(false)}
-        >
-          <div
-            ref={headingRef}
-            className={chrome['heading']}
-            onPointerDown={onPanelPointerDown}
-            onPointerMove={onPanelPointerMove}
-            onPointerUp={onPanelPointerUp}
-            onPointerCancel={onPanelPointerUp}
-            onLostPointerCapture={onPanelPointerUp}
-            role="presentation"
-          >
-            <h2 className={chrome['title']}>{t('Crop Video Settings')}</h2>
-            <button type="button" aria-label={t('Close')} onPointerDown={(event) => event.stopPropagation()} onClick={onClose}>×</button>
-          </div>
-          <div className={`${chrome['contents']} ${styles['contents']}`}>
+      <OutputFloatingPanel
+        id="crop"
+        open
+        title={t('Crop Video Settings')}
+        onClose={onClose}
+        hidden={fullscreen}
+        contentClassName={styles['contents']}
+        ignoreEscapeFromInputs
+        onEscape={() => {
+          if (fullscreen) return 'ignore';
+          if (pointerDragRef.current) {
+            pointerDragRef.current = undefined;
+            return 'handled';
+          }
+          return undefined;
+        }}
+        footer={(
+          <>
+            <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
+            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
+          </>
+        )}
+      >
             <div className={styles['sectionTitle']}>
               <strong>{t('Crop Region')}</strong>
               <button type="button" onClick={() => { setRect(fullRect); if (!resize) { setResizeWidth(fullRect.width); setResizeHeight(fullRect.height); } }}>{t('Reset')}</button>
@@ -400,14 +363,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             </div>
             {!valid && <p role="alert">{t('Invalid crop region')}</p>}
             {exportError && <p role="alert">{exportError}</p>}
-          </div>
-          <div className={chrome['footer']}>
-            <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
-            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
-          </div>
-        </section>,
-        document.getElementById('app-root') ?? document.body,
-      )}
+      </OutputFloatingPanel>
     </>
   );
 }
