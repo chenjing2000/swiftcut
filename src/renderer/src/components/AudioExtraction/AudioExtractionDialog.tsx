@@ -11,6 +11,7 @@ import type { SegmentToExport } from '../../types';
 import type { AudioExtractionMode, Mp3Quality } from '../../../../main/audioExtraction';
 import AudioExtractionProgress from './AudioExtractionProgress';
 import useAudioExtractionJob from './useAudioExtractionJob';
+import useExportActionDisabled from '../../hooks/useExportActionDisabled';
 
 interface AudioExtractionDialogProps {
   open: boolean;
@@ -51,6 +52,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const effectiveSegments = effectiveTimeRange === 'selected' ? segments : [];
   const multiple = effectiveTimeRange === 'selected' && segments.length > 1;
   const { job, isStarting, isBusy, startExtraction, cancelExtraction, dismissJob } = useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments: effectiveSegments, outputMode });
+  const extractDisabled = useExportActionDisabled(Boolean(isBusy));
 
   const isMp4 = useMemo(() => {
     const extensionIsMp4 = filePath?.toLowerCase().endsWith('.mp4') ?? false;
@@ -87,7 +89,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             >
               {t('Cancel')}
             </button>
-            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
+            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || extractDisabled || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
           </>
         )}
       >
