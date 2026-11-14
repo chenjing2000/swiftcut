@@ -48,6 +48,8 @@ export default function AudioExtractionProgress({ job, onCancel, onDismiss }: Pr
       title={t('Extract Audio')}
       label={t(labels[job.state])}
       state={job.state}
+      autoDismiss={job.state === 'success'}
+      onDismiss={onDismiss}
     >
       <div className={styles['contents']}>
         {active ? (
