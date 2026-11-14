@@ -567,6 +567,42 @@ async function testSweetAlertAndRadixNotification() {
   console.log('PASS SweetAlert recovery after a blocking Radix error');
 }
 
+
+async function testNestedRadixBlockingNotification() {
+  await evaluate("document.dispatchEvent(new CustomEvent('swiftcut-e2e-parent-dialog', { detail: true }))");
+  await waitForExpression('Boolean(document.querySelector("[data-testid=e2e-parent-dialog]"))', 'parent Radix dialog');
+  await postNotification({
+    type: 'error',
+    title: 'Nested error',
+    message: 'The blocking notification must cover the previous dialog completely.',
+  });
+  await waitForExpression('Boolean(document.querySelector("[data-testid=notification-modal]"))', 'blocking child error');
+
+  const levels = await evaluate<{ parent: number; overlay: number; child: number; clickable: boolean }>(`(() => {
+    const parent = document.querySelector('[data-testid=e2e-parent-dialog]');
+    const child = document.querySelector('[data-testid=notification-modal]');
+    const overlay = document.querySelector('[data-state=open][class*=AlertDialogOverlay]');
+    const button = document.querySelector('[data-testid=notification-primary-action]');
+    const r = button.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return {
+      parent: Number(getComputedStyle(parent).zIndex),
+      overlay: Number(getComputedStyle(overlay).zIndex),
+      child: Number(getComputedStyle(child).zIndex),
+      clickable: hit === button || button.contains(hit),
+    };
+  })()`);
+  assert.ok(levels.overlay > levels.parent, `Nested overlay must cover parent dialog: ${JSON.stringify(levels)}`);
+  assert.ok(levels.child > levels.overlay && levels.clickable, 'Blocking child must be interactive above its overlay');
+  await captureScreenshot('nested-radix-notification.png');
+  await evaluate('document.querySelector("[data-testid=notification-primary-action]").click()');
+  await waitForExpression('!document.querySelector("[data-testid=notification-modal]")', 'nested error to close');
+  await waitForExpression('Boolean(document.querySelector("[data-testid=e2e-parent-dialog]"))', 'parent to remain open');
+  await evaluate('document.querySelector("[data-testid=e2e-parent-dialog] button").click()');
+  await waitForExpression('!document.querySelector("[data-testid=e2e-parent-dialog]")', 'parent dialog to close');
+  console.log('PASS nested Radix notification stacking and parent restoration');
+}
+
 const vite = await createServer({
   configFile: false,
   root: resolvePath('src/renderer'),
@@ -647,6 +683,7 @@ try {
   await testBlockingNotifications();
   await testModalOverOutputPanels();
   await testSweetAlertAndRadixNotification();
+  await testNestedRadixBlockingNotification();
 
   logStage('All notification desktop E2E tests passed');
 } catch (error) {
