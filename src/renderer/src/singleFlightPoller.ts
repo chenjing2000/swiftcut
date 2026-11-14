@@ -1,8 +1,5 @@
-/**
- * Skip ticks while an earlier status request is unfinished. Once that request
- * settles, the next tick may run; rejected requests must not lock polling.
- * Disposing prevents new requests, while callers still guard late responses.
- */
+// Skip ticks while a status request is in flight; release the guard even on
+// errors. Disposal prevents new ticks, while callers guard late responses.
 export function createSingleFlightPoller(poll: () => Promise<void>) {
   let inFlight = false;
   let disposed = false;
