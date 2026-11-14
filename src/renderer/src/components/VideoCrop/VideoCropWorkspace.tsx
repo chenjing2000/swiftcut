@@ -15,6 +15,7 @@ import { isActiveOutputPanel } from '../outputPanelFocus';
 import actionStyles from '../OutputActionButtons.module.css';
 import CropNumericField from './CropNumericField';
 import VideoCropSelectionOverlay from './VideoCropSelectionOverlay';
+import useExportActionDisabled from '../../hooks/useExportActionDisabled';
 
 interface Props {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -25,6 +26,7 @@ interface Props {
   duration: number;
   onClose: () => void;
   onExport: (config: CropVideoConfig) => Promise<void>;
+  exportBusy: boolean;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   onPreviewChange: (rect: { left: number; top: number; width: number; height: number } | undefined) => void;
@@ -45,7 +47,7 @@ const makeFullRect = (frame: CropFrameGeometry): CropRect => {
   return { x: 0, y: 0, width: visible.width, height: visible.height };
 };
 
-export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, selectedSegmentCount, duration, onClose, onExport, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
+export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, selectedSegmentCount, duration, onClose, onExport, exportBusy, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
   type Handle = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e';
   type Dimension = 'x' | 'y' | 'width' | 'height';
   const { t } = useTranslation();
@@ -62,6 +64,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [format, setFormat] = useState<'mp4' | 'mkv'>('mp4');
   const [quality, setQuality] = useState('high');
   const [submitting, setSubmitting] = useState(false);
+  const exportDisabled = useExportActionDisabled(submitting || exportBusy);
   const [exportError, setExportError] = useState<string>();
   const [previewMode, setPreviewMode] = useState<'edit' | 'output'>('edit');
   const [size, setSize] = useState({ width: 1, height: 1 });
@@ -229,7 +232,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const multiple = timeRange === 'selected' && selectedSegmentCount > 1;
 
   const submitExport = async () => {
-    if (submitting || !valid || quality === 'custom') return;
+    if (exportDisabled || !valid || quality === 'custom') return;
     setExportError(undefined);
     setSubmitting(true);
     try {
@@ -297,7 +300,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
         footer={(
           <>
             <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
-            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || submitting || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
+            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || exportDisabled || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
           </>
         )}
       >
