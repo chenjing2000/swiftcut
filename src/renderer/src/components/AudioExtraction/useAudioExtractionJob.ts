@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import mainApi from '../../mainApi';
+import { createSingleFlightPoller } from '../../singleFlightPoller';
 import { showErrorNotification } from '../../notifications/notificationStore';
 import type { SegmentToExport } from '../../types';
 import type { AudioExtractionMode, Mp3Quality, AudioJobStatus } from '../../../../main/audioExtraction';
@@ -30,7 +31,7 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
 
     let disposed = false;
 
-    const pollStatus = async () => {
+    const pollStatus = createSingleFlightPoller(async () => {
       try {
         const status = await mainApi.getAudioExtractionStatus(pollingJobId);
         if (!status || disposed) return;
@@ -71,13 +72,14 @@ export default function useAudioExtractionJob({ filePath, selectedStreamIndexes,
           source: `audio-extraction-status:${pollingJobId}`,
         }).catch((notificationError: unknown) => console.error('Failed to show audio extraction status error', notificationError));
       }
-    };
+    });
 
-    const timer = setInterval(() => { pollStatus().catch(console.error); }, 400);
-    pollStatus().catch(console.error);
+    const timer = setInterval(() => { pollStatus.run().catch(console.error); }, 400);
+    pollStatus.run().catch(console.error);
 
     return () => {
       disposed = true;
+      pollStatus.dispose();
       clearInterval(timer);
     };
   }, [pollingJobId, t]);

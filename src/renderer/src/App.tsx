@@ -53,6 +53,7 @@ import LosslessExportProgress from './components/LosslessExportProgress';
 import { createCropExportPlan } from './videoCropExportPlanner';
 import { assertOutputFilename, getMediaOutputDir } from '../../common/mediaWorkspace.js';
 import { getLosslessExportPlan } from './losslessExportPlan';
+import { createSingleFlightPoller } from './singleFlightPoller';
 import { getLosslessCommitTargets, getLosslessPublishedPaths } from './losslessExportPublication';
 import { classifyLosslessError, emitLosslessCompletionSafely, getLosslessExportFinalState } from './losslessExportOutcome';
 import { commitMediaOutputs } from './util/commitMediaOutputs';
@@ -519,7 +520,7 @@ function App() {
   useEffect(() => {
     if (cropExportJobId == null) return undefined;
     let active = true;
-    const update = async () => {
+    const update = createSingleFlightPoller(async () => {
       const result = await mainApi.getCropExportStatus(cropExportJobId);
       if (active && result != null) {
         setCropExportStatus(result);
@@ -527,10 +528,10 @@ function App() {
           cropExportStartingRef.current = false;
         }
       }
-    };
-    update().catch(console.error);
-    const interval = setInterval(() => { update().catch(console.error); }, 300);
-    return () => { active = false; clearInterval(interval); };
+    });
+    update.run().catch(console.error);
+    const interval = setInterval(() => { update.run().catch(console.error); }, 300);
+    return () => { active = false; update.dispose(); clearInterval(interval); };
   }, [cropExportJobId]);
 
   const increaseRotation = useCallback(() => {
