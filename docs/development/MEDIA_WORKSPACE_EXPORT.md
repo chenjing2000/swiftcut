@@ -49,14 +49,13 @@ a conflict if a separately running writer claims one of its planned names.
 
 ## Lossless export UI
 
-The Export Video panel is 380px wide, matching Crop Video. It has a
-**Directory** single-line editable field plus folder-picker button, and a
-**Filename** single-line editable field of identical width. Native input
-horizontal scrolling keeps the caret visible in long paths or names.
-Defaults are derived from the current source and export mode and reset whenever
-Export Video is opened from the Output menu. Custom values belong to the current
-opening; they do not change defaults for other sources. Unsafe names and incompatible extensions are rejected. Advanced
-options default to collapsed.
+The Export Video panel is 380px wide, matching Crop Video. It has no
+editable **Directory** or **Filename** fields: the output directory is always
+`<source-without-extension>/Lossless/`, and names are generated from the source,
+export mode and selected output extension. Existing output names are never
+overwritten; safe publication allocates collision suffixes as needed.
+Invalid generated paths or incompatible extensions are rejected before export.
+Advanced options default to collapsed.
 
 The legacy E shortcut and the previous top/bottom lossless export controls
 are retired. The export settings panel is the only manual lossless export
@@ -80,14 +79,19 @@ Inspect all three Output settings panels interactively before merging.
 
 ## Shared Output presentation and lifecycle
 
-The three settings windows share the same panel chrome and action button
-styles. Crop and Export also share the same floating-title drag hook.
-Audio extraction keeps its Radix Dialog settings shell, with the same visible
-title and footer appearance. Its running and completed jobs now appear in an
-independent bottom-right progress panel, even when the settings popup is closed
-or a different source is opened. Crop, lossless, and audio progress panels share
-display-only headers and output path lists while maintaining independent jobs.
-The audio failure prompt retains its pause, continue, and cancel behavior.
+The three settings windows use the same nonmodal `OutputFloatingPanel`
+chrome, title-bar drag behavior, stacking and action button styles.
+Each feature still owns its settings and export lifecycle independently.
+Audio extraction has a separate bottom-right progress panel that survives
+closing its settings window or opening a different source. Crop, lossless and
+audio progress panels share display-only headers and output path lists.
+The audio failure prompt retains its pause, continue and cancel behavior.
+
+The main Extract/Export action is disabled while its task is starting or
+running (including finalization, cancellation and cleanup where applicable).
+It becomes eligible to re-enable immediately when the task reaches a terminal
+state, without an artificial delay. Existing input-validation constraints still
+apply. Opening or closing a settings panel must not cancel a running task.
 
 Lossless validation must precede the `export-start` event. Once media files
 have been published, finalization must not report a later cancellation or
@@ -96,6 +100,9 @@ separately. Existing source media, historical outputs, and non-task files
 must never be deleted by task-temp cleanup. Lossless publication rolls back
 links created by an incomplete output batch; an unexpected temporary-file
 cleanup failure after publication does not turn saved media into a failed job.
+Lossless success is presented after task-owned and optional post-export cleanup;
+warnings and notices are shown with the completed file list and cleared when
+a new export begins.
 
 
 ## Output settings behavior
