@@ -22,7 +22,6 @@
 
 .panel[data-fading="true"] {
   opacity: 0;
-  pointer-events: none;
 }
 
 .heading {
