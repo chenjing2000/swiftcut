@@ -49,19 +49,21 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
           </>
         ) : (
           <>
-            {state === 'success' ? (
+            {state === 'success' && (
               <>
                 <p>{t('{{count}} output file(s) saved.', { count: outputPaths.length })}</p>
                 <ExportOutputPaths paths={outputPaths} />
                 {notices.map((notice) => <p key={notice}>{notice}</p>)}
                 {warnings.map((warning) => <p key={warning} className={styles['warning']}>{warning}</p>)}
               </>
-            ) : state === 'failed' ? (
+            )}
+            {state === 'failed' && (
               <>
                 <p role="alert" className={styles['error']}>{t('Failed')}</p>
                 {error && <p className={styles['error']}>{error}</p>}
               </>
-            ) : <p>{t('Cancelled')}</p>}
+            )}
+            {state === 'cancelled' && <p>{t('Cancelled')}</p>}
             <div className={styles['actions']}><Button onClick={onDismiss}>{t('Dismiss')}</Button></div>
           </>
         )}
