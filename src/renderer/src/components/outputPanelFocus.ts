@@ -1,7 +1,6 @@
 // Only Output window ordering and keyboard ownership are shared here.
 // Each export feature owns its settings and job lifecycle independently.
-export type OutputPanel =
-  | 'audio-settings'
+export type OutputPanel = 'audio-settings'
   | 'audio-progress'
   | 'crop-settings'
   | 'crop-progress'
