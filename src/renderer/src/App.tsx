@@ -184,7 +184,7 @@ function App() {
   const [hideCompatPlayer, setHideCompatPlayer] = useState(false);
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [losslessExportState, setLosslessExportState] = useState<'running' | 'finalizing' | 'cancelling' | 'cancelled' | 'success'>();
-  const losslessExportDisabled = losslessExportState === 'running' || losslessExportState === 'finalizing' || losslessExportState === 'cancelling';
+  const losslessExportDisabled = losslessExportState != null && (['running', 'finalizing', 'cancelling'] as const).includes(losslessExportState);
   const losslessFinalizingRef = useRef(false);
   const [losslessExportPaths, setLosslessExportPaths] = useState<string[]>([]);
   const losslessCancelRequestedRef = useRef(false);
