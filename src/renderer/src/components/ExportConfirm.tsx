@@ -111,6 +111,7 @@ function ExportConfirm({
   visible,
   onClosePress,
   onExportConfirm,
+  exportDisabled,
   onChangeOutputFps,
   onIncreaseRotation,
   outputRotation,
@@ -135,6 +136,7 @@ function ExportConfirm({
   visible: boolean,
   onClosePress: () => void,
   onExportConfirm: () => void,
+  exportDisabled: boolean,
   onChangeOutputFps: () => void,
   onIncreaseRotation: () => void,
   outputRotation: number,
@@ -323,7 +325,7 @@ function ExportConfirm({
       title={t('Export Video Settings')}
       onClosePress={onClosePress}
       renderButton={() => (
-        <ExportButton segmentsToExport={segmentsToExport} areWeCutting={areWeCutting} onClick={withBlur(() => onExportConfirm())} />
+        <ExportButton segmentsToExport={segmentsToExport} areWeCutting={areWeCutting} disabled={exportDisabled} onClick={withBlur(() => onExportConfirm())} />
       )}
     >
       <table className={styles['options']}>
