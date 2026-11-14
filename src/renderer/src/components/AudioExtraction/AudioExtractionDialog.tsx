@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import * as Dialog from '../Dialog';
+import OutputFloatingPanel from '../OutputFloatingPanel';
 import actionStyles from '../OutputActionButtons.module.css';
-import chrome from '../OutputPanelChrome.module.css';
 import styles from './AudioExtractionDialog.module.css';
 import Checkbox from '../Checkbox';
 import type { FFprobeStream } from '../../../../common/ffprobe';
@@ -12,7 +11,6 @@ import type { SegmentToExport } from '../../types';
 import type { AudioExtractionMode, Mp3Quality } from '../../../../main/audioExtraction';
 import AudioExtractionProgress from './AudioExtractionProgress';
 import useAudioExtractionJob from './useAudioExtractionJob';
-import { isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
 
 interface AudioExtractionDialogProps {
   open: boolean;
@@ -33,7 +31,6 @@ const formatTime = (seconds: number) => {
 
 export default function AudioExtractionDialog({ open, onOpenChange, filePath, streams, segments, formatName }: AudioExtractionDialogProps) {
   const { t } = useTranslation();
-  const panelRef = useRef<HTMLDivElement>(null);
   const [trackSelection, setTrackSelection] = useState<{ source: string | undefined; indexes: number[] }>();
   // The long-lived job presenter survives source changes. A new source gets
   // its own default track without resetting the currently running job.
@@ -66,23 +63,6 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const outputCount = selectedCount * (multiple && outputMode === 'merge' ? 1 : segmentCount);
   const handleOpenChange = (nextOpen: boolean) => onOpenChange(nextOpen);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    return registerOutputPanel('audio');
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !isActiveOutputPanel('audio')) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      onOpenChange(false);
-    };
-    document.addEventListener('keydown', onKeyDown, { capture: true });
-    return () => document.removeEventListener('keydown', onKeyDown, { capture: true });
-  }, [open, onOpenChange]);
-
   const toggleStream = (streamIndex: number, checked: boolean) => {
     setTrackSelection({
       source: filePath,
@@ -94,36 +74,25 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
 
   return (
     <>
-      <Dialog.Root modal={false} open={open} onOpenChange={handleOpenChange}>
-        <Dialog.Portal>
-          {/* This settings panel uses the same unobscured floating presentation as Crop Video. */}
-          <Dialog.Content
-            ref={panelRef}
-            tabIndex={-1}
-            className={styles['floatingPanel']}
-            style={{ left: 'max(8px, calc(100% - 396px))', top: '48px', transform: 'none' }}
-            aria-describedby={undefined}
-            data-output-panel="audio"
-            onOpenAutoFocus={(event) => {
-              event.preventDefault();
-              panelRef.current?.focus();
-            }}
-            onEscapeKeyDown={(event) => event.preventDefault()}
-            onInteractOutside={(event) => event.preventDefault()}
-          >
-            <div data-dialog-drag-handle className={chrome['heading']}>
-              <Dialog.Title asChild>
-                <h2 className={chrome['title']}>{t('Extract Audio Settings')}</h2>
-              </Dialog.Title>
+      <OutputFloatingPanel
+        id="audio"
+        open={open}
+        title={t('Extract Audio Settings')}
+        onClose={() => handleOpenChange(false)}
+        contentClassName={styles['contents']}
+        footer={(
+          <>
               <button
                 type="button"
-                aria-label={t('Close')}
+                className={actionStyles['action']}
                 onClick={() => handleOpenChange(false)}
               >
-                ×
+                {t('Cancel')}
               </button>
-            </div>
-            <div className={chrome['contents']}>
+              <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
+          </>
+        )}
+      >
               {!isMp4 && <p role="alert" style={{ color: 'var(--red-10)', marginTop: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
 
               <section style={{ marginBottom: '1.2em' }}>
@@ -202,20 +171,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               </section>
 
               {isStarting && <div role="status" style={{ marginTop: '.6em' }}>{t('Preparing extraction...')}</div>}
-            </div>
-            <div className={chrome['footer']}>
-              <button
-                type="button"
-                className={actionStyles['action']}
-                onClick={() => handleOpenChange(false)}
-              >
-                {t('Cancel')}
-              </button>
-              <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      </OutputFloatingPanel>
       {job && (
         <AudioExtractionProgress
           key={job.id}
