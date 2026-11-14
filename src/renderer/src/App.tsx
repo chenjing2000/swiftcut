@@ -54,6 +54,7 @@ import { createCropExportPlan } from './videoCropExportPlanner';
 import { assertOutputFilename, getMediaOutputDir } from '../../common/mediaWorkspace.js';
 import { getLosslessExportPlan } from './losslessExportPlan';
 import { getLosslessCommitTargets, getLosslessPublishedPaths } from './losslessExportPublication';
+import { classifyLosslessError, emitLosslessCompletionSafely } from './losslessExportOutcome';
 import { commitMediaOutputs } from './util/commitMediaOutputs';
 import { resolveVideoCropSegments } from './videoCropSegments';
 import { getSourceDisplayRotation } from './videoCropRotation';
@@ -1352,7 +1353,10 @@ function App() {
       // Keep the job locked until optional post-export cleanup and the
       // task-owned workspace cleanup finish.
       setExportCount((c) => c + 1);
-      emitEvent({ eventName: 'export-complete', paths: exportedPaths });
+      emitLosslessCompletionSafely(
+        () => emitEvent({ eventName: 'export-complete', paths: exportedPaths }),
+        (error) => console.error('Unable to notify Lossless export completion', error),
+      );
 
       // Post-export cleanup is separate from media publication: a cleanup
       // failure must never turn successfully saved media into a failed export.
@@ -1366,15 +1370,23 @@ function App() {
         }
       }
     } catch (err) {
-      if (exportSucceeded) {
+      const outcome = classifyLosslessError({
+        published: exportSucceeded,
+        cancelRequested: losslessCancelRequestedRef.current,
+        aborted: isAbortedError(err),
+      });
+      if (outcome === 'published') {
         // Media publication cannot be rolled back by a later UI or cleanup error.
         console.error('Lossless export post-publication operation failed', err);
         errorToast(i18n.t('Export finished, but post-export processing failed'));
         return;
       }
-      if (exportStarted) emitEvent({ eventName: 'export-complete' });
+      if (exportStarted) emitLosslessCompletionSafely(
+        () => emitEvent({ eventName: 'export-complete' }),
+        (error) => console.error('Unable to notify Lossless export interruption', error),
+      );
 
-      if (losslessCancelRequestedRef.current || isAbortedError(err)) {
+      if (outcome === 'cancelled') {
         losslessCancelRequestedRef.current = true;
         return;
       }
