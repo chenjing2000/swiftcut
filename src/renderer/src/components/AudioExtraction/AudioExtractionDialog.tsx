@@ -86,12 +86,12 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
               className={actionStyles['action']}
               onClick={() => handleOpenChange(false)}
             >
-        {t('Cancel')}
-      </button>
-      <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
-  </>
-)}
->
+              {t('Cancel')}
+            </button>
+            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
+          </>
+        )}
+      >
       {!isMp4 && <p role="alert" style={{ color: 'var(--red-10)', marginTop: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
 
       <section style={{ marginBottom: '1.2em' }}>
