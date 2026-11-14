@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-/** Keep a submit action locked until one second after its job becomes idle. */
+// Keep submit actions locked until one second after their jobs become idle.
 export default function useExportActionDisabled(busy: boolean) {
   const [cooldown, setCooldown] = useState(busy);
   const wasBusyRef = useRef(busy);
