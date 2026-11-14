@@ -1,11 +1,11 @@
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 
 import type { CropAspectPreset, CropOutputMode, CropRect, CropTimeRange, CropVideoConfig } from '../../../../common/videoCropTypes.js';
 import { validateCropRect } from '../../../../common/videoCropValidation.js';
-import { alignCropSize, cropPointToScreen, getCropDisplayTransform, getCropTargetAspect, getCropVisibleSize, sanitizeCropDigits, screenToCropPoint } from '../../videoCropGeometry';
+import { alignCropSize, cropPointToScreen, getCropDisplayTransform, getCropTargetAspect, getCropVisibleSize, screenToCropPoint } from '../../videoCropGeometry';
 import type { CropFrameGeometry, CropViewport } from '../../videoCropGeometry';
 import { getDefaultCropTimeRange } from '../../videoCropSegments';
 import type { CropSourceSegment } from '../../videoCropSegments';
@@ -15,6 +15,8 @@ import chrome from '../OutputPanelChrome.module.css';
 import useOutputPanelDrag from '../useOutputPanelDrag';
 import { isActiveOutputPanel, registerOutputPanel } from '../outputPanelFocus';
 import actionStyles from '../OutputActionButtons.module.css';
+import CropNumericField from './CropNumericField';
+import VideoCropSelectionOverlay from './VideoCropSelectionOverlay';
 
 interface Props {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -44,49 +46,6 @@ const makeFullRect = (frame: CropFrameGeometry): CropRect => {
   const visible = getCropVisibleSize(frame);
   return { x: 0, y: 0, width: visible.width, height: visible.height };
 };
-
-function CropNumericField({ label, value, onCommit, disabled = false }: {
-  label: string;
-  value: number;
-  onCommit: (value: number) => void;
-  disabled?: boolean;
-}) {
-  const id = useId();
-  // Undefined means display the latest committed value without a syncing effect.
-  const [draft, setDraft] = useState<string>();
-  const commit = () => {
-    const next = Number(draft);
-    if (draft && Number.isSafeInteger(next)) onCommit(next);
-    setDraft(undefined);
-  };
-
-  return (
-    <div className={styles['numberField']}>
-      <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        type="text"
-        disabled={disabled}
-        inputMode="numeric"
-        pattern="[0-9]*"
-        aria-label={label}
-        value={draft ?? String(value)}
-        onFocus={() => setDraft(String(value))}
-        onChange={(event) => setDraft(sanitizeCropDigits(event.target.value))}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.currentTarget.blur();
-          } else if (event.key === 'Escape') {
-            setDraft(undefined);
-            event.currentTarget.blur();
-            event.stopPropagation();
-          }
-        }}
-      />
-    </div>
-  );
-}
 
 export default function VideoCropWorkspace({ containerRef, frame, videoFit, segments, selectedSegmentCount, duration, onClose, onExport, fullscreen, onToggleFullscreen, onPreviewChange }: Props) {
   type Handle = 'draw' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e';
@@ -290,17 +249,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     return () => document.removeEventListener('keydown', keydown, { capture: true });
   }, [bounds.height, bounds.width, focused, fullscreen, onClose, panelDragRef, stopPanelDrag]);
 
-  const handles: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
-  const handleStyles: Record<string, CSSProperties> = {
-    nw: { left: 0, top: 0 },
-    n: { left: '50%', top: 0 },
-    ne: { left: '100%', top: 0 },
-    e: { left: '100%', top: '50%' },
-    se: { left: '100%', top: '100%' },
-    s: { left: '50%', top: '100%' },
-    sw: { left: 0, top: '100%' },
-    w: { left: 0, top: '50%' },
-  };
   const multiple = timeRange === 'selected' && selectedSegmentCount > 1;
 
   const submitExport = async () => {
@@ -337,44 +285,21 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   return (
     <>
       {previewMode === 'edit' && (
-        <div className={styles['overlay']} data-output-panel="crop">
-          <div
-            ref={surfaceRef}
-            className={styles['surface']}
-            style={{
-              left: layout.drawnLeft,
-              top: layout.drawnTop,
-              width: layout.drawnWidth,
-              height: layout.drawnHeight,
-            }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-            onDoubleClick={(event) => {
-              const target = event.target as HTMLElement;
-              if (target.dataset['cropHandle'] && target.dataset['cropHandle'] !== 'move') return;
-              pointerDragRef.current = undefined;
-              onToggleFullscreen();
-              event.stopPropagation();
-            }}
-            role="presentation"
-          >
-            <div
-              className={styles['selection']}
-              data-crop-handle="move"
-              style={{
-                ...displayRect,
-                left: displayRect.left - layout.drawnLeft,
-                top: displayRect.top - layout.drawnTop,
-              }}
-            >
-              {handles.map((handle) => (
-                <span key={handle} data-crop-handle={handle} className={styles['handle']} style={handleStyles[handle]} />
-              ))}
-            </div>
-          </div>
-        </div>
+        <VideoCropSelectionOverlay
+          surfaceRef={surfaceRef}
+          layout={layout}
+          displayRect={displayRect}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onDoubleClick={(event) => {
+            const target = event.target as HTMLElement;
+            if (target.dataset['cropHandle'] && target.dataset['cropHandle'] !== 'move') return;
+            pointerDragRef.current = undefined;
+            onToggleFullscreen();
+            event.stopPropagation();
+          }}
+        />
       )}
       {createPortal(
         <section
