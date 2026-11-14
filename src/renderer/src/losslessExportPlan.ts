@@ -9,16 +9,16 @@ interface LosslessExportPlanOptions {
   segmentsToChaptersOnly: boolean;
 }
 
-/**
- * Build deterministic names before starting FFmpeg. The caller still owns
- * temporary workspaces, cancellation, merging and safe publication.
- */
+// Build deterministic names before starting FFmpeg. The caller still owns
+// temporary workspaces, cancellation, merging and safe publication.
 export function getLosslessExportPlan({
   sourcePath, extension, segmentCount, areWeCutting, willMerge, segmentsToChaptersOnly,
 }: LosslessExportPlanOptions) {
   const count = Math.max(1, segmentCount);
-  const mode = segmentsToChaptersOnly ? 'chapters'
-    : willMerge ? 'merge' : areWeCutting ? 'segment' : 'entire';
+  let mode: 'chapters' | 'merge' | 'segment' | 'entire' = 'entire';
+  if (segmentsToChaptersOnly) mode = 'chapters';
+  else if (willMerge) mode = 'merge';
+  else if (areWeCutting) mode = 'segment';
   const filename = getMediaOutputName({
     sourcePath,
     kind: 'lossless',
