@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import OutputFloatingPanel from '../OutputFloatingPanel';
@@ -6,6 +6,7 @@ import actionStyles from '../OutputActionButtons.module.css';
 import styles from './AudioExtractionDialog.module.css';
 import Checkbox from '../Checkbox';
 import type { FFprobeStream } from '../../../../common/ffprobe';
+import { canExtractAudio } from '../../../../common/mediaInputSupport';
 import type { SegmentToExport } from '../../types';
 
 import type { AudioExtractionMode, Mp3Quality } from '../../../../main/audioExtraction';
@@ -18,7 +19,6 @@ interface AudioExtractionDialogProps {
   filePath: string | undefined;
   streams: FFprobeStream[];
   segments: SegmentToExport[];
-  formatName: string | undefined;
 }
 
 const formatTime = (seconds: number) => {
@@ -29,7 +29,7 @@ const formatTime = (seconds: number) => {
   return [hours, minutes, secs].map((part) => String(part).padStart(2, '0')).join(':');
 };
 
-export default function AudioExtractionDialog({ open, onOpenChange, filePath, streams, segments, formatName }: AudioExtractionDialogProps) {
+export default function AudioExtractionDialog({ open, onOpenChange, filePath, streams, segments }: AudioExtractionDialogProps) {
   const { t } = useTranslation();
   const [trackSelection, setTrackSelection] = useState<{ source: string | undefined; indexes: number[] }>();
   // The long-lived job presenter survives source changes. A new source gets
@@ -52,11 +52,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   const multiple = effectiveTimeRange === 'selected' && segments.length > 1;
   const { job, isStarting, isBusy, startExtraction, cancelExtraction, dismissJob } = useAudioExtractionJob({ filePath, selectedStreamIndexes, mode, quality, segments: effectiveSegments, outputMode });
 
-  const isMp4 = useMemo(() => {
-    const extensionIsMp4 = filePath?.toLowerCase().endsWith('.mp4') ?? false;
-    const containerIsMp4 = (formatName ?? '').split(',').some((format) => ['mov', 'mp4', 'm4a', '3gp', '3g2', 'mj2'].includes(format.trim()));
-    return extensionIsMp4 && containerIsMp4;
-  }, [filePath, formatName]);
+  const isSupportedInput = canExtractAudio(filePath, streams);
 
   const selectedCount = selectedStreamIndexes.length;
   const segmentCount = Math.max(effectiveSegments.length, 1);
@@ -87,11 +83,11 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             >
               {t('Cancel')}
             </button>
-            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isMp4 || selectedCount === 0 || isBusy || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
+            <button type="button" className={`${actionStyles['action']} ${actionStyles['primary']}`} disabled={!isSupportedInput || selectedCount === 0 || isBusy || (effectiveTimeRange === 'selected' && segments.length === 0)} onClick={() => { startExtraction().catch(console.error); }}>{t('Extract')}</button>
           </>
         )}
       >
-        {!isMp4 && <p role="alert" style={{ color: 'var(--red-10)', marginTop: 0 }}>{t('This feature currently supports MP4 files only.')}</p>}
+        {!isSupportedInput && streams.length > 0 && <p role="alert" style={{ color: 'var(--red-10)', marginTop: 0 }}>{t('Unsupported media input format.')}</p>}
 
         <section style={{ marginBottom: '1.2em' }}>
           <strong>{t('Audio tracks')}</strong>
@@ -121,7 +117,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
           <label className={styles['row']} htmlFor="audio-time-range"><span>{t('Time range')}</span>
             <select id="audio-time-range" value={effectiveTimeRange} disabled={isBusy} onChange={(event) => setTimeRange(event.target.value as 'selected' | 'entire')}>
               <option value="selected" disabled={segments.length === 0}>{t('Selected segments')}</option>
-              <option value="entire">{t('Entire video')}</option>
+              <option value="entire">{t('Entire audio')}</option>
             </select>
           </label>
           <label className={styles['row']} htmlFor="audio-output-mode"><span>{t('Output mode')}</span>
@@ -156,7 +152,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
             })}
           </p>
           {effectiveSegments.length === 0 ? (
-            <div>{t('Entire video')}</div>
+            <div>{t('Entire audio')}</div>
           ) : (
             <div style={{ maxHeight: '8em', overflowY: 'auto', paddingLeft: '1.5em' }}>
               {effectiveSegments.map((segment, index) => (
