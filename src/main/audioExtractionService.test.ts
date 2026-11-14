@@ -57,20 +57,25 @@ describe('Audio extraction task service', () => {
     vi.clearAllMocks();
     mocks.runFfprobe.mockImplementation(async (args) => {
       const targetPath = args.at(-1) ?? '';
-      const isInput = targetPath.toLowerCase().endsWith('.mp4');
+      const isInput = targetPath === inputPath;
       const outputExtension = targetPath.split('.').at(-1)?.toLowerCase() ?? 'mp3';
       const outputCodecByExtension: Record<string, string> = {
         m4a: 'aac',
         mp3: 'mp3',
+        flac: 'flac',
+        ogg: 'vorbis',
+        wav: 'pcm_s16le',
         ac3: 'ac3',
         eac3: 'eac3',
         opus: 'opus',
         mka: 'vorbis',
       };
+      const inputExtension = targetPath.split('.').at(-1)?.toLowerCase();
+      const isAudioOnly = ['flac', 'wav', 'mp3', 'm4a', 'ogg', 'opus', 'wma', 'aac', 'aif', 'aiff'].includes(inputExtension ?? '');
       const result = isInput
         ? {
-          format: { format_name: 'mov,mp4,m4a,3gp,3g2,mj2', duration: '12' },
-          streams: [
+          format: { format_name: isAudioOnly ? (inputExtension ?? '') : 'mov,mp4,m4a,3gp,3g2,mj2', duration: '12' },
+          streams: isAudioOnly ? [{ index: 0, codec_type: 'audio', codec_name: outputCodecByExtension[inputExtension ?? ''] ?? 'aac' }] : [
             { index: 0, codec_type: 'video', codec_name: 'h264' },
             { index: 1, codec_type: 'audio', codec_name: 'aac' },
             { index: 2, codec_type: 'audio', codec_name: 'ac3' },
@@ -534,15 +539,48 @@ describe('Audio extraction task service', () => {
     })).rejects.toThrow('is not an audio track');
   });
 
-  test('rejects a non-MP4 input before starting FFmpeg', async () => {
-    const wrongInput = join(testDirectory, 'lecture.mov');
-    await writeFile(wrongInput, 'not an MP4 extension');
+  test('extracts audio from a MOV video using the original AAC stream', async () => {
+    inputPath = join(testDirectory, 'iphone.MOV');
+    await writeFile(inputPath, 'mock MOV input');
+    const id = await startAudioExtraction({ inputPath, streamIndexes: [1], mode: 'original' });
+    await waitForJob(id, 'success');
+    expect(getAudioExtractionStatus(id)?.outputPaths[0]).toMatch(/iphone_audio\.m4a$/u);
+    expect(mocks.runScopedFfmpeg.mock.calls[0]![0].ffmpegArgs).toContain('copy');
+  });
 
+  test('extracts and re-encodes a standalone FLAC audio source', async () => {
+    inputPath = join(testDirectory, 'music.flac');
+    await writeFile(inputPath, 'mock FLAC input');
+    const original = await startAudioExtraction({ inputPath, streamIndexes: [0], mode: 'original' });
+    await waitForJob(original, 'success');
+    expect(getAudioExtractionStatus(original)?.outputPaths[0]).toMatch(/music_audio\.flac$/u);
+
+    const reencoded = await startAudioExtraction({ inputPath, streamIndexes: [0], mode: 'mp3' });
+    await waitForJob(reencoded, 'success');
+    expect(getAudioExtractionStatus(reencoded)?.outputPaths[0]).toMatch(/music_audio\.mp3$/u);
+  });
+
+  test('rejects an unsupported extension before starting FFmpeg', async () => {
+    const wrongInput = join(testDirectory, 'lecture.txt');
+    await writeFile(wrongInput, 'not media');
     await expect(startAudioExtraction({
       inputPath: wrongInput,
       streamIndexes: [1],
-      quality: 'vbr',
-    })).rejects.toThrow('Only local MP4 files are supported');
+    })).rejects.toThrow('Unsupported media input format');
+    expect(mocks.runScopedFfmpeg).not.toHaveBeenCalled();
+  });
+
+  test('rejects files that do not have an audio stream', async () => {
+    inputPath = join(testDirectory, 'silent.mov');
+    await writeFile(inputPath, 'mock silent video');
+    mocks.runFfprobe.mockImplementationOnce(async () => ({
+      stdout: Buffer.from(JSON.stringify({
+        format: { format_name: 'mov,mp4,m4a,3gp,3g2,mj2', duration: '12' },
+        streams: [{ index: 0, codec_type: 'video', codec_name: 'h264' }],
+      })),
+    }));
+    await expect(startAudioExtraction({ inputPath, streamIndexes: [1] }))
+      .rejects.toThrow('Input has no supported audio stream');
     expect(mocks.runScopedFfmpeg).not.toHaveBeenCalled();
   });
 });
