@@ -35,7 +35,7 @@ export default function OutputFloatingPanel({
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const {
-    position, resetPosition, headingRef, stopDrag,
+    position, resetPosition, headingRef,
     onPointerDown, onPointerMove, onPointerUp,
   } = useOutputPanelDrag(panelRef);
 
@@ -54,7 +54,7 @@ export default function OutputFloatingPanel({
     const keydown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || !isActiveOutputPanel(id)) return;
       const otherDialog = event.target instanceof Element ? event.target.closest('[role="dialog"]') : null;
-      if (otherDialog && !otherDialog.hasAttribute('data-output-panel')) return;
+      if (otherDialog && !(otherDialog as HTMLElement).dataset['outputPanel']) return;
       if (ignoreEscapeFromInputs && (event.target instanceof HTMLInputElement
         || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement)) return;
 
