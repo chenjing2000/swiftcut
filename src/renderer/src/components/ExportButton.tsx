@@ -13,6 +13,7 @@ interface Props {
   segmentsToExport: SegmentToExport[],
   areWeCutting: boolean,
   onClick: MouseEventHandler<HTMLButtonElement>,
+  disabled?: boolean;
   style?: CSSProperties,
 }
 
@@ -21,6 +22,7 @@ const ExportButton = forwardRef<HTMLButtonElement, Props>(({
   segmentsToExport,
   areWeCutting,
   onClick,
+  disabled = false,
   style,
 }, ref) => {
   const CutIcon = areWeCutting ? FiScissors : FaFileExport;
@@ -45,6 +47,7 @@ const ExportButton = forwardRef<HTMLButtonElement, Props>(({
       className={[...(simpleMode ? ['export-animation'] : []), actionStyles['action'], actionStyles['primary']].join(' ')}
       style={style}
       onClick={onClick}
+      disabled={disabled}
       title={title}
     >
       <CutIcon
