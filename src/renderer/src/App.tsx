@@ -1328,12 +1328,17 @@ function App() {
       const committedPaths = await commitMediaOutputs({ outputDir: losslessDirectory, outputs: outputsToCommit });
       if (areWeCutting) notices.add(i18n.t('Cutpoints may be inaccurate.'));
 
-      const exportedPaths = getLosslessPublishedPaths({
+      const publishedResult = getLosslessPublishedPaths({
         committedPaths,
         willMerge,
         autoDeleteMergedSegments,
         cutFileCount: outFiles.length,
       });
+      if (publishedResult.missingMergedOutput) {
+        console.error('Lossless merged output missing from committed results', { committedPaths, cutFileCount: outFiles.length });
+        errorToast(i18n.t('Export finished, but the merged output could not be identified'));
+      }
+      const exportedPaths = publishedResult.paths;
       invariant(exportedPaths.length > 0);
       setLosslessExportPaths(committedPaths);
       setLosslessExportState('success');
