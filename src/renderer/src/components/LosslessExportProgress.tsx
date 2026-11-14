@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import Button from './Button';
-import { ExportOutputPaths, ExportProgressHeader } from './ExportProgressParts';
+import { ExportOutputPaths } from './ExportProgressParts';
+import OutputProgressPanel from './OutputProgressPanel';
 import styles from './VideoCrop/CropExportProgress.module.css';
 
 interface Props {
@@ -24,8 +25,13 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
   const displayState = displayStates[state];
   const percent = progress == null ? undefined : Math.round(Math.max(0, Math.min(1, progress)) * 100);
   return (
-    <aside className={styles['panel']} role="status" aria-live="polite" aria-label={t('Export Video Settings')}>
-      <ExportProgressHeader title={t('Export Video')} label={t(stateLabel)} state={displayState} />
+    <OutputProgressPanel
+      id="lossless-progress"
+      ariaLabel={t('Export Video Settings')}
+      title={t('Export Video')}
+      label={t(stateLabel)}
+      state={displayState}
+    >
       <div className={styles['contents']}>
         {active ? (
           <>
@@ -52,6 +58,6 @@ export default function LosslessExportProgress({ state, text, progress, outputPa
           </>
         )}
       </div>
-    </aside>
+    </OutputProgressPanel>
   );
 }
