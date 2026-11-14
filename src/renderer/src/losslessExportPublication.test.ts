@@ -52,13 +52,25 @@ describe('Lossless export publication', () => {
     ]);
   });
 
+  it('rejects a missing staged merge before publication is attempted', () => {
+    expect(() => getLosslessCommitTargets({
+      outFiles,
+      cutFileNames,
+      willMerge: true,
+      autoDeleteMergedSegments: true,
+      mergedOutFilePath: undefined,
+      mergedFilename: 'Movie_segments_merge.mp4',
+      extraOutputs,
+    })).toThrow('Missing staged Lossless merged output');
+  });
+
   it('reports all committed paths without merge', () => {
     expect(getLosslessPublishedPaths({
       committedPaths: ['a.mp4', 'b.mp4', 'subtitle.srt'],
       willMerge: false,
       autoDeleteMergedSegments: false,
       cutFileCount: 2,
-    })).toStrictEqual(['a.mp4', 'b.mp4', 'subtitle.srt']);
+    })).toStrictEqual({ paths: ['a.mp4', 'b.mp4', 'subtitle.srt'], missingMergedOutput: false });
   });
 
   it('reports the merged file, not the intermediate segments or extra tracks', () => {
@@ -67,21 +79,21 @@ describe('Lossless export publication', () => {
       willMerge: true,
       autoDeleteMergedSegments: false,
       cutFileCount: 2,
-    })).toStrictEqual(['merged.mp4']);
+    })).toStrictEqual({ paths: ['merged.mp4'], missingMergedOutput: false });
     expect(getLosslessPublishedPaths({
       committedPaths: ['merged.mp4', 'subtitle.srt'],
       willMerge: true,
       autoDeleteMergedSegments: true,
       cutFileCount: 2,
-    })).toStrictEqual(['merged.mp4']);
+    })).toStrictEqual({ paths: ['merged.mp4'], missingMergedOutput: false });
   });
 
-  it('preserves existing fallback when a merged output is missing', () => {
+  it('flags an unexpected missing published merge and preserves committed paths', () => {
     expect(getLosslessPublishedPaths({
       committedPaths: ['other.mp4'],
       willMerge: true,
       autoDeleteMergedSegments: false,
       cutFileCount: 2,
-    })).toStrictEqual(['other.mp4']);
+    })).toStrictEqual({ paths: ['other.mp4'], missingMergedOutput: true });
   });
 });
