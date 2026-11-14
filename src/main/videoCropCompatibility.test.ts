@@ -74,7 +74,6 @@ function exportCrop(plan: CropExportPlan, path: string) {
 }
 
 describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
-
   it('crops a MOV input with H.264 video and AAC audio', () => {
     const dir = mkdtempSync(join(tmpdir(), 'crop-mov-'));
     try {
