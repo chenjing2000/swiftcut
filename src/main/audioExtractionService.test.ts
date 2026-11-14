@@ -257,7 +257,7 @@ describe('Audio extraction task service', () => {
     }
   });
 
-  test('uses Matroska Audio as the fallback container for other original codecs', async () => {
+  test('uses an OGG container for original Vorbis audio', async () => {
     mocks.runFfprobe.mockImplementationOnce(async () => ({
       stdout: Buffer.from(JSON.stringify({
         format: { format_name: 'mov,mp4,m4a,3gp,3g2,mj2', duration: '12' },
@@ -276,8 +276,8 @@ describe('Audio extraction task service', () => {
 
     await waitForJob(id, 'success');
     const status = getAudioExtractionStatus(id)!;
-    expect(status.outputPaths).toStrictEqual([join(testDirectory, 'lecture', 'Audio', 'lecture_audio.mka')]);
-    expect(mocks.runScopedFfmpeg.mock.calls[0]![0].ffmpegArgs).toContain('matroska');
+    expect(status.outputPaths).toStrictEqual([join(testDirectory, 'lecture', 'Audio', 'lecture_audio.ogg')]);
+    expect(mocks.runScopedFfmpeg.mock.calls[0]![0].ffmpegArgs).toContain('ogg');
   });
 
   test('does not overwrite an existing Original-mode output file', async () => {
