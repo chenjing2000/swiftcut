@@ -24,7 +24,6 @@ import type { AvoidNegativeTs, PreserveMetadata } from '../../../common/types';
 import TextInput from './TextInput';
 import type { UseSegments } from '../hooks/useSegments';
 import ExportSheet from './ExportSheet';
-import LosslessOutputFields from './LosslessOutputFields';
 import type { LossyMode } from '../../../main';
 import AnimatedTr from './AnimatedTr';
 import mainApi from '../mainApi';
@@ -117,11 +116,6 @@ function ExportConfirm({
   outputRotation,
   outFormat,
   renderOutFmt,
-  outputDir,
-  onOutputDirChange,
-  onChooseOutputDir,
-  outputFilename,
-  onOutputFilenameChange,
   numStreamsTotal,
   numStreamsToCopy,
   onShowStreamsSelectorClick,
@@ -146,11 +140,6 @@ function ExportConfirm({
   outputRotation: number,
   outFormat: string | undefined,
   renderOutFmt: (style: CSSProperties) => ReactNode,
-  outputDir: string | undefined,
-  onOutputDirChange: (value: string) => void,
-  onChooseOutputDir: () => void,
-  outputFilename: string,
-  onOutputFilenameChange: (value: string) => void,
   numStreamsTotal: number,
   numStreamsToCopy: number,
   onShowStreamsSelectorClick: () => void,
@@ -393,17 +382,6 @@ function ExportConfirm({
             </td>
           </tr>
 
-          <tr>
-            <td colSpan={3}>
-              <LosslessOutputFields
-                directory={outputDir}
-                filename={outputFilename}
-                onDirectoryChange={onOutputDirChange}
-                onFilenameChange={onOutputFilenameChange}
-                onChooseDirectory={onChooseOutputDir}
-              />
-            </td>
-          </tr>
         </tbody>
       </table>
 
