@@ -8,6 +8,8 @@ import './main.css';
 import NotificationHost from './notifications/NotificationHost';
 import OutputFloatingPanel from './components/OutputFloatingPanel';
 import OutputProgressPanel from './components/OutputProgressPanel';
+import Swal from 'sweetalert2/dist/sweetalert2.js';
+import './swal2.scss';
 import { enqueueNotification, requestConfirmation, showErrorNotification } from './notifications/notificationStore';
 import type { NotificationType } from './notifications/notificationStore';
 
@@ -61,11 +63,24 @@ function TestHarness() {
       handleNotification(detail).catch((error: unknown) => console.error('Notification E2E event failed', error));
     }
 
+    const onSweetAlert = () => {
+      delete document.documentElement.dataset['e2eSwalResult'];
+      Swal.fire({
+        target: '#swal2-container-wrapper',
+        title: 'SweetAlert compatibility check',
+        text: 'The next blocking notification must remain clickable.',
+        showCancelButton: true,
+      }).then((result) => {
+        document.documentElement.dataset['e2eSwalResult'] = result.isConfirmed ? 'confirm' : 'cancel';
+      }).catch((error: unknown) => console.error('SweetAlert E2E failed', error));
+    };
+    document.addEventListener('swiftcut-e2e-swal', onSweetAlert);
     const onOutputPanels = (event: Event) => { setShowOutputPanels(Boolean((event as CustomEvent<boolean>).detail)); };
     document.addEventListener('swiftcut-e2e-output-panels', onOutputPanels);
     document.addEventListener('swiftcut-e2e-notification', onTestNotification);
     document.documentElement.dataset['e2eActionsReady'] = 'true';
     return () => {
+      document.removeEventListener('swiftcut-e2e-swal', onSweetAlert);
       document.removeEventListener('swiftcut-e2e-output-panels', onOutputPanels);
       document.removeEventListener('swiftcut-e2e-notification', onTestNotification);
       delete document.documentElement.dataset['e2eActionsReady'];
@@ -87,6 +102,7 @@ function TestHarness() {
         )}
         <NotificationHost />
       </div>
+      <div id="swal2-container-wrapper" />
     </Theme>
   );
 }
