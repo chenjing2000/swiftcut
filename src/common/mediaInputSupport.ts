@@ -10,7 +10,7 @@ export const commonAudioExtensions = [
   'wma', 'aif', 'aiff',
 ] as const;
 
-export type MediaInputStream = { codec_type?: string; codec_name?: string };
+export interface MediaInputStream { codec_type?: string; codec_name?: string }
 
 const videoExtensions: ReadonlySet<string> = new Set(commonVideoExtensions);
 const audioExtensions: ReadonlySet<string> = new Set(commonAudioExtensions);
