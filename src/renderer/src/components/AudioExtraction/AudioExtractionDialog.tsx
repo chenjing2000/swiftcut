@@ -79,7 +79,6 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
         open={open}
         title={t('Extract Audio Settings')}
         onClose={() => handleOpenChange(false)}
-        contentClassName={styles['contents']}
         footer={(
           <>
               <button
