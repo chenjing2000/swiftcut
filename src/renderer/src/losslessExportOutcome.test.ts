@@ -1,6 +1,6 @@
 // eslint-disable-next-line import-js/no-extraneous-dependencies
 import { describe, expect, it, vi } from 'vitest';
-import { classifyLosslessError, emitLosslessCompletionSafely } from './losslessExportOutcome';
+import { classifyLosslessError, emitLosslessCompletionSafely, getLosslessExportFinalState } from './losslessExportOutcome';
 
 describe('Lossless export error outcome', () => {
   it('treats a pre-publication abort as cancelled', () => {
@@ -36,5 +36,23 @@ describe('Lossless completion notification', () => {
     const reportError = vi.fn<(error: unknown) => void>();
     expect(() => emitLosslessCompletionSafely(emit, reportError)).not.toThrow();
     expect(reportError).toHaveBeenCalledWith(failure);
+  });
+});
+
+describe('Lossless export final progress state', () => {
+  it('preserves a failed started export until dismissed', () => {
+    expect(getLosslessExportFinalState({ started: true, published: false, cancelled: false })).toBe('failed');
+  });
+
+  it('distinguishes cancellation from failure', () => {
+    expect(getLosslessExportFinalState({ started: true, published: false, cancelled: true })).toBe('cancelled');
+  });
+
+  it('never downgrades published media to failure', () => {
+    expect(getLosslessExportFinalState({ started: true, published: true, cancelled: true })).toBe('success');
+  });
+
+  it('does not display a progress result for pre-start validation failures', () => {
+    expect(getLosslessExportFinalState({ started: false, published: false, cancelled: false })).toBeUndefined();
   });
 });
