@@ -23,8 +23,8 @@ describe('Lossless export error outcome', () => {
 
 describe('Lossless completion notification', () => {
   it('emits the event once when the listener succeeds', () => {
-    const emit = vi.fn();
-    const reportError = vi.fn();
+    const emit = vi.fn<() => void>();
+    const reportError = vi.fn<(error: unknown) => void>();
     emitLosslessCompletionSafely(emit, reportError);
     expect(emit).toHaveBeenCalledOnce();
     expect(reportError).not.toHaveBeenCalled();
@@ -32,8 +32,8 @@ describe('Lossless completion notification', () => {
 
   it('reports listener errors without throwing or blocking subsequent task cleanup', () => {
     const failure = new Error('listener failed');
-    const emit = vi.fn(() => { throw failure; });
-    const reportError = vi.fn();
+    const emit = vi.fn<() => void>(() => { throw failure; });
+    const reportError = vi.fn<(error: unknown) => void>();
     expect(() => emitLosslessCompletionSafely(emit, reportError)).not.toThrow();
     expect(reportError).toHaveBeenCalledWith(failure);
   });
