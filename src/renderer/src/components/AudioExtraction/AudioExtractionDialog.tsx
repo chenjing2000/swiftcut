@@ -74,7 +74,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
   return (
     <>
       <OutputFloatingPanel
-        id="audio"
+        id="audio-settings"
         open={open}
         title={t('Extract Audio Settings')}
         onClose={() => onOpenChange(false)}
