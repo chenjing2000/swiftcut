@@ -18,13 +18,13 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   footer: ReactNode;
-  width?: CSSProperties['width'];
-  className?: string;
-  contentClassName?: string;
+  width?: CSSProperties['width'] | undefined;
+  className?: string | undefined;
+  contentClassName?: string | undefined;
   hidden?: boolean;
   // Return 'handled' when a feature consumes Escape, or 'ignore' when
   // the browser (e.g. video fullscreen) should process it instead.
-  onEscape?: () => 'handled' | 'ignore' | void;
+  onEscape?: () => 'handled' | 'ignore' | undefined;
   ignoreEscapeFromInputs?: boolean;
 }
 
