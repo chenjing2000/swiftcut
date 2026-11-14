@@ -9,7 +9,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('Output floating window order', () => {
   it('brings the newly opened or activated window to the front', () => {
-    vi.stubGlobal('document', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    vi.stubGlobal('document', { addEventListener: vi.fn<() => void>(), removeEventListener: vi.fn<() => void>() });
     const closeAudio = registerOutputPanel('audio');
     const closeCrop = registerOutputPanel('crop');
     const closeLossless = registerOutputPanel('lossless');
@@ -37,7 +37,7 @@ describe('Output floating window order', () => {
   });
 
   it('notifies subscribers only when panel ordering changes', () => {
-    vi.stubGlobal('document', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    vi.stubGlobal('document', { addEventListener: vi.fn<() => void>(), removeEventListener: vi.fn<() => void>() });
     const changes: number[] = [];
     const unsubscribe = subscribeOutputPanels(() => { changes.push(getOutputPanelsRevision()); });
     const closeAudio = registerOutputPanel('audio');
