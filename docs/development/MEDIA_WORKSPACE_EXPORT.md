@@ -121,3 +121,29 @@ segment files are temporary and are removed after merging. Output format
 defaults to Original format (stream copy); MP3 (re-encode) offers VBR
 (LAME Quality 2), 128 kbps, 192 kbps, and 320 kbps. The format and quality
 controls use matching right-aligned dropdown widths.
+
+## Common media inputs (November 2026)
+
+The Open File dialog remains unfiltered. For the three Output workflows, the
+reviewed common video inputs are MP4, MOV (including iPhone recordings), MKV,
+AVI, WebM, M4V, MPG/MPEG, TS/M2TS/MTS, and WMV. Extract Audio additionally
+accepts MP3, M4A, AAC, WAV, FLAC, OGG, Opus, WMA, and AIFF/AIF.
+
+An allowed filename extension is only an initial check; FFprobe must identify
+the actual audio or video streams. Extract Audio requires an audio stream and
+does not require a video stream. Crop Video requires a valid video stream and
+duration. MOV **input** is in scope; the existing output-container choices
+are unchanged. Lossless Export still depends on whether the selected output
+container can mux the source's existing codecs.
+
+Extract Audio's **Entire audio** label applies to an audio stream extracted
+from either a video or an audio-only source. **Original format** always means
+audio stream copy, with a suitable audio container chosen for each codec;
+it must never silently transcode. For uncommon codecs, Matroska Audio is
+the fallback when muxing is supported. Stream-copy segment boundaries are
+packet-based and may not be sample-accurate.
+
+iPhone MOV compatibility requires real FFmpeg and Windows UI verification,
+especially for HEVC, orientation metadata, variable frame rate, and HDR.
+Input compatibility does not imply all codec combinations are supported or
+that HDR-to-SDR tone mapping has been implemented.

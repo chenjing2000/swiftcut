@@ -74,6 +74,24 @@ function exportCrop(plan: CropExportPlan, path: string) {
 }
 
 describe.skipIf(!enabled)('Crop Video compatibility with real FFmpeg', () => {
+  it('crops a MOV input with H.264 video and AAC audio', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'crop-mov-'));
+    try {
+      const source = join(dir, 'iphone.mov');
+      runFfmpeg([
+        '-f', 'lavfi', '-i', 'testsrc2=size=160x120:rate=25:duration=2',
+        '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100:duration=2',
+        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-y', source,
+      ]);
+      const output = join(dir, 'crop.mp4');
+      const result = exportCrop(planFor(source, dir), output);
+      expect(result.streams.some((stream) => stream.codec_type === 'video' && stream.codec_name === 'h264')).toBe(true);
+      expect(result.streams.some((stream) => stream.codec_type === 'audio' && stream.codec_name === 'aac')).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('preserves non-square pixel aspect ratio when cropping without resizing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'crop-sar-'));
     try {
