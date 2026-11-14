@@ -1,12 +1,36 @@
-// Only active-window keyboard ownership is shared; export jobs remain independent.
+// Only Output window ordering and keyboard ownership are shared here.
+// Each export feature owns its settings and job lifecycle independently.
 export type OutputPanel = 'audio' | 'crop' | 'lossless';
 
 const openPanels: OutputPanel[] = [];
+const listeners = new Set<() => void>();
+let revision = 0;
+
+function notify() {
+  revision += 1;
+  listeners.forEach((listener) => listener());
+}
+
+export function subscribeOutputPanels(listener: () => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+
+export function getOutputPanelsRevision() {
+  return revision;
+}
+
+export function getOutputPanelZIndex(panel: OutputPanel) {
+  const index = openPanels.indexOf(panel);
+  return 200 + Math.max(0, index);
+}
 
 export function activateOutputPanel(panel: OutputPanel) {
   const index = openPanels.indexOf(panel);
-  if (index !== -1) openPanels.splice(index, 1);
+  if (index === -1 || index === openPanels.length - 1) return;
+  openPanels.splice(index, 1);
   openPanels.push(panel);
+  notify();
 }
 
 function activateFromEvent(event: Event) {
@@ -23,10 +47,16 @@ export function registerOutputPanel(panel: OutputPanel) {
     document.addEventListener('pointerdown', activateFromEvent, { capture: true });
     document.addEventListener('focusin', activateFromEvent, { capture: true });
   }
-  activateOutputPanel(panel);
+  const oldIndex = openPanels.indexOf(panel);
+  if (oldIndex !== -1) openPanels.splice(oldIndex, 1);
+  openPanels.push(panel);
+  notify();
   return () => {
     const index = openPanels.indexOf(panel);
-    if (index !== -1) openPanels.splice(index, 1);
+    if (index !== -1) {
+      openPanels.splice(index, 1);
+      notify();
+    }
     if (openPanels.length === 0) {
       document.removeEventListener('pointerdown', activateFromEvent, { capture: true });
       document.removeEventListener('focusin', activateFromEvent, { capture: true });
