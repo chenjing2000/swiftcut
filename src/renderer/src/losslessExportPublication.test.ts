@@ -54,9 +54,7 @@ describe('Lossless export publication', () => {
 
   it('reports all committed paths without merge', () => {
     expect(getLosslessPublishedPaths({
-      committedPaths: ['a.mp4',
-      'b.mp4',
-      'subtitle.srt'],
+      committedPaths: ['a.mp4', 'b.mp4', 'subtitle.srt'],
       willMerge: false,
       autoDeleteMergedSegments: false,
       cutFileCount: 2,
