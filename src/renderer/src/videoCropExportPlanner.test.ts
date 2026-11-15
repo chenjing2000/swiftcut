@@ -45,6 +45,23 @@ describe('Crop Video Phase 3A export planner', () => {
     expect(plan.crop.x).toBe(101);
   });
 
+  it('uses independent requested width and height when resizing without changing the crop', () => {
+    const request = makeRequest();
+    request.config.output.resize = true;
+    request.config.output.lockAspect = false;
+    request.config.output.width = 1000;
+    request.config.output.height = 1000;
+    const plan = createCropExportPlan(request);
+    expect(plan.crop).toStrictEqual(request.config.rect);
+    expect(plan.outputWidth).toBe(1000);
+    expect(plan.outputHeight).toBe(1000);
+    expect(plan.outputSarNum).toBe(1);
+    expect(plan.outputSarDen).toBe(1);
+
+    request.config.output.resize = false;
+    expect(createCropExportPlan(request)).toMatchObject({ outputWidth: 853, outputHeight: 479 });
+  });
+
   it('sorts segments and gives separate files deterministic names', () => {
     const request = makeRequest();
     request.config.output.outputMode = 'separate';
