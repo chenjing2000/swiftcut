@@ -35,7 +35,7 @@ interface Props {
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 const aspectOptions: { value: CropAspectPreset; label: string }[] = [
   { value: 'free', label: 'Free' },
-  { value: 'source', label: 'Source ratio' },
+  { value: 'source', label: 'Origin' },
   { value: '16:9', label: '16:9' },
   { value: '4:3', label: '4:3' },
   { value: '1:1', label: '1:1' },
@@ -290,18 +290,41 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       >
         <div className={styles['sectionTitle']}>
           <strong>{t('Crop Region')}</strong>
-          <button
-            className={styles['resetIconButton']}
-            type="button"
-            title={t('Reset')}
-            aria-label={t('Reset')}
-            onClick={() => { setRect(fullRect); setRatio('free'); }}
-          >
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-          </button>
+          <div className={styles['cropRegionActions']}>
+            <select
+              id="crop-aspect-ratio"
+              className={styles['aspectRatioSelect']}
+              aria-label={t('Aspect ratio')}
+              value={ratio}
+              onChange={(event) => {
+                const preset = event.target.value as CropAspectPreset;
+                const aspect = getCropTargetAspect(preset, frame);
+                setRatio(preset);
+                if (aspect != null) {
+                  try {
+                    const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
+                    setRect(aligned);
+                  } catch {
+                    // Keep the last valid integer crop while the ratio cannot fit.
+                  }
+                }
+              }}
+            >
+              {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
+            </select>
+            <button
+              className={styles['resetIconButton']}
+              type="button"
+              title={t('Reset')}
+              aria-label={t('Reset')}
+              onClick={() => { setRect(fullRect); setRatio('free'); }}
+            >
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className={styles['coordinateGrid']}>
           <CropNumericField label="X" value={rect.x} onCommit={(value) => updateDimension('x', value)} />
@@ -309,27 +332,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           <CropNumericField label="W" value={rect.width} onCommit={(value) => updateDimension('width', value)} />
           <CropNumericField label="H" value={rect.height} onCommit={(value) => updateDimension('height', value)} />
         </div>
-        <label className={styles['row']} htmlFor="crop-aspect-ratio"><span>{t('Aspect ratio')}</span>
-          <select
-            id="crop-aspect-ratio"
-            value={ratio}
-            onChange={(event) => {
-              const preset = event.target.value as CropAspectPreset;
-              const aspect = getCropTargetAspect(preset, frame);
-              setRatio(preset);
-              if (aspect != null) {
-                try {
-                  const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
-                  setRect(aligned);
-                } catch {
-                  // Keep the last valid integer crop while the ratio cannot fit.
-                }
-              }
-            }}
-          >
-            {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
-          </select>
-        </label>
         <div className={styles['outputSizeRow']}>
           <strong>{t('Output Size')}</strong>
           <div className={styles['outputSizeControls']}>
