@@ -291,18 +291,18 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       >
         <div className={styles['sectionTitle']}>
           <strong>{t('Crop Region')}</strong>
-        <button
-          className={styles['resetIconButton']}
-          type="button"
-          title={t('Reset')}
-          aria-label={t('Reset')}
-          onClick={() => { setRect(fullRect); setRatio('free'); }}
-        >
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-            <path d="M3 3v5h5" />
-          </svg>
-        </button>
+          <button
+            className={styles['resetIconButton']}
+            type="button"
+            title={t('Reset')}
+            aria-label={t('Reset')}
+            onClick={() => { setRect(fullRect); setRatio('free'); }}
+          >
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+          </button>
         </div>
         <div className={styles['coordinateGrid']}>
           <CropNumericField label="X" value={rect.x} onCommit={(value) => updateDimension('x', value)} />
@@ -330,7 +330,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           >
             {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
           </select>
-
         </label>
         <div className={styles['outputSizeRow']}>
           <strong>{t('Output Size')}</strong>
