@@ -300,23 +300,23 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           <label htmlFor="crop-aspect-ratio">{t('Aspect ratio')}</label>
           <div className={styles['aspectRatioActions']}>
             <select
-            id="crop-aspect-ratio"
-            value={ratio}
-            onChange={(event) => {
-              const preset = event.target.value as CropAspectPreset;
-              const aspect = getCropTargetAspect(preset, frame);
-              setRatio(preset);
-              if (aspect != null) {
-                try {
-                  const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
-                  setRect(aligned);
-                } catch {
-                  // Keep the last valid integer crop while the ratio cannot fit.
+              id="crop-aspect-ratio"
+              value={ratio}
+              onChange={(event) => {
+                const preset = event.target.value as CropAspectPreset;
+                const aspect = getCropTargetAspect(preset, frame);
+                setRatio(preset);
+                if (aspect != null) {
+                  try {
+                    const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
+                    setRect(aligned);
+                  } catch {
+                    // Keep the last valid integer crop while the ratio cannot fit.
+                  }
                 }
-              }
-            }}
-          >
-            {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
+              }}
+            >
+              {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
             </select>
             <button
               className={styles['resetIconButton']}
