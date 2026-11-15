@@ -6,6 +6,7 @@ import type { CropAspectPreset, CropOutputMode, CropRect, CropTimeRange, CropVid
 import { validateCropRect } from '../../../../common/videoCropValidation.js';
 import { alignCropSize, cropPointToScreen, getCropDisplayTransform, getCropTargetAspect, getCropVisibleSize, screenToCropPoint } from '../../videoCropGeometry';
 import type { CropFrameGeometry, CropViewport } from '../../videoCropGeometry';
+import { getCropKeyboardNudge } from '../../videoCropKeyboardNudge';
 import { getDefaultCropTimeRange } from '../../videoCropSegments';
 import type { CropSourceSegment } from '../../videoCropSegments';
 
@@ -199,9 +200,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement
         || event.target instanceof HTMLTextAreaElement
         || !focused || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-      const delta = event.shiftKey ? 10 : 1;
-      const dx = event.key === 'ArrowLeft' ? -delta : (event.key === 'ArrowRight' ? 1 : 0);
-      const dy = event.key === 'ArrowUp' ? -delta : (event.key === 'ArrowDown' ? 1 : 0);
+      const { dx, dy } = getCropKeyboardNudge(event.key, event.shiftKey);
       setRect((previous) => ({
         ...previous,
         x: clamp(previous.x + dx, 0, bounds.width - previous.width),
