@@ -3,7 +3,7 @@ process.traceProcessWarnings = true;
 
 /* eslint-disable import/first */
 // eslint-disable-next-line import-js/no-extraneous-dependencies
-import electron, { BrowserWindow, nativeTheme, shell, app, ipcMain, Notification, session } from 'electron';
+import electron, { BrowserWindow, nativeTheme, shell, app, ipcMain, Notification, session, powerMonitor } from 'electron';
 import type { BrowserWindowConstructorOptions, NotificationConstructorOptions } from 'electron';
 import i18n from 'i18next';
 // eslint-disable-next-line import-js/no-extraneous-dependencies
@@ -169,6 +169,18 @@ function createWindow() {
 
   if (savedBounds.isMaximized) mainWindow.maximize();
 
+  // SC-019: diagnose unexpected renderer restarts after system sleep/wake.
+  mainWindow.webContents.on('did-start-loading', () => logger.info('SC-019 renderer loading started'));
+  mainWindow.webContents.on('did-finish-load', () => logger.info('SC-019 renderer load finished'));
+  mainWindow.webContents.on('did-fail-load', (_event, code, description, _url, isMainFrame) => {
+    if (isMainFrame) logger.warn('SC-019 renderer main-frame load failed', { code, description });
+  });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    logger.error('SC-019 renderer process gone', { reason: details.reason, exitCode: details.exitCode });
+  });
+  mainWindow.webContents.on('unresponsive', () => logger.warn('SC-019 renderer unresponsive'));
+  mainWindow.webContents.on('responsive', () => logger.info('SC-019 renderer responsive'));
+
   remote.enable(mainWindow.webContents);
 
   attachContextMenu(mainWindow);
@@ -182,6 +194,7 @@ function createWindow() {
 
   // Emitted when the window is closed.
   mainWindow.on('closed', () => {
+    logger.info('SC-019 window closed');
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
@@ -381,6 +394,23 @@ async function init() {
 
     logger.info('Waiting for app to become ready');
     await readyPromise;
+
+    // Only known, non-sensitive diagnostic events are accepted from our own renderer.
+    const diagnosticEvents = new Set(['renderer-entry', 'app-mounted', 'app-unmounted', 'file-loaded', 'file-empty', 'state-reset']);
+    const resetReasons = new Set(['close-file', 'cleanup-close-file', 'load-media-start', 'load-media-failed', 'unspecified']);
+    ipcMain.on('diagnostic:event', (event, name: unknown, detail: unknown) => {
+      if (event.sender !== mainWindow?.webContents || typeof name !== 'string' || !diagnosticEvents.has(name)) return;
+      if (name === 'state-reset') {
+        if (typeof detail !== 'string' || !resetReasons.has(detail)) return;
+        logger.info('SC-019 renderer event', { name, reason: detail });
+      } else {
+        logger.info('SC-019 renderer event', { name });
+      }
+    });
+    powerMonitor.on('suspend', () => logger.info('SC-019 power suspend'));
+    powerMonitor.on('resume', () => logger.info('SC-019 power resume'));
+    powerMonitor.on('lock-screen', () => logger.info('SC-019 screen locked'));
+    powerMonitor.on('unlock-screen', () => logger.info('SC-019 screen unlocked'));
 
     // Enforce the network preference for requests made by the Electron renderer.
     session.defaultSession.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*'] }, (details, callback) => {

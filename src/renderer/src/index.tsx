@@ -68,6 +68,9 @@ declare global {
 
 enableMapSet();
 
+// SC-019: this line runs once for each new renderer page execution.
+window.require('electron').ipcRenderer.send('diagnostic:event', 'renderer-entry');
+
 const { app } = window.require('@electron/remote');
 
 console.log('Version', app.getVersion());

@@ -164,6 +164,16 @@ function App() {
   const [progress, setProgress] = useState<number>();
   const [startTimeOffset, setStartTimeOffset] = useState(0);
   const [filePath, setFilePath] = useState<string>();
+
+  // SC-019: distinguish a new React mount from a file closed in an existing page.
+  // React StrictMode can intentionally mount/unmount twice in development.
+  useEffect(() => {
+    ipcRenderer.send('diagnostic:event', 'app-mounted');
+    return () => ipcRenderer.send('diagnostic:event', 'app-unmounted');
+  }, []);
+  useEffect(() => {
+    ipcRenderer.send('diagnostic:event', filePath == null ? 'file-empty' : 'file-loaded');
+  }, [filePath]);
   const [fileDuration, setFileDuration] = useState<number>();
   const [externalFilesMeta, setExternalFilesMeta] = useState<FilesMeta>({});
   const [paramsByFile, setParamsByFile] = useState<ParamsByFile>(new Map());
@@ -773,7 +783,8 @@ function App() {
     };
   }, [cacheBuster, effectiveFilePath, videoRef]);
 
-  const resetState = useCallback(() => {
+  const resetState = useCallback((reason: string = 'unspecified') => {
+    ipcRenderer.send('diagnostic:event', 'state-reset', reason);
     console.log('State reset');
     const video = videoRef.current;
     setCommandedTime(0);
@@ -935,7 +946,7 @@ function App() {
 
     if (askBeforeClose && !(await confirmDialog({ focusConfirm: true, description: i18n.t('Are you sure you want to close the current file?') }))) return;
 
-    resetState();
+    resetState('close-file');
     clearSegments();
   }, [isFileOpened, workingRef, askBeforeClose, confirmDialog, resetState, clearSegments]);
 
@@ -1120,7 +1131,7 @@ function App() {
       batchListRemoveFile(savedPaths.sourceFilePath);
 
       // close the file
-      resetState();
+      resetState('cleanup-close-file');
       clearSegments();
     }
 
@@ -1664,7 +1675,7 @@ function App() {
 
       // BEGIN STATE UPDATES:
 
-      resetState();
+      resetState('load-media-start');
       clearSegColorCounter();
 
       if (existingHtml5FriendlyFile) {
@@ -1725,7 +1736,7 @@ function App() {
       setFilePath(fp);
     } catch (err) {
       if (err instanceof DirectoryAccessDeclinedError) return;
-      resetState();
+      resetState('load-media-failed');
       throw err;
     }
   }, [storeProjectInWorkingDir, setWorking, loadEdlFile, getEdlFilePath, enableImportChapters, ensureAccessToSourceDir, loadCutSegments, autoLoadTimecode, enableNativeHevc, ensureWritableOutDir, customOutDir, resetState, clearSegColorCounter, setCopyStreamIdsForPath, setDetectedFileFormat, outFormatLocked, setUsingDummyVideo, setPreviewFilePath, html5ifyAndLoadWithPreferences, setFileFormat, showNotification, showPreviewFileLoadedMessage, showNotNativelySupportedMessage]);
