@@ -291,39 +291,39 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
         <div className={styles['sectionTitle']}>
           <strong>{t('Crop Region')}</strong>
           <div className={styles['cropRegionActions']}>
-          <select
-            id="crop-aspect-ratio"
-            className={styles['aspectRatioSelect']}
-            aria-label={t('Aspect ratio')}
-            value={ratio}
-            onChange={(event) => {
-              const preset = event.target.value as CropAspectPreset;
-              const aspect = getCropTargetAspect(preset, frame);
-              setRatio(preset);
-              if (aspect != null) {
-                try {
-                  const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
-                  setRect(aligned);
-                } catch {
-                  // Keep the last valid integer crop while the ratio cannot fit.
+            <select
+              id="crop-aspect-ratio"
+              className={styles['aspectRatioSelect']}
+              aria-label={t('Aspect ratio')}
+              value={ratio}
+              onChange={(event) => {
+                const preset = event.target.value as CropAspectPreset;
+                const aspect = getCropTargetAspect(preset, frame);
+                setRatio(preset);
+                if (aspect != null) {
+                  try {
+                    const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
+                    setRect(aligned);
+                  } catch {
+                    // Keep the last valid integer crop while the ratio cannot fit.
+                  }
                 }
-              }
-            }}
-          >
-            {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
-          </select>
-          <button
-            className={styles['resetIconButton']}
-            type="button"
-            title={t('Reset')}
-            aria-label={t('Reset')}
-            onClick={() => { setRect(fullRect); setRatio('free'); }}
-          >
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-          </button>
+              }}
+            >
+              {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
+            </select>
+            <button
+              className={styles['resetIconButton']}
+              type="button"
+              title={t('Reset')}
+              aria-label={t('Reset')}
+              onClick={() => { setRect(fullRect); setRatio('free'); }}
+            >
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            </button>
           </div>
         </div>
         <div className={styles['coordinateGrid']}>
