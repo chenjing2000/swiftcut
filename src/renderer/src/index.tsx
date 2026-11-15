@@ -69,7 +69,15 @@ declare global {
 enableMapSet();
 
 // SC-019: this line runs once for each new renderer page execution.
-window.require('electron').ipcRenderer.send('diagnostic:event', 'renderer-entry');
+const diagnosticIpc = window.require('electron').ipcRenderer;
+diagnosticIpc.send('diagnostic:event', 'renderer-entry');
+window.addEventListener('beforeunload', () => diagnosticIpc.send('diagnostic:event', 'renderer-beforeunload'));
+
+if (import.meta.hot) {
+  import.meta.hot.on('vite:ws:disconnect', () => diagnosticIpc.send('diagnostic:event', 'vite-ws-disconnect'));
+  import.meta.hot.on('vite:ws:connect', () => diagnosticIpc.send('diagnostic:event', 'vite-ws-connect'));
+  import.meta.hot.on('vite:beforeFullReload', () => diagnosticIpc.send('diagnostic:event', 'vite-before-full-reload'));
+}
 
 const { app } = window.require('@electron/remote');
 

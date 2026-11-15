@@ -170,6 +170,27 @@ function createWindow() {
   if (savedBounds.isMaximized) mainWindow.maximize();
 
   // SC-019: diagnose unexpected renderer restarts after system sleep/wake.
+  // A navigation reloads the document, whereas a normal React update does not.
+  // Record only the origin/scheme, never URL paths or query parameters.
+  const navigationLocation = (url: string) => {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'file:' ? 'file:' : parsed.origin;
+    } catch {
+      return 'invalid-url';
+    }
+  };
+  mainWindow.webContents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) {
+      logger.info('SC-019 main-frame navigation started', { destination: navigationLocation(details.url) });
+    }
+  });
+  mainWindow.webContents.on('will-navigate', (details) => {
+    logger.info('SC-019 page-initiated navigation', { destination: navigationLocation(details.url) });
+  });
+  mainWindow.webContents.on('did-frame-navigate', (_event, url, _status, _statusText, isMainFrame) => {
+    if (isMainFrame) logger.info('SC-019 main-frame navigation finished', { destination: navigationLocation(url) });
+  });
   mainWindow.webContents.on('did-start-loading', () => logger.info('SC-019 renderer loading started'));
   mainWindow.webContents.on('did-finish-load', () => logger.info('SC-019 renderer load finished'));
   mainWindow.webContents.on('did-fail-load', (_event, code, description, _url, isMainFrame) => {
@@ -396,7 +417,7 @@ async function init() {
     await readyPromise;
 
     // Only known, non-sensitive diagnostic events are accepted from our own renderer.
-    const diagnosticEvents = new Set(['renderer-entry', 'app-mounted', 'app-unmounted', 'file-loaded', 'file-empty', 'state-reset']);
+    const diagnosticEvents = new Set(['renderer-entry', 'app-mounted', 'app-unmounted', 'file-loaded', 'file-empty', 'state-reset', 'renderer-beforeunload', 'vite-ws-disconnect', 'vite-ws-connect', 'vite-before-full-reload']);
     const resetReasons = new Set(['close-file', 'cleanup-close-file', 'load-media-start', 'load-media-failed', 'unspecified']);
     ipcMain.on('diagnostic:event', (event, name: unknown, detail: unknown) => {
       if (event.sender !== mainWindow?.webContents || typeof name !== 'string' || !diagnosticEvents.has(name)) return;
