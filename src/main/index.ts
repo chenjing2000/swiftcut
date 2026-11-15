@@ -23,6 +23,7 @@ import type { Asyncify } from 'type-fest';
 import mitt from 'mitt';
 
 import logger from './logger.js';
+import { fitsWindowWorkArea } from './windowBounds.js';
 import menu from './menu.js';
 import * as configStore from './configStore.js';
 import { isLinux, isWindows, isMac, platform, arch, pathExists, resolveCliFileArgs, parseCliKeyboardActionArgs, parseSettingsJson } from './util.js';
@@ -136,7 +137,7 @@ function getSavedBounds() {
       options.y = bounds.y;
     }
     // If the saved size is still valid, use it.
-    if (bounds.width <= area.width || bounds.height <= area.height) {
+    if (fitsWindowWorkArea(bounds, area)) {
       options.width = bounds.width;
       options.height = bounds.height;
     }
