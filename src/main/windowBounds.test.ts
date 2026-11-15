@@ -1,5 +1,6 @@
+// eslint-disable-next-line import-js/no-extraneous-dependencies
 import { describe, expect, it } from 'vitest';
-import { fitsWindowWorkArea } from './windowBounds';
+import { fitsWindowWorkArea } from './windowBounds.ts';
 
 describe('saved window size', () => {
   const area = { width: 1280, height: 960 };
