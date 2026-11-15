@@ -11,10 +11,7 @@
 .contents select { width: 160px; max-width: 100%; }
 .contents > select { align-self: flex-end; }
 .qualityRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.aspectRatioRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.aspectRatioActions { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.aspectRatioActions select { width: 160px; max-width: 100%; }
+.sectionTitle, .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .resetIconButton {
   display: grid;
   place-items: center;
