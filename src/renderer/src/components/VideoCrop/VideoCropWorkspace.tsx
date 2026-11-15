@@ -54,7 +54,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [rect, setRect] = useState<CropRect>(fullRect);
   const [ratio, setRatio] = useState<CropAspectPreset>('free');
   const [resize, setResize] = useState(false);
-  const resizeInitialized = useRef(false);
+  const resizeInitializedRef = useRef(false);
   const [resizeWidth, setResizeWidth] = useState(fullRect.width);
   const [resizeHeight, setResizeHeight] = useState(fullRect.height);
   const [timeRange, setTimeRange] = useState<CropTimeRange>(() => (selectedSegmentCount > 0 ? 'selected' : getDefaultCropTimeRange(segments, duration)));
@@ -329,10 +329,10 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               aria-label={t('Use custom output size')}
               checked={resize}
               onChange={(event) => {
-                if (event.target.checked && !resizeInitialized.current) {
+                if (event.target.checked && !resizeInitializedRef.current) {
                   setResizeWidth(rect.width);
                   setResizeHeight(rect.height);
-                  resizeInitialized.current = true;
+                  resizeInitializedRef.current = true;
                 }
                 setResize(event.target.checked);
               }}
