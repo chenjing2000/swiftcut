@@ -11,8 +11,26 @@
 .contents select { width: 160px; max-width: 100%; }
 .contents > select { align-self: flex-end; }
 .qualityRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sectionTitle, .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sectionTitle button { font-size: 12px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.aspectRatioRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.aspectRatioActions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.aspectRatioActions select { width: 160px; max-width: 100%; }
+.resetIconButton {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0;
+  border: 1px solid var(--gray-7);
+  border-radius: 5px;
+  background: var(--gray-3);
+  color: var(--gray-12);
+  cursor: pointer;
+}
+.resetIconButton:hover { background: var(--gray-4); }
+.resetIconButton:focus-visible { outline: 2px solid var(--accent-9); outline-offset: 1px; }
 .coordinateGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .numberField { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .numberField label { flex: 0 0 14px; text-align: center; }
