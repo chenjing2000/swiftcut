@@ -54,7 +54,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [rect, setRect] = useState<CropRect>(fullRect);
   const [ratio, setRatio] = useState<CropAspectPreset>('free');
   const [resize, setResize] = useState(false);
-  const [lockResizeAspect, setLockResizeAspect] = useState(true);
+  const resizeInitialized = useRef(false);
   const [resizeWidth, setResizeWidth] = useState(fullRect.width);
   const [resizeHeight, setResizeHeight] = useState(fullRect.height);
   const [timeRange, setTimeRange] = useState<CropTimeRange>(() => (selectedSegmentCount > 0 ? 'selected' : getDefaultCropTimeRange(segments, duration)));
@@ -104,12 +104,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     }
     if (validateCropRect(candidate, getCropVisibleSize(frame)).length === 0) {
       setRect(candidate);
-      if (!resize) {
-        setResizeWidth(candidate.width);
-        setResizeHeight(candidate.height);
-      }
     }
-  }, [frame, ratio, resize]);
+  }, [frame, ratio]);
 
   const updateDimension = (dimension: Dimension, value: number) => {
     changeRect({ ...rect, [dimension]: value }, dimension);
@@ -117,14 +113,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
 
   const changeResizeDimension = (dimension: 'width' | 'height', value: number) => {
     if (value <= 0) return;
-    const aspect = rect.width / rect.height;
-    if (dimension === 'width') {
-      setResizeWidth(value);
-      if (lockResizeAspect) setResizeHeight(Math.max(1, Math.floor((value / aspect) + 0.5)));
-    } else {
-      setResizeHeight(value);
-      if (lockResizeAspect) setResizeWidth(Math.max(1, Math.floor((value * aspect) + 0.5)));
-    }
+    if (dimension === 'width') setResizeWidth(value);
+    else setResizeHeight(value);
   };
 
   const getPoint = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -180,10 +170,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
     }
     if (validateCropRect(next, bounds).length === 0) {
       setRect(next);
-      if (!resize) {
-        setResizeWidth(next.width);
-        setResizeHeight(next.height);
-      }
     }
     event.preventDefault();
     event.stopPropagation();
@@ -242,7 +228,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           resize,
           width: resize ? resizeWidth : rect.width,
           height: resize ? resizeHeight : rect.height,
-          lockAspect: lockResizeAspect,
+          lockAspect: false,
           quality: quality === 'standard' ? 'standard' : 'high',
           encoder: 'libx264',
           crf: quality === 'standard' ? 23 : 18,
@@ -305,7 +291,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
       >
         <div className={styles['sectionTitle']}>
           <strong>{t('Crop Region')}</strong>
-          <button type="button" onClick={() => { setRect(fullRect); if (!resize) { setResizeWidth(fullRect.width); setResizeHeight(fullRect.height); } }}>{t('Reset')}</button>
+          <button type="button" onClick={() => { setRect(fullRect); setRatio('free'); }}>{t('Reset')}</button>
         </div>
         <div className={styles['coordinateGrid']}>
           <CropNumericField label="X" value={rect.x} onCommit={(value) => updateDimension('x', value)} />
@@ -325,10 +311,6 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
                 try {
                   const aligned = alignCropSize({ rect, frame, aspect, primary: 'width' });
                   setRect(aligned);
-                  if (!resize) {
-                    setResizeWidth(aligned.width);
-                    setResizeHeight(aligned.height);
-                  }
                 } catch {
                   // Keep the last valid integer crop while the ratio cannot fit.
                 }
@@ -338,14 +320,27 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             {aspectOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
           </select>
         </label>
-        <strong>{t('Output Size')}</strong>
-        <label className={styles['radio']} htmlFor="crop-original-size"><input id="crop-original-size" name="crop-output-size" type="radio" checked={!resize} onChange={() => setResize(false)} />{t('Original crop size')}</label>
-        <div className={styles['resizeRow']}>
-          <label className={styles['radio']} htmlFor="crop-resize"><input id="crop-resize" name="crop-output-size" type="radio" checked={resize} onChange={() => setResize(true)} />{t('Resize to:')}</label>
-          <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
-          <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
-        </div>
-        {resize && <label className={styles['checkbox']} htmlFor="crop-resize-lock"><input id="crop-resize-lock" type="checkbox" checked={lockResizeAspect} onChange={(event) => setLockResizeAspect(event.target.checked)} />{t('Lock aspect ratio')}</label>}
+        <div className={styles['outputSizeRow']}>
+          <strong>{t('Output Size')}</strong>
+          <div className={styles['outputSizeControls']}>
+            <input
+              id="crop-resize"
+              type="checkbox"
+              aria-label={t('Use custom output size')}
+              checked={resize}
+              onChange={(event) => {
+                if (event.target.checked && !resizeInitialized.current) {
+                  setResizeWidth(rect.width);
+                  setResizeHeight(rect.height);
+                  resizeInitialized.current = true;
+                }
+                setResize(event.target.checked);
+              }}
+            />
+            <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
+            <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
+          </div>
+        </div>}
         <label className={styles['qualityRow']} htmlFor="crop-quality"><strong>{t('Video Quality')}</strong>
           <select id="crop-quality" value={quality} onChange={(event) => setQuality(event.target.value)}>
             <option value="high">{t('High quality')} · H.264 CRF 18</option>
