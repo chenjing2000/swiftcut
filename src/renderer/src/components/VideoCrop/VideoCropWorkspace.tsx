@@ -340,7 +340,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
             <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
             <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
           </div>
-        </div>}
+        </div>
         <label className={styles['qualityRow']} htmlFor="crop-quality"><strong>{t('Video Quality')}</strong>
           <select id="crop-quality" value={quality} onChange={(event) => setQuality(event.target.value)}>
             <option value="high">{t('High quality')} · H.264 CRF 18</option>
