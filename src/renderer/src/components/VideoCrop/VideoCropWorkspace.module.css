@@ -13,15 +13,17 @@
 .qualityRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sectionTitle, .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sectionTitle button { font-size: 12px; }
-.coordinateGrid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 4px; row-gap: 8px; }
-.numberField { display: flex; align-items: center; gap: 5px; min-width: 0; }
-.numberField label { min-width: 12px; }
-.numberField input { width: 100%; }
+.coordinateGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.numberField { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.numberField label { flex: 0 0 14px; text-align: center; }
+.numberField input { flex: 1 1 0; width: 100%; min-width: 0; }
 .radio, .checkbox { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
-.resizeRow { display: flex; align-items: center; gap: 4px; }
-.resizeRow .radio { margin-right: auto; }
-.resizeRow .numberField { width: 74px; gap: 3px; }
-.resizeRow .numberField input { width: 100%; }
+.outputSizeRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.outputSizeRow > strong { flex-shrink: 0; }
+.outputSizeControls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.outputSizeControls > input[type="checkbox"] { flex: 0 0 auto; margin: 0; }
+.outputSizeControls .numberField { flex: 0 0 88px; }
+.outputSizeControls .numberField label { flex-basis: 14px; }
 .previewRow { display: flex; gap: 4px; }
 .previewRow button { flex: 1; border: 1px solid var(--gray-7); border-radius: 5px; padding: 5px; }
 .previewRow button[aria-pressed="true"] { background: var(--accent-5); border-color: var(--accent-9); }
