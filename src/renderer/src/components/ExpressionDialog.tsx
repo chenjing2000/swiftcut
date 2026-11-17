@@ -5,6 +5,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import * as AlertDialog from './AlertDialog';
 import { DialogButton } from './Button';
 import TextInput from './TextInput';
+import inputStyles from './DialogInputAppearance.module.css';
 import { useGenericDialogContext } from './GenericDialog';
 import { ButtonRow } from './Dialog';
 import { dangerColor } from '../colors';
@@ -70,11 +71,12 @@ const ExpressionDialog = forwardRef<HTMLDivElement, Props>(({ onSubmit, examples
 
       <form onSubmit={handleSubmit}>
         <TextInput
+          className={inputStyles['textInput']}
           ref={valueRef}
           placeholder={t('Enter JavaScript expression')}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          style={{ margin: '1em 0', padding: '1em', width: '100%', boxSizing: 'border-box', fontFamily: 'monospace' }}
+          style={{ margin: '1em 0', padding: '1em', width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', borderRadius: 9999 }}
         />
 
         {error != null && (
