@@ -1,6 +1,6 @@
 # SwiftCut Crop Video — Tests and acceptance record
 
-Status: Phase 3D-D3 documentation, `feature/crop-video` branch (2026-11-13).
+> **Historical Phase 3D-D3 record (2026-11-13):** Originally written on `feature/crop-video`. Retained for technical and acceptance traceability, not as a current branch or release status. See [current Output behavior](MEDIA_WORKSPACE_EXPORT.md).
 
 ## Automated coverage
 
@@ -64,12 +64,4 @@ The mobile orientation bug took multiple revisions: the original output rotated 
 
 No manual claim has been established here for exhaustive operation over every possible codec, timestamp defect, network source, OS or device.
 
-## Still required in Phase 3D-D4
-
-1. Run the repository's **original Pull Request workflow** (`.github/workflows/test.yml`) on both Windows and Ubuntu, including docs/license and Chromium notification E2E checks where configured.
-2. Check integrations of `App.tsx`, `menu.ts`, `configStore.ts` and FFprobe typing with established lossless cutting/export, shortcuts, media playback, and audio extraction.
-3. Examine the final diff for unintended changes, missing translations, artifacts or temporary files.
-4. Verify documentation against final code and record the final commit/workflow links.
-5. Seek explicit permission **before merging** `feature/crop-video` into `main`.
-
-See [design](CROP_VIDEO_DESIGN.md), [limitations](CROP_VIDEO_LIMITATIONS.md) and [release checklist](CROP_VIDEO_RELEASE_CHECKLIST.md).
+See [design](CROP_VIDEO_DESIGN.md) and [limitations](CROP_VIDEO_LIMITATIONS.md).

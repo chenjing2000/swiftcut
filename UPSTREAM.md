@@ -17,7 +17,7 @@ SwiftCut is a customized derivative based on the LosslessCut v3.70.2 source tree
 
 SwiftCut adds an independent audio-extraction business module, accessible from the Output menu. It reuses the existing FFmpeg/FFprobe infrastructure while keeping its task planning, MP3 encoding, output publication, progress, cancellation, and status reporting separate from the original media-export workflow.
 
-The current supported workflow extracts MP3 audio from MP4 input. It supports VBR (LAME Quality 2), 320 kbps, and 192 kbps modes, multiple audio tracks, and separately processed timeline segments.
+The current Extract Audio operation supports compatible audio-only and video sources, original-format audio stream copy, MP3 encoding (VBR LAME Quality 2, 128, 192, and 320 kbps), multiple tracks and selected segments, plus merge/separate output. Crop Video is a separate re-encoding operation; SC-023 isolated Export Video FFmpeg cancellation.
 
 ### Privacy and network behavior
 

@@ -50,7 +50,7 @@ GUI changes and media-process behavior must additionally be checked in the Windo
 
 - Keep the MP3 extraction business module independent from the existing video-export workflow.
 - Reuse the existing FFmpeg/FFprobe process infrastructure and network policy; do not introduce a parallel process runner without a demonstrated need.
-- Audio extraction cancellation must remain task-scoped. Do not use the legacy global FFmpeg abort operation to cancel only an audio task.
+- Extract Audio, Crop Video and Export Video must retain task-scoped cancellation. Do not invoke the legacy global FFmpeg abort operation to cancel just one Output job; preserve unrelated FFmpeg work. See [Output behavior](docs/development/MEDIA_WORKSPACE_EXPORT.md).
 - Preserve completed outputs when a later task is cancelled; skip tasks that have not started; remove temporary output.
 - Never overwrite an existing output file without an explicitly approved product change.
 - The approved product identity is SwiftCut (`com.swiftcut.desktop`). Do not change these identifiers or the resulting user-data path without explicit approval.

@@ -1,5 +1,7 @@
 # Documentation
 
+> **SwiftCut note:** Most of this user guide comes from LosslessCut v3.70.2. Upstream product names, links, and settings may not describe SwiftCut's current Output workflows. See [Output behavior](development/MEDIA_WORKSPACE_EXPORT.md), [development documentation](development/README.md), and [SwiftCut overview](../README.md).
+
 Please read the documentation before creating an issue. Thank you 🙏
 
 ## FAQ

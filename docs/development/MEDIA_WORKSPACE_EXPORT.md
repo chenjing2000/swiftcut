@@ -147,3 +147,38 @@ iPhone MOV compatibility requires real FFmpeg and Windows UI verification,
 especially for HEVC, orientation metadata, variable frame rate, and HDR.
 Input compatibility does not imply all codec combinations are supported or
 that HDR-to-SDR tone mapping has been implemented.
+
+## Export Video cancellation isolation (SC-023, 2026-11-17)
+
+Each Export Video job owns an `AbortController`. Its cancellation signal
+flows through ordinary cutting, smart-cut encoding, segment concatenation,
+and extra-stream extraction. Cancelling that job does not cancel unrelated
+FFmpeg tasks, such as audio/crop jobs or thumbnail processing.
+
+The legacy global `abortFfmpegs()` behavior remains for callers that do not
+supply their own signal. The existing finalization boundary is unchanged:
+once output publication starts, cancellation is not accepted, and published
+files are not subsequently reported as cancelled solely because cleanup
+or notification fails.
+
+Evidence: [SC-023 PR #18](https://github.com/chenjing2000/swiftcut/pull/18),
+merged as `8f766b9`; Windows manual acceptance covered ordinary/smart
+export, merge cancellation, task isolation and Output independence.
+Windows/Ubuntu CI and Chromium E2E passed. This does not imply exhaustive
+codec and concurrency coverage.
+
+## Extract Audio cancellation and verification
+
+Extract Audio keeps its own FFmpeg job ownership. A running task that is
+cancelled is reported as **Cancelled**; queued work that never started is
+**Skipped**. Already committed audio files stay **Saved**. Genuine FFmpeg
+failures remain **Failed** with diagnostic details, while expected aborts
+are not surfaced as encoding failures.
+
+MP3 encoding uses `libmp3lame` with VBR `-q:a 2` or a selected supported
+bitrate; original-format extraction uses audio stream copy, not MP3
+transcoding. Audio is mapped using FFprobe stream indexes rather than the
+visible track number. Outputs are validated before collision-safe
+publication, and task-specific temporary files are cleaned on completion
+or cancellation. The implementation and unit tests are authoritative for
+edge cases.

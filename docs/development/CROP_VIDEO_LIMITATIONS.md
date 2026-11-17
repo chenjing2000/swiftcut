@@ -1,6 +1,6 @@
 # SwiftCut Crop Video — Supported features and known limitations
 
-Status: Phase 3D-D3 documentation, `feature/crop-video` branch (2026-11-13).
+> **Historical Phase 3D-D3 record (2026-11-13):** Originally written on `feature/crop-video`. Retained for technical and acceptance traceability, not as a current branch or release status. See [current Output behavior](MEDIA_WORKSPACE_EXPORT.md).
 
 ## Available in the reviewed branch
 
@@ -45,4 +45,4 @@ An output that was fully committed can report `success` along with a `cleanupWar
 
 Custom encoders/quality controls, extra stream handling, crash-recovery cleanup, broader source compatibility and additional full UI automation can be considered separately. They are **outside** the accepted Phase 3C/3D scope unless explicitly approved.
 
-See [design](CROP_VIDEO_DESIGN.md), [testing](CROP_VIDEO_TESTING.md) and [release checklist](CROP_VIDEO_RELEASE_CHECKLIST.md).
+See [design](CROP_VIDEO_DESIGN.md) and [testing](CROP_VIDEO_TESTING.md).
