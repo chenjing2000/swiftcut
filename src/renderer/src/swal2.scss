@@ -141,3 +141,16 @@ $swal2-button-focus-box-shadow: 0 0 0 1px $swal2-background, 0 0 0 3px $swal2-ou
 .swal2-popup :is(input, textarea)::placeholder {
   text-align: left;
 }
+
+/* Dialog text inputs keep the same frame whether focused or not. */
+.swal2-popup :is(.swal2-input, .swal2-textarea) {
+  border: 1px solid var(--gray-7);
+}
+.swal2-popup .swal2-input {
+  border-radius: 9999px;
+}
+.swal2-popup :is(.swal2-input, .swal2-textarea):is(:focus, :focus-visible) {
+  border-color: var(--gray-7);
+  outline: none;
+  box-shadow: none;
+}
