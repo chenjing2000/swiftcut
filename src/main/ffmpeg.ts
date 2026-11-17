@@ -151,21 +151,24 @@ function runFfmpegProcess(args: readonly string[], customExecaOptions?: ExecaOpt
   const { logCli = true } = additionalOptions ?? {};
   if (logCli) logger.info(getFfCommandLine('ffmpeg', args));
 
-  const abortController = new AbortController();
-  const process = execa(ffmpegPath, args, getExecaBufferOptions({ ...customExecaOptions, cancelSignal: abortController.signal }));
+  // Jobs with their own cancellation signal are not owned by the legacy global abort set.
+  const abortController = customExecaOptions?.cancelSignal == null ? new AbortController() : undefined;
+  const cancelSignal = customExecaOptions?.cancelSignal ?? abortController!.signal;
+  const process = execa(ffmpegPath, args, getExecaBufferOptions({ ...customExecaOptions, cancelSignal }));
 
-  const wrapped = { process, abortController };
-
-  (async () => {
-    runningFfmpegs.add(wrapped);
-    try {
-      await process;
-    } catch {
-      // ignored here
-    } finally {
-      runningFfmpegs.delete(wrapped);
-    }
-  })();
+  if (abortController) {
+    const wrapped = { process, abortController };
+    (async () => {
+      runningFfmpegs.add(wrapped);
+      try {
+        await process;
+      } catch {
+        // ignored here
+      } finally {
+        runningFfmpegs.delete(wrapped);
+      }
+    })();
+  }
   return process;
 }
 
@@ -184,13 +187,14 @@ export function runScopedFfmpeg({ ffmpegArgs, duration, onProgress }: {
   return { result: process, cancel: () => abortController.abort() };
 }
 
-export async function runFfmpegConcat({ ffmpegArgs, concatTxt, totalDuration, onProgress }: {
+export async function runFfmpegConcat({ ffmpegArgs, concatTxt, totalDuration, onProgress, signal }: {
   ffmpegArgs: string[],
   concatTxt: string,
   totalDuration: number,
   onProgress: (a: number) => void,
+  signal?: AbortSignal | undefined,
 }) {
-  const process = runFfmpegProcess(ffmpegArgs);
+  const process = runFfmpegProcess(ffmpegArgs, signal ? { cancelSignal: signal } : undefined);
 
   handleProgress(process, totalDuration, onProgress);
 
@@ -200,12 +204,13 @@ export async function runFfmpegConcat({ ffmpegArgs, concatTxt, totalDuration, on
   return process;
 }
 
-export async function runFfmpegWithProgress({ ffmpegArgs, duration, onProgress }: {
+export async function runFfmpegWithProgress({ ffmpegArgs, duration, onProgress, signal }: {
   ffmpegArgs: string[],
   duration?: number | undefined,
   onProgress: (a: number) => void,
+  signal?: AbortSignal | undefined,
 }) {
-  const process = runFfmpegProcess(ffmpegArgs);
+  const process = runFfmpegProcess(ffmpegArgs, signal ? { cancelSignal: signal } : undefined);
   assert.ok(process.stderr != null);
   handleProgress(process, duration, onProgress);
   return process;

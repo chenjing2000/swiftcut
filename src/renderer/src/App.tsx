@@ -75,7 +75,7 @@ import {
   getTimecodeFromStreams, createChaptersFromSegments,
   RefuseOverwriteError, extractSubtitleTrackToSegments,
   mapRecommendedDefaultFormat,
-  getFfCommandLine, abortFfmpegs,
+  getFfCommandLine,
 } from './ffmpeg';
 import { shouldCopyStreamByDefault, getAudioStreams, getRealVideoStreams, isAudioDefinitelyNotSupported, willPlayerProperlyHandleVideo, doesPlayerSupportHevcPlayback, getSubtitleStreams, enableVideoTrack, enableAudioTrack, canHtml5PlayerPlayStreams, isMatroska } from './util/streams';
 import { needsHvc1Tag } from './util/metadata';
@@ -194,6 +194,7 @@ function App() {
   const [losslessExportWarnings, setLosslessExportWarnings] = useState<string[]>([]);
   const [losslessExportError, setLosslessExportError] = useState<string>();
   const losslessCancelRequestedRef = useRef(false);
+  const losslessAbortControllerRef = useRef<AbortController | undefined>(undefined);
   const [cacheBuster, setCacheBuster] = useState(0);
 
   const { fileFormat, setFileFormat, detectedFileFormat, setDetectedFileFormat, isCustomFormatSelected } = useFileFormatState();
@@ -1184,7 +1185,7 @@ function App() {
     if (losslessExportState !== 'running' || losslessFinalizingRef.current) return;
     losslessCancelRequestedRef.current = true;
     setLosslessExportState('cancelling');
-    abortFfmpegs();
+    losslessAbortControllerRef.current?.abort();
   }, [losslessExportState]);
 
   const onExportConfirm = useCallback(async () => {
@@ -1226,6 +1227,8 @@ function App() {
       // Keep export settings visible while the job progresses, just like Crop Video.
       losslessCancelRequestedRef.current = false;
       losslessFinalizingRef.current = false;
+      const exportController = new AbortController();
+      losslessAbortControllerRef.current = exportController;
       exportStarted = true;
       emitEvent({ eventName: 'export-start', path: filePath });
       setLosslessExportPaths([]);
@@ -1269,6 +1272,7 @@ function App() {
         chapters: chaptersToAdd,
         detectedFps,
         isCancelled: () => losslessCancelRequestedRef.current,
+        signal: exportController.signal,
       });
       assertNotCancelled();
 
@@ -1290,6 +1294,7 @@ function App() {
           chapterNames,
           preserveMetadataOnMerge,
           mergedOutFilePath,
+          signal: exportController.signal,
         });
         assertNotCancelled();
 
@@ -1310,7 +1315,7 @@ function App() {
         try {
           setProgress(undefined);
           setWorking({ text: i18n.t('Extracting {{count}} unprocessable tracks', { count: nonCopiedExtraStreams.length }) });
-          extraPaths = await extractStreams({ customOutDir: temporaryLosslessDir, streams: nonCopiedExtraStreams });
+          extraPaths = await extractStreams({ customOutDir: temporaryLosslessDir, streams: nonCopiedExtraStreams, signal: exportController.signal });
           notices.add(i18n.t('Unprocessable streams were exported as separate files.'));
         } catch (err) {
           console.error('Extra stream export failed', err);
@@ -1426,6 +1431,7 @@ function App() {
       handleExportFailed(err);
     } finally {
       if (temporaryLosslessDir != null) await rm(temporaryLosslessDir, { recursive: true, force: true }).catch(console.error);
+      losslessAbortControllerRef.current = undefined;
       losslessFinalizingRef.current = false;
       setWorking(undefined);
       setProgress(undefined);
