@@ -413,9 +413,9 @@ function App() {
   }, [isFileOpened, showNotification]);
 
   const openCropVideo = useCallback(() => {
-    if (!checkFileOpened() || !cropFrame || !isDurationValid(fileDuration)) return;
+    if (!checkFileOpened() || !filePath || !cropFrame || !isDurationValid(fileDuration)) return;
     pause();
-    setCropVideoForFile(filePath!);
+    setCropVideoForFile(filePath);
   }, [checkFileOpened, cropFrame, fileDuration, filePath, pause]);
 
   const {
