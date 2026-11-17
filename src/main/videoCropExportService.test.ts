@@ -1,6 +1,6 @@
 // eslint-disable-next-line import-js/no-extraneous-dependencies
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, unlink, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('node:fs/promises', async (importOriginal) => {
-  const fs = await importOriginal<{ rm: typeof rm; unlink: typeof import('node:fs/promises').unlink }>();
+  const fs = await importOriginal<{ rm: typeof rm; unlink: typeof unlink }>();
   return {
     ...fs,
     rm: async (...args: Parameters<typeof fs.rm>) => {
