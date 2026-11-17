@@ -1,7 +1,9 @@
 # Documentation
 
-Moved to [docs](https://losslesscut.app/docs).
+- [SwiftCut overview](README.md)
+- [User documentation index](docs/index.md) — mainly inherited LosslessCut guidance
+- [Current Output workflows](docs/development/MEDIA_WORKSPACE_EXPORT.md)
+- [Development documents and historical records](docs/development/README.md)
+- [Export file name templates](docs/file-name-template.md)
 
-## Custom exported file names
-
-Moved to [Export file name template documentation](https://losslesscut.app/docs/file-name-template).
+The upstream website remains a LosslessCut resource, not the authoritative description of SwiftCut-specific behavior.

@@ -1,6 +1,6 @@
 # SwiftCut Crop Video — Design and implementation
 
-Status: Phase 3D-D3 documentation, `feature/crop-video` branch (2026-11-13).
+> **Historical Phase 3D-D3 record (2026-11-13):** Originally written on `feature/crop-video`. Retained for technical and acceptance traceability, not as a current branch or release status. See [current Output behavior](MEDIA_WORKSPACE_EXPORT.md).
 
 ## Scope and architectural boundary
 
@@ -73,4 +73,4 @@ The job service retains a bounded in-memory history of completed jobs. It makes 
 5. Do not report a terminal job state while cleanup is still running.
 6. Preserve tested behavior when simplifying internal helpers; use real FFmpeg regression tests for changes to encoding, timing or rotation.
 
-See [testing](CROP_VIDEO_TESTING.md), [limitations](CROP_VIDEO_LIMITATIONS.md) and [release checklist](CROP_VIDEO_RELEASE_CHECKLIST.md).
+See [testing](CROP_VIDEO_TESTING.md) and [limitations](CROP_VIDEO_LIMITATIONS.md).

@@ -1,6 +1,6 @@
 # SwiftCut — Windows Development Environment Setup
 
-This guide describes how to prepare **SwiftCut on Windows 11 x64** for local development. **FFmpeg and Electron binaries are downloaded manually in a browser** and copied into the project; neither binary is downloaded with a dedicated CLI download command.
+This is a **manual installation fallback** for Windows 11 x64 when normal dependency/binary downloads fail. Use [CONTRIBUTING.md](../../CONTRIBUTING.md) for the standard installation and the repository's pinned Yarn and FFmpeg download command. The manual procedure below is not mandatory for normal development.
 
 **Requirements:** Git, Node.js 24, PowerShell, and an existing clone of the SwiftCut repository. The commands below assume the repository is located at `E:\Projects\SwiftCut`; substitute your own path if necessary.
 
@@ -62,7 +62,7 @@ cd E:\Projects\SwiftCut
 .\ffmpeg\win32-x64\lib\ffprobe.exe -version
 ```
 
-**Do not run** `yarn download-ffmpeg-win32-x64` for this manual setup.
+**Only for this manual fallback**, skip the automatic FFmpeg downloader. The standard installation described in [CONTRIBUTING.md](../../CONTRIBUTING.md) uses `download-ffmpeg-win32-x64`.
 
 ## 3. Download and install Electron manually
 

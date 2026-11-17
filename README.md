@@ -24,25 +24,15 @@ SwiftCut retains core capabilities inherited from LosslessCut, including:
 
 These inherited features remain subject to the same format, codec, and container limitations as the upstream implementation.
 
-### SwiftCut-specific audio extraction
+### SwiftCut-specific Output workflows
 
-The **Output → Extract Audio** workflow is an independent business module that reuses the application's existing FFmpeg and FFprobe infrastructure.
+SwiftCut has three independent operations under **Output**:
 
-Current scope:
+- **Extract Audio:** copy audio in the original format or encode MP3 (VBR LAME Quality 2; 128, 192 or 320 kbps). Supports compatible video or audio-only sources, multiple audio tracks, entire or selected segments, and merge/separate output.
+- **Crop Video:** re-encode a pixel crop of the entire video or selected ranges using supported H.264 presets. This is **not lossless** cropping.
+- **Export Video:** losslessly cut and remux supported media, with optional multi-segment merging.
 
-- **Input:** local MP4 files.
-- **Output:** MP3 files.
-- **Encoding modes:** VBR (LAME Quality 2), 320 kbps CBR, or 192 kbps CBR.
-- **Track selection:** extract one or multiple selected audio tracks.
-- **Segment selection:** extract the selected timeline segments separately.
-- **Output organization:** one MP3 file for each segment-and-track combination.
-- **Task execution:** sequential FFmpeg tasks.
-- **Output protection:** existing output files are not overwritten.
-- **Cancellation:** the active task can be cancelled; completed MP3 files are preserved and tasks that have not started are skipped.
-- **Cleanup:** task-specific temporary output is removed after success, failure, or cancellation.
-- **Status reporting:** Saved, Failed, Cancelled, and Skipped are reported separately.
-
-The extraction module is deliberately separate from the original video-export business workflow. It reuses lower-level media infrastructure rather than introducing a second FFmpeg process-management stack.
+Output files belong to per-source `Audio/`, `Croploss/`, or `Lossless/` workspaces and retain existing-output protection. Each job has its own lifecycle; SC-023 isolates Export Video cancellation from unrelated FFmpeg tasks. See [Output behavior](docs/development/MEDIA_WORKSPACE_EXPORT.md), [Crop Video limitations](docs/development/CROP_VIDEO_LIMITATIONS.md), and the [development documentation index](docs/development/README.md).
 
 ### Privacy-related customizations
 
@@ -138,8 +128,8 @@ Manual media fixtures and test outputs are local-only. See [test-manual/README.m
 .
 ├── .github/                 GitHub issue templates and CI workflows
 ├── .yarn/                   Pinned Yarn release, plugins, and patches
-├── docs/                    Documentation inherited from the upstream project
-│   └── development/         SwiftCut implementation notes and audits
+├── docs/                    Inherited user docs and SwiftCut documentation
+│   └── development/         Current behavior and historical engineering records
 ├── ffmpeg/                  Downloaded local FFmpeg binaries (not committed)
 ├── locales/                 Application translations
 ├── script/                  Build, maintenance, and media utility scripts

@@ -27,8 +27,8 @@ This fork removes several upstream behaviors that are not needed for local video
 - Generic subtitle parsing and handling of non-copyable telemetry/data tracks. GPS metadata preservation behavior is not intentionally changed.
 - Original copyright notices and GPL-2.0-only licensing.
 
-## Validation status
+## Validation status and limits
 
-Static source checks were performed for removed feature references and package manifest validity. A full TypeScript build, test suite, Windows runtime test, and packet-capture test have not yet been run in this environment. After extracting this source, run the project install/build/test commands on Windows and verify network behavior with the application network setting both off and on.
+The original privacy change received static source checks for removed references and package manifest validity, but not complete runtime verification in that environment. Subsequent SwiftCut builds, tests, and Windows acceptance checks do **not** establish a dedicated network-control or packet-capture test. Validate network access separately with the setting disabled and enabled before making stronger privacy guarantees.
 
 The network setting is application-level control, not a replacement for Windows Firewall. It governs Electron session requests and FFmpeg/FFprobe network-protocol inputs; it cannot control the external browser or unrelated operating-system services.
