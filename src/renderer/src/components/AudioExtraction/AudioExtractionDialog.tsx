@@ -99,6 +99,7 @@ export default function AudioExtractionDialog({ open, onOpenChange, filePath, st
                 <Checkbox
                   key={stream.index}
                   checked={selectedStreamIndexes.includes(stream.index)}
+                  disabled={isBusy}
                   onCheckedChange={(checked) => toggleStream(stream.index, checked === true)}
                   label={t('Track {{number}} · {{codec}} · {{channels}} channels · {{sampleRate}} Hz', {
                     number: index + 1,
