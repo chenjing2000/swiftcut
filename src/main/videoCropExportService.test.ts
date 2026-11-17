@@ -1,6 +1,7 @@
 // eslint-disable-next-line import-js/no-extraneous-dependencies
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import type { unlink } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,13 +19,14 @@ type LoggerMock = (...args: unknown[]) => void;
 
 const mocks = vi.hoisted(() => ({
   failCropCleanup: false,
+  failCropRollback: false,
   probe: vi.fn<FfprobeMock>(),
   run: vi.fn<FfmpegMock>(),
   logger: { error: vi.fn<LoggerMock>(), warn: vi.fn<LoggerMock>(), info: vi.fn<LoggerMock>() },
 }));
 
 vi.mock('node:fs/promises', async (importOriginal) => {
-  const fs = await importOriginal<{ rm: typeof rm }>();
+  const fs = await importOriginal<{ rm: typeof rm; unlink: typeof unlink }>();
   return {
     ...fs,
     rm: async (...args: Parameters<typeof fs.rm>) => {
@@ -32,6 +34,12 @@ vi.mock('node:fs/promises', async (importOriginal) => {
         throw new Error('Simulated crop cleanup error');
       }
       return fs.rm(...args);
+    },
+    unlink: async (...args: Parameters<typeof fs.unlink>) => {
+      if (mocks.failCropRollback && String(args[0]).endsWith('first.mp4')) {
+        throw new Error('Simulated crop rollback failure');
+      }
+      return fs.unlink(...args);
     },
   };
 });
@@ -88,6 +96,7 @@ describe('Crop Video single-segment service', () => {
     await writeFile(source, 'mock video source');
     vi.clearAllMocks();
     mocks.failCropCleanup = false;
+    mocks.failCropRollback = false;
     mocks.probe.mockImplementation(async (args) => ({
       stdout: Buffer.from(JSON.stringify({
         streams: [
@@ -106,6 +115,7 @@ describe('Crop Video single-segment service', () => {
 
   afterEach(async () => {
     mocks.failCropCleanup = false;
+    mocks.failCropRollback = false;
     await rm(directory, { force: true, recursive: true });
   });
 
@@ -298,6 +308,44 @@ describe('Crop Video single-segment service', () => {
     expect(result.outputPaths).toStrictEqual([]);
     await expect(readdir(directory)).resolves.not.toContain('clip_segment_01.mp4');
     await expect(readdir(join(directory, '.swiftcut-crop-tmp'))).resolves.toStrictEqual([]);
+  });
+
+  it('retries a separate-output batch with a common suffix after a name collision', async () => {
+    const plan = makePlan();
+    plan.output.outputMode = 'separate';
+    plan.tasks = [
+      { start: 1, end: 3, originalIndex: 0, outputName: 'first.mp4' },
+      { start: 5, end: 7, originalIndex: 1, outputName: 'second.mp4' },
+    ];
+    await writeFile(join(directory, 'second.mp4'), 'existing user output');
+
+    const jobId = await startCropExport(plan);
+    await expectState(jobId, 'success');
+    expect(getCropExportStatus(jobId)?.outputPaths).toStrictEqual([
+      join(directory, 'first (1).mp4'),
+      join(directory, 'second (1).mp4'),
+    ]);
+    await expect(readdir(directory)).resolves.not.toContain('first.mp4');
+    await expect(readFile(join(directory, 'second.mp4'), 'utf8')).resolves.toBe('existing user output');
+  });
+
+  it('reports a surviving output when an EEXIST batch rollback cannot remove its link', async () => {
+    const plan = makePlan();
+    plan.output.outputMode = 'separate';
+    plan.tasks = [
+      { start: 1, end: 3, originalIndex: 0, outputName: 'first.mp4' },
+      { start: 5, end: 7, originalIndex: 1, outputName: 'second.mp4' },
+    ];
+    await writeFile(join(directory, 'second.mp4'), 'existing user output');
+    mocks.failCropRollback = true;
+
+    const jobId = await startCropExport(plan);
+    await expectState(jobId, 'partial_success');
+    const status = getCropExportStatus(jobId)!;
+    expect(status.outputPaths).toStrictEqual([join(directory, 'first.mp4')]);
+    expect(status.error).toContain('Crop output batch rollback failed');
+    await expect(readFile(join(directory, 'second.mp4'), 'utf8')).resolves.toBe('existing user output');
+    await expect(readFile(join(directory, 'first.mp4'), 'utf8')).resolves.toBe('mock encoded video');
   });
 
   it('does not publish a terminal state while temporary files are still present', async () => {

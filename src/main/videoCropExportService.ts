@@ -125,7 +125,12 @@ async function commitCropBatch(
       if (getErrorCode(error) === 'EEXIST') {
         // A competing export claimed at least one name. Undo only links
         // created by this batch and try a common suffix for all its files.
-        await Promise.all(pathsCreated.map((target) => unlink(target)));
+        const rollback = await Promise.allSettled(pathsCreated.map((target) => unlink(target)));
+        const remaining = pathsCreated.filter((_, index) => rollback[index]?.status === 'rejected');
+        if (remaining.length > 0) {
+          remaining.forEach((path) => onCommitted(path));
+          throw new Error(`Crop output batch rollback failed; files may remain: ${remaining.join(', ')}`, { cause: error });
+        }
         continue;
       }
       // Do not conceal already published outputs when an unrelated error

@@ -389,12 +389,6 @@ function App() {
     };
   }, [activeVideoStream, effectiveRotation]);
 
-  const openCropVideo = useCallback(() => {
-    if (filePath == null || !cropFrame || !isDurationValid(fileDuration)) return;
-    pause();
-    setCropVideoForFile(filePath);
-  }, [cropFrame, fileDuration, filePath, pause]);
-
 
   const zoomAbs = useCallback((fn: (v: number) => number) => setZoom((z) => Math.min(Math.max(fn(z), 1), zoomMax)), []);
   const zoomRel = useCallback((rel: number) => zoomAbs((z) => z + (rel * (1 + (z / 10)))), [zoomAbs]);
@@ -417,6 +411,12 @@ function App() {
     showNotification({ icon: 'info', title: i18n.t('You need to open a media file first') });
     return false;
   }, [isFileOpened, showNotification]);
+
+  const openCropVideo = useCallback(() => {
+    if (!checkFileOpened() || !filePath || !cropFrame || !isDurationValid(fileDuration)) return;
+    pause();
+    setCropVideoForFile(filePath);
+  }, [checkFileOpened, cropFrame, fileDuration, filePath, pause]);
 
   const {
     cutSegments, cutSegmentsHistory, createSegmentsFromKeyframes, shuffleSegments, detectBlackScenes, detectSilentScenes, detectSceneChanges, removeSegment, invertAllSegments, fillSegmentsGaps, combineOverlappingSegments, combineSelectedSegments, modifySelectedSegmentTimes, alignSegmentTimesToKeyframes, updateSegOrder, updateSegOrders, reorderSegsByStartTime, addSegment, setCutStart, setCutEnd, labelSegment, splitCurrentSegment, focusSegmentAtCursor, selectSegmentsAtCursor, createNumSegments, createFixedDurationSegments, createFixedByteSizedSegments, createRandomSegments, getSegEstimatedSize, haveInvalidSegs, currentSegIndexSafe, currentCutSeg, inverseCutSegments, clearSegments, clearSegColorCounter, loadCutSegments, setCutTime, setCurrentSegIndex, labelSelectedSegments, deselectAllSegments, selectAllSegments, selectOnlyCurrentSegment, toggleCurrentSegmentSelected, invertSelectedSegments, removeSelectedSegments, selectSegmentsByLabel, selectSegmentsByExpr, selectAllMarkers, mutateSegmentsByExpr, toggleSegmentSelected, selectOnlySegment, selectedSegments, segmentsOrInverse, segmentsToExport, duplicateCurrentSegment, duplicateSegment, updateSegAtIndex, findSegmentsAtCursor, maybeCreateFullLengthSegment, currentCutSegOrWholeTimeline, segColorCounter,
@@ -1171,10 +1171,10 @@ function App() {
   const losslessDirectory = losslessExportPlan?.directory ?? '';
   const losslessFilename = losslessExportPlan?.filename ?? '';
   const openLosslessExport = useCallback(() => {
-    if (!filePath) return;
+    if (!checkFileOpened()) return;
     setExportConfirmOpen(true);
     setStreamsSelectorShown(false);
-  }, [filePath]);
+  }, [checkFileOpened]);
   const changeLosslessOutputFps = useCallback(async () => {
     const rate = await askForPlaybackRate({ detectedFps, outputPlaybackRate });
     if (rate != null) setOutputPlaybackRate(rate);
