@@ -1,0 +1,13 @@
+/* Dialog-only field appearance: keep focus frames from changing the outline. */
+.textField::after,
+.textField:focus-within::after {
+  box-shadow: none;
+}
+
+.textField input:focus,
+.textField input:focus-visible,
+.textInput:focus,
+.textInput:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
