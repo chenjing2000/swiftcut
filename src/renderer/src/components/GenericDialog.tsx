@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import invariant from 'tiny-invariant';
 import { FaCheckCircle, FaInfoCircle } from 'react-icons/fa';
 import { TextField } from '@radix-ui/themes';
+import inputStyles from './DialogInputAppearance.module.css';
 
 import * as Dialog from './Dialog';
 import * as AlertDialog from './AlertDialog';
@@ -324,12 +325,12 @@ export function useDialog() {
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
             <label style={{ display: 'block', marginBottom: '.3em' }}>
               {t('Shift start by')}<br />
-              <TextField.Root value={startValue} placeholder={inputPlaceholder} onChange={(e) => setStartValue(e.target.value)} />
+              <TextField.Root className={inputStyles['textField']} radius="full" value={startValue} placeholder={inputPlaceholder} onChange={(e) => setStartValue(e.target.value)} />
             </label>
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
             <label style={{ display: 'block', marginBottom: '.3em' }}>
               {t('Shift end by')}<br />
-              <TextField.Root value={endValue} placeholder={inputPlaceholder} onChange={(e) => setEndValue(e.target.value)} />
+              <TextField.Root className={inputStyles['textField']} radius="full" value={endValue} placeholder={inputPlaceholder} onChange={(e) => setEndValue(e.target.value)} />
             </label>
 
             <Dialog.ButtonRow>
@@ -380,12 +381,12 @@ export function useDialog() {
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
             <label style={{ display: 'block', marginBottom: '.5em' }}>
               {t('Keep every nth keyframe. Use the value "1" to keep all keyframes')}<br />
-              <TextField.Root value={nStr} placeholder="n" onChange={(e) => setN(e.target.value)} />
+              <TextField.Root className={inputStyles['textField']} radius="full" value={nStr} placeholder="n" onChange={(e) => setN(e.target.value)} />
             </label>
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
             <label style={{ display: 'block', marginBottom: '.5em' }}>
               {t('Output video frame rate (frames per second)')}<br />
-              <TextField.Root value={fpsStr} onChange={(e) => setFps(e.target.value)} />
+              <TextField.Root className={inputStyles['textField']} radius="full" value={fpsStr} onChange={(e) => setFps(e.target.value)} />
             </label>
 
             <Dialog.ButtonRow>
