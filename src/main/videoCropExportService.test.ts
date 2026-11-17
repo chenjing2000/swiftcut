@@ -309,6 +309,25 @@ describe('Crop Video single-segment service', () => {
     await expect(readdir(join(directory, '.swiftcut-crop-tmp'))).resolves.toStrictEqual([]);
   });
 
+  it('retries a separate-output batch with a common suffix after a name collision', async () => {
+    const plan = makePlan();
+    plan.output.outputMode = 'separate';
+    plan.tasks = [
+      { start: 1, end: 3, originalIndex: 0, outputName: 'first.mp4' },
+      { start: 5, end: 7, originalIndex: 1, outputName: 'second.mp4' },
+    ];
+    await writeFile(join(directory, 'second.mp4'), 'existing user output');
+
+    const jobId = await startCropExport(plan);
+    await expectState(jobId, 'success');
+    expect(getCropExportStatus(jobId)?.outputPaths).toStrictEqual([
+      join(directory, 'first (1).mp4'),
+      join(directory, 'second (1).mp4'),
+    ]);
+    await expect(readdir(directory)).resolves.not.toContain('first.mp4');
+    await expect(readFile(join(directory, 'second.mp4'), 'utf8')).resolves.toBe('existing user output');
+  });
+
   it('reports a surviving output when an EEXIST batch rollback cannot remove its link', async () => {
     const plan = makePlan();
     plan.output.outputMode = 'separate';
