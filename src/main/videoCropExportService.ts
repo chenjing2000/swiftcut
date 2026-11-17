@@ -128,7 +128,7 @@ async function commitCropBatch(
         const rollback = await Promise.allSettled(pathsCreated.map((target) => unlink(target)));
         const remaining = pathsCreated.filter((_, index) => rollback[index]?.status === 'rejected');
         if (remaining.length > 0) {
-          remaining.forEach(onCommitted);
+          remaining.forEach((path) => onCommitted(path));
           throw new Error(`Crop output batch rollback failed; files may remain: ${remaining.join(', ')}`, { cause: error });
         }
         continue;
