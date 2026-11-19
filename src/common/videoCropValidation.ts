@@ -108,10 +108,9 @@ export function validateCropExportRequest(request: CropExportRequest): CropValid
   if (!['yuv420p', 'yuv422p', 'yuv444p'].includes(config.output.pixelFormat)) {
     problems.push({ field: 'pixelFormat', message: 'Unsupported output pixel format' });
   }
-  // Only the reviewed CPU presets are available in Phase 3A/3B.
-  const high = config.output.quality === 'high' && config.output.crf === 18;
-  const standard = config.output.quality === 'standard' && config.output.crf === 23;
-  if (!high && !standard) problems.push({ field: 'quality', message: 'Unsupported crop encoding preset' });
+  if (![13, 16, 18, 20, 23, 25, 28].includes(config.output.crf)) {
+    problems.push({ field: 'crf', message: 'Unsupported crop CRF preset' });
+  }
   if (config.output.encoder !== 'libx264' || config.output.preset !== 'medium' || config.output.pixelFormat !== 'yuv420p') {
     problems.push({ field: 'encoder', message: 'Only libx264 medium yuv420p is supported in this phase' });
   }

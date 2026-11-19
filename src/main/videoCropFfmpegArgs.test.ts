@@ -15,7 +15,6 @@ const makePlan = (): CropExportPlan => ({
     width: 853,
     height: 479,
     lockAspect: true,
-    quality: 'high',
     encoder: 'libx264',
     crf: 18,
     preset: 'medium',
@@ -53,6 +52,16 @@ describe('Crop Video FFmpeg args', () => {
     expect(vf).toContain('format=yuv420p');
     expect(args).toContain('192k');
     expect(args.at(-1)).toBe(String.raw`C:\Exports\temp.mp4`);
+  });
+
+  it('forwards the selected CRF unchanged to the H.264 encoder', () => {
+    for (const crf of [13, 16, 18, 20, 23, 25, 28]) {
+      const plan = makePlan();
+      plan.output.crf = crf;
+      const args = getArgs(plan);
+      expect(args.slice(args.indexOf('-c:v'), args.indexOf('-c:v') + 6))
+        .toStrictEqual(['-c:v', 'libx264', '-crf', String(crf), '-preset', 'medium']);
+    }
   });
 
   it('adds scaling and uses square pixels for resize', () => {

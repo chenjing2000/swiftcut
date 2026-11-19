@@ -66,7 +66,6 @@ const makePlan = (): CropExportPlan => ({
     width: 100,
     height: 100,
     lockAspect: true,
-    quality: 'high',
     encoder: 'libx264',
     crf: 18,
     preset: 'medium',

@@ -25,7 +25,6 @@ describe('Crop Video validation', () => {
           width: 100,
           height: 100,
           lockAspect: true,
-          quality: 'high',
           encoder: 'libx264',
           crf: 18,
           preset: 'medium',
@@ -64,7 +63,6 @@ describe('Crop Video validation', () => {
       width: 800,
       height: 600,
       lockAspect: true,
-      quality: 'high',
       encoder: 'libx264',
       crf: 18,
       preset: 'medium',
@@ -76,5 +74,42 @@ describe('Crop Video validation', () => {
     };
     expect(validateCropOutput(settings, { x: 0, y: 0, width: 801, height: 601 })).toStrictEqual([]);
     expect(validateCropOutput({ ...settings, resize: true, width: 0 }, { x: 0, y: 0, width: 801, height: 601 })).toHaveLength(1);
+  });
+
+  it('accepts the seven supported CRF values and rejects all other presets', () => {
+    const request: CropExportRequest = {
+      sourcePath: 'source.mp4',
+      outputDir: 'exports',
+      frame: { width: 160, height: 120, rotation: 0, sarNum: 1, sarDen: 1 },
+      videoStreamIndex: 0,
+      sourceDuration: 10,
+      config: {
+        rect: { x: 0, y: 0, width: 100, height: 100 },
+        aspectPreset: 'free',
+        output: {
+          resize: false,
+          width: 100,
+          height: 100,
+          lockAspect: false,
+          encoder: 'libx264',
+          crf: 23,
+          preset: 'medium',
+          pixelFormat: 'yuv420p',
+          format: 'mp4',
+          keepAudio: false,
+          timeRange: 'entire',
+          outputMode: 'merge',
+        },
+      },
+      segments: [{ start: 0, end: 10, originalIndex: 0 }],
+    };
+    for (const crf of [13, 16, 18, 20, 23, 25, 28]) {
+      request.config.output.crf = crf;
+      expect(validateCropExportRequest(request)).toStrictEqual([]);
+    }
+    for (const crf of [0, 12, 14, 24, 29, 51]) {
+      request.config.output.crf = crf;
+      expect(validateCropExportRequest(request).some(({ field }) => field === 'crf')).toBe(true);
+    }
   });
 });

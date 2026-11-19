@@ -11,14 +11,12 @@ export type CropAspectPreset = 'free' | 'source' | '16:9' | '4:3' | '1:1' | '9:1
 export type CropTimeRange = 'selected' | 'entire';
 export type CropOutputMode = 'merge' | 'separate';
 export type CropOutputFormat = 'mp4' | 'mkv';
-export type CropQuality = 'high' | 'standard' | 'custom';
 
 export interface CropOutputSettings {
   resize: boolean;
   width: number;
   height: number;
   lockAspect: boolean;
-  quality: CropQuality;
   encoder: 'libx264' | 'libx265';
   crf: number;
   preset: 'ultrafast' | 'veryfast' | 'fast' | 'medium' | 'slow' | 'slower';
