@@ -361,7 +361,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
               [20, ''],
               [23, 'Standard'],
               [25, ''],
-              [28, 'Smaller file'],
+              [28, 'Low'],
             ] as const).map(([crf, description]) => (
               <option key={crf} value={crf}>CRF {crf}{description && ` — ${description}`}</option>
             ))}

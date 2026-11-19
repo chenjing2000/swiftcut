@@ -20,7 +20,7 @@
 | **Crop Video** | 按画面矩形区域裁剪并重新编码 H.264；MP4/MKV 输出，Video Quality 提供 CRF 13、16、18、20、23（默认）、25、28 七档；支持时间范围、多个片段及合并/分别导出；不是无损裁剪 | `<源文件名去扩展名>/Croploss/` |
 | **Export Video** | 在源编码与目标容器兼容的前提下执行无损剪切、流复制/重新封装、智能剪切及片段合并 | `<源文件名去扩展名>/Lossless/` |
 
-Crop Video 仍使用 `libx264`、`preset=medium`、`yuv420p`；质量选项标注为 `CRF 13 — Very high`、`CRF 18 — High`、`CRF 23 — Standard`、`CRF 28 — Smaller file`，其余档位仅显示 CRF 数值。Crop Region 与 Output Size 的 W/H 共用四列网格水平对齐；Output Size 复选框紧邻 W 标签左侧。
+Crop Video 仍使用 `libx264`、`preset=medium`、`yuv420p`；质量选项标注为 `CRF 13 — Very high`、`CRF 18 — High`、`CRF 23 — Standard`、`CRF 28 — Low`，其余档位仅显示 CRF 数值。Crop Region 与 Output Size 的 W/H 共用四列网格水平对齐；Output Size 复选框紧邻 W 标签左侧。
 
 输出目录按任务需要延迟创建。已有结果文件不被覆盖，临时文件与最终发布分开处理；取消/失败不得误删既有结果。发布后的清理或通知错误不应把成功保存的结果误报为取消/失败。具体命名、格式约束、UI 生命周期见 [MEDIA_WORKSPACE_EXPORT.md](development/MEDIA_WORKSPACE_EXPORT.md) 和 [Crop Video 限制](development/CROP_VIDEO_LIMITATIONS.md)。
 
