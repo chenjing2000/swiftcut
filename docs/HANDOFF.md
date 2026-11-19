@@ -1,6 +1,6 @@
 # SwiftCut — 开发交接（Handoff）
 
-更新日期：2026-11-17；基线：`main`，提交 `4614cffe`（PR #19）。**下次开始新任务时，先读取本文件，再核对仓库最新代码；本文件不是代替源码的规格书。**
+更新日期：2026-11-19；基线：`main`，提交 `5ba013f0`（PR #21）。**下次开始新任务时，先读取本文件，再核对仓库最新代码；本文件不是代替源码的规格书。**
 
 ## 1. 软件定位
 
@@ -17,8 +17,10 @@
 | 功能 | 主要行为 | 输出位置 |
 | --- | --- | --- |
 | **Extract Audio** | 原编码音轨复制，或重新编码为 MP3（LAME VBR Q2、128/192/320 kbps）；可选择多音轨、整段或选定片段，以及合并/分别输出 | `<源文件名去扩展名>/Audio/` |
-| **Crop Video** | 按画面矩形区域裁剪并重新编码 H.264；支持时间范围、多个片段及合并/分别导出；不是无损裁剪 | `<源文件名去扩展名>/Croploss/` |
+| **Crop Video** | 按画面矩形区域裁剪并重新编码 H.264；MP4/MKV 输出，Video Quality 提供 CRF 13、16、18、20、23（默认）、25、28 七档；支持时间范围、多个片段及合并/分别导出；不是无损裁剪 | `<源文件名去扩展名>/Croploss/` |
 | **Export Video** | 在源编码与目标容器兼容的前提下执行无损剪切、流复制/重新封装、智能剪切及片段合并 | `<源文件名去扩展名>/Lossless/` |
+
+Crop Video 仍使用 `libx264`、`preset=medium`、`yuv420p`；质量选项标注为 `CRF 13 — Very high`、`CRF 18 — High`、`CRF 23 — Standard`、`CRF 28 — Smaller file`，其余档位仅显示 CRF 数值。Crop Region 与 Output Size 的 W/H 共用四列网格水平对齐；Output Size 复选框紧邻 W 标签左侧。
 
 输出目录按任务需要延迟创建。已有结果文件不被覆盖，临时文件与最终发布分开处理；取消/失败不得误删既有结果。发布后的清理或通知错误不应把成功保存的结果误报为取消/失败。具体命名、格式约束、UI 生命周期见 [MEDIA_WORKSPACE_EXPORT.md](development/MEDIA_WORKSPACE_EXPORT.md) 和 [Crop Video 限制](development/CROP_VIDEO_LIMITATIONS.md)。
 
@@ -32,7 +34,7 @@
 - `src/renderer/src/hooks/useFfmpegOperations.ts`：传统剪切、智能剪切、合并、额外流导出及信号传播。
 - `src/main/ffmpeg.ts`：FFmpeg/FFprobe 路径、网络限制、运行器与取消机制；`src/main/ffmpegCancellation.test.ts`：取消隔离回归测试。
 - `src/main/audioExtraction.ts`、`audioExtractionUtils.ts`：独立音频任务与参数构造；`src/renderer/src/components/AudioExtraction/`：音频提取 UI/任务状态。
-- `src/main/videoCropExportService.ts`、`videoCropFfmpegArgs.ts`、`videoCropConcat.ts`：Crop Video 主进程任务与编码/合并；`src/renderer/src/components/VideoCrop/`：裁剪 UI。
+- `src/main/videoCropExportService.ts`、`videoCropFfmpegArgs.ts`、`videoCropConcat.ts`：Crop Video 主进程任务与编码/合并；`src/renderer/src/components/VideoCrop/VideoCropWorkspace.tsx` 及 `.module.css`：质量下拉框、Crop Region/Output Size 对齐和裁剪 UI；`src/common/videoCropValidation.ts`：七档 CRF 校验。
 - `src/common/`、`src/preload/`、`src/main/`、`src/renderer/`：共享类型、进程通信和应用分层。改动跨进程接口时，同时检查类型、调用端和测试。
 
 ## 4. 已完成节点与当前状态
@@ -40,6 +42,9 @@
 - **SC-022**：Output 相关保护与清理，已合并 [PR #17](https://github.com/chenjing2000/swiftcut/pull/17)。
 - **SC-023**：Export Video 的 FFmpeg 取消隔离；Windows 普通导出、取消、智能剪切、合并取消、并行任务隔离及其他 Output 功能实机验收通过；CI 通过；已合并 [PR #18](https://github.com/chenjing2000/swiftcut/pull/18)，主线提交 `8f766b9`。
 - **文档整理**：清除 7 份过时 MP3/Crop 阶段文档，保留关键设计与测试资料；CI 通过；已合并 [PR #19](https://github.com/chenjing2000/swiftcut/pull/19)，提交 `4614cffe`。
+- **Handoff 建立**：已合并 [PR #20](https://github.com/chenjing2000/swiftcut/pull/20)，交接文档纳入 `docs/`，主线提交 `4c0e6e2`。
+- **Crop Video CRF 与布局调整**：已合并 [PR #21](https://github.com/chenjing2000/swiftcut/pull/21)，主线提交 `5ba013f0`。仅增加七档 CRF 选择（默认 23）与 Output Size W/H 对齐；保持 H.264/MP4/MKV、音频、取消和文件发布行为不变。GitHub Windows/Ubuntu 单元测试和 Chromium E2E 共四项通过；Windows 实机验收 **14/14** 通过（包含 CRF 18/23/28 实际导出、布局、任务取消隔离、无覆盖与临时文件清理）。开发分支本地及远程均已删除，本地 `main` 与 `origin/main` 同步且工作区干净。此前本地自动测试为 **322 passed / 15 skipped**，TypeScript、Lint、构建通过。
+- **曾讨论但尚未实施**：Crop Video 的“Original format（自动沿用源编码/容器）”功能。本轮最终选择仅修改 CRF 和布局，**不要误认为 Original format 已开发**。
 - **当前没有已授权但尚未完成的功能开发任务。** 新会话先检查 GitHub 最新 `main`、开放 PR 和工作区状态，不要假设上述基线仍是最新版本。
 
 ## 5. 开发规则与标准流程
