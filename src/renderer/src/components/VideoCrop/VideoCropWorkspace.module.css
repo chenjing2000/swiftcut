@@ -30,17 +30,14 @@
 }
 .resetIconButton:hover { background: var(--gray-4); }
 .resetIconButton:focus-visible { outline: 2px solid var(--accent-9); outline-offset: 1px; }
-.coordinateGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.coordinateGrid, .outputSizeRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .numberField { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .numberField label { flex: 0 0 14px; text-align: center; }
 .numberField input { flex: 1 1 0; width: 100%; min-width: 0; }
 .radio, .checkbox { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
-.outputSizeRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.outputSizeRow > strong { flex-shrink: 0; }
-.outputSizeControls { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.outputSizeControls > input[type="checkbox"] { flex: 0 0 auto; margin: 0; }
-.outputSizeControls .numberField { flex: 0 0 88px; }
-.outputSizeControls .numberField label { flex-basis: 14px; }
+.outputSizeRow { align-items: center; }
+.outputSizeHeading { grid-column: span 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.outputSizeHeading > input[type="checkbox"] { flex: 0 0 auto; margin: 0; }
 .previewRow { display: flex; gap: 4px; }
 .previewRow button { flex: 1; border: 1px solid var(--gray-7); border-radius: 5px; padding: 5px; }
 .previewRow button[aria-pressed="true"] { background: var(--accent-5); border-color: var(--accent-9); }

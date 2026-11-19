@@ -46,7 +46,6 @@ function planFor(input: string, dir: string): CropExportPlan {
       width: 81,
       height: 71,
       lockAspect: true,
-      quality: 'high',
       encoder: 'libx264',
       crf: 18,
       preset: 'medium',

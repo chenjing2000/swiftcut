@@ -19,7 +19,6 @@ const makeRequest = (): CropExportRequest => ({
       width: 853,
       height: 479,
       lockAspect: true,
-      quality: 'high',
       encoder: 'libx264',
       crf: 18,
       preset: 'medium',
@@ -96,7 +95,7 @@ describe('Crop Video Phase 3A export planner', () => {
     expect(createCropExportPlan(request)).toMatchObject({ outputSarNum: 3, outputSarDen: 4 });
   });
 
-  it('rejects invalid empty selections, overlaps in merge and unsupported Custom', () => {
+  it('rejects invalid empty selections, overlaps in merge and unsupported CRF', () => {
     const request = makeRequest();
     request.segments = [];
     expect(() => createCropExportPlan(request)).toThrow('No exportable segments selected');
@@ -104,8 +103,8 @@ describe('Crop Video Phase 3A export planner', () => {
     expect(() => createCropExportPlan(request)).toThrow('Overlapping segments cannot be merged');
     request.config.output.outputMode = 'separate';
     expect(() => createCropExportPlan(request)).not.toThrow('Missing temporary output path');
-    request.config.output.quality = 'custom';
-    expect(() => createCropExportPlan(request)).toThrow('Unsupported crop encoding preset');
+    request.config.output.crf = 24;
+    expect(() => createCropExportPlan(request)).toThrow('Unsupported crop CRF preset');
   });
 
   it('requires an exact entire-video segment instead of silently exporting a selection', () => {

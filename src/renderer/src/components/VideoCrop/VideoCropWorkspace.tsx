@@ -62,7 +62,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const [outputMode, setOutputMode] = useState<CropOutputMode>('merge');
   const [keepAudio, setKeepAudio] = useState(true);
   const [format, setFormat] = useState<'mp4' | 'mkv'>('mp4');
-  const [quality, setQuality] = useState('high');
+  const [quality, setQuality] = useState(23);
   const [submitting, setSubmitting] = useState(false);
   const exportDisabled = submitting || exportBusy;
   const [exportError, setExportError] = useState<string>();
@@ -216,7 +216,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
   const multiple = timeRange === 'selected' && selectedSegmentCount > 1;
 
   const submitExport = async () => {
-    if (exportDisabled || !valid || quality === 'custom') return;
+    if (exportDisabled || !valid) return;
     setExportError(undefined);
     setSubmitting(true);
     try {
@@ -228,9 +228,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           width: resize ? resizeWidth : rect.width,
           height: resize ? resizeHeight : rect.height,
           lockAspect: false,
-          quality: quality === 'standard' ? 'standard' : 'high',
           encoder: 'libx264',
-          crf: quality === 'standard' ? 23 : 18,
+          crf: quality,
           preset: 'medium',
           pixelFormat: 'yuv420p',
           format,
@@ -284,7 +283,7 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
         footer={(
           <>
             <button className={actionStyles['action']} type="button" onClick={onClose}>{t('Cancel')}</button>
-            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || exportDisabled || quality === 'custom' || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
+            <button className={`${actionStyles['action']} ${actionStyles['primary']}`} type="button" disabled={!valid || exportDisabled || (timeRange === 'selected' && selectedSegmentCount === 0)} onClick={() => { submitExport().catch(console.error); }}>{t('Export')}</button>
           </>
         )}
       >
@@ -333,8 +332,8 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
           <CropNumericField label="H" value={rect.height} onCommit={(value) => updateDimension('height', value)} />
         </div>
         <div className={styles['outputSizeRow']}>
-          <strong>{t('Output Size')}</strong>
-          <div className={styles['outputSizeControls']}>
+          <div className={styles['outputSizeHeading']}>
+            <strong>{t('Output Size')}</strong>
             <input
               id="crop-resize"
               type="checkbox"
@@ -349,15 +348,23 @@ export default function VideoCropWorkspace({ containerRef, frame, videoFit, segm
                 setResize(event.target.checked);
               }}
             />
-            <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
-            <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
           </div>
+          <CropNumericField label="W" disabled={!resize} value={resize ? resizeWidth : rect.width} onCommit={(value) => changeResizeDimension('width', value)} />
+          <CropNumericField label="H" disabled={!resize} value={resize ? resizeHeight : rect.height} onCommit={(value) => changeResizeDimension('height', value)} />
         </div>
         <label className={styles['qualityRow']} htmlFor="crop-quality"><strong>{t('Video Quality')}</strong>
-          <select id="crop-quality" value={quality} onChange={(event) => setQuality(event.target.value)}>
-            <option value="high">{t('High quality')} · H.264 CRF 18</option>
-            <option value="standard">{t('Standard')} · H.264 CRF 23</option>
-            <option value="custom" disabled>{t('Custom (Phase 3)')}</option>
+          <select id="crop-quality" value={quality} onChange={(event) => setQuality(Number(event.target.value))}>
+            {([
+              [13, 'Very high'],
+              [16, ''],
+              [18, 'High'],
+              [20, ''],
+              [23, 'Standard'],
+              [25, ''],
+              [28, 'Smaller file'],
+            ] as const).map(([crf, description]) => (
+              <option key={crf} value={crf}>CRF {crf}{description && ` — ${description}`}</option>
+            ))}
           </select>
         </label>
         <strong>{t('Export')}</strong>

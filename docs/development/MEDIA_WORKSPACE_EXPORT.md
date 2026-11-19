@@ -182,3 +182,10 @@ visible track number. Outputs are validated before collision-safe
 publication, and task-specific temporary files are cleaned on completion
 or cancellation. The implementation and unit tests are authoritative for
 edge cases.
+
+## Crop Video quality selection (2026-11-19)
+
+The Crop Video **Video Quality** dropdown offers H.264 CRF 13, 16, 18, 20,
+23 (default), 25, and 28. The encoder remains `libx264`, preset `medium`,
+and pixel format `yuv420p`; MP4/MKV and all other export behavior are
+unchanged. Lower CRF generally favors visual quality and larger files.
